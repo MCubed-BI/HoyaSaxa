@@ -113,7 +113,10 @@ Claim / register pages are owned by another lane and are not touched here.
 
 ## Pages
 
-- `/login` — shared coach password gate
+- `/login` — shared coach password gate, plus **Register myself** / **Alumni login**
+- `/register` — alumni claim: roster last name + graduating class (`’15` or `2015`)
+- `/alumni-login` — alumni email/password login
+- `/me` — edit claimed records or merge a duplicate roster row
 - `/directory` — public Legacy Locker directory (search + All / Athletes / Alumni / Coaches / Staff)
 - `/athletes/[id]` — public athlete profile shell (Overview / Stats / Photos / Career / Q&A)
 - `/home` — alumni Home (hero, quick actions, upcoming event, recent activity)
@@ -126,6 +129,17 @@ Claim / register pages are owned by another lane and are not touched here.
 - `/messages/sgarlata` — official pinned Message from Sgarlata channel
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
+
+Alumni login is a distinct **alum** session, not coach. Portal detect:
+
+```ts
+import { isAlumLoggedIn, getAlumSession } from "@/lib/alum-session";
+const alum = isAlumLoggedIn(await cookies()); // cookie `hoya_alum_session`, role `"alum"`
+```
+
+Cookie `hoya_alum_session` is httpOnly, Secure in production, SameSite=Lax. Value is HMAC-signed JSON `{ v:1, role:"alum"|"board", alumniId, email, name, exp }`. Register myself always sets `role: "alum"`. Do not use `ga_session` / `isCoachLoggedIn` for alum — that cookie never unlocks Data Sync or owner blast. Optional: readable `ga_role=alum` hint, or `GET /api/session` `{ role, roles, alum, coach }`. Claiming a roster row never unlocks the directory, reports, blast, or sync pages.
+
+The app uses existing Neon tables `alumni_accounts`, `alumni_claims`, and `alumni_record_merges` when present, and creates them if they are missing.
 
 ## Messages
 

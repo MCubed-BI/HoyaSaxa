@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isAlumLoggedIn, isCoachLoggedIn } from "@/lib/session";
 import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
-import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
 import { HOYA_ALUM_SESSION_COOKIE, isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
 import {
   isLockerPath,
@@ -14,21 +14,44 @@ import {
   loginPathFor as messagesLoginPathFor,
 } from "@/lib/messages-auth";
 
+// Auth boundary: alum vs coach. Claim/register must call isAlumLoggedIn(cookies)
+// from `@/lib/alum-session` (cookie `hoya_alum_session`, role `"alum"`).
+// Same HMAC signer as GTown portal. Locker Home uses a locker-format token on
+// the same cookie name. Do not use isCoachLoggedIn / `ga_session` for alum.
+
+const CLAIM_PUBLIC_PATHS = [
+  "/register",
+  "/alumni-login",
+  "/api/alumni/lookup",
+  "/api/alumni/register",
+  "/api/alumni/login",
+  "/api/session",
+];
+
+function isClaimPublicPath(pathname: string) {
+  return CLAIM_PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
 function isPublicPath(pathname: string) {
-  return isHomePublicPath(pathname) || isMessagesPublicPath(pathname);
+  return isHomePublicPath(pathname) || isMessagesPublicPath(pathname) || isClaimPublicPath(pathname);
 }
 
 function isAlumFacingPath(pathname: string) {
   return isLockerPath(pathname) || isAlumAllowedPath(pathname);
 }
 
+function isAlumniPath(pathname: string) {
+  return pathname === "/me" || pathname.startsWith("/me/") || pathname.startsWith("/api/alumni/");
+}
+
 function loginPathFor(pathname: string) {
+  if (isAlumniPath(pathname)) return "/alumni-login";
   if (isLockerPath(pathname)) return lockerLoginPathFor(pathname);
   if (isAlumAllowedPath(pathname)) return messagesLoginPathFor(pathname);
   return "/login";
 }
 
-function hasAlumSession(request: NextRequest) {
+function hasPortalAlumSession(request: NextRequest) {
   if (isValidHoyaAlumSession(request.cookies.get(HOYA_ALUM_SESSION_COOKIE)?.value)) {
     return true;
   }
@@ -42,12 +65,24 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const staffToken = request.cookies.get(SESSION_COOKIE)?.value;
-  if (isValidSessionToken(staffToken)) {
+  if (isAlumniPath(pathname)) {
+    if (isAlumLoggedIn(request.cookies)) {
+      return NextResponse.next();
+    }
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const loginUrl = new URL("/alumni-login", request.url);
+    const next = `${pathname}${search}`;
+    if (next && next !== "/") loginUrl.searchParams.set("next", next);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (isCoachLoggedIn(request.cookies)) {
     return NextResponse.next();
   }
 
-  const alum = hasAlumSession(request);
+  const alum = hasPortalAlumSession(request);
 
   if (alum && isDataSyncPath(pathname)) {
     if (pathname.startsWith("/api/")) {
