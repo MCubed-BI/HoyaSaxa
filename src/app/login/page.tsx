@@ -53,9 +53,13 @@ export default async function LoginPage({
             Sign in
           </Button>
           <p className="text-center text-sm text-muted-foreground">
-            Alumni:{" "}
+            Alumni locker:{" "}
+            <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
+              Home / For You / Newsflash
+            </Link>
+            {" · "}
             <Link href="/locker" className="text-navy underline-offset-4 hover:underline">
-              alumni messages access
+              Messages access
             </Link>
           </p>
         </form>

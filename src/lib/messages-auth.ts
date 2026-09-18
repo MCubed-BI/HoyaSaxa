@@ -4,6 +4,7 @@ import {
   readAlumniSessionFromCookies,
 } from "@/lib/alumni-auth";
 import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
+import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
 
 export const SGARLATA_CHANNEL_SLUG = "sgarlata";
 
@@ -91,14 +92,26 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
   }
 
   const alum = readAlumniSessionFromCookies((name) => jar.get(name)?.value);
-  if (!alum) return null;
+  if (alum) {
+    return {
+      kind: "alum",
+      label: viewerLabelFromAccountId(alum.accountId),
+      viewerKey: `alum:${alum.accountId}`,
+      canPost: false,
+    };
+  }
 
-  return {
-    kind: "alum",
-    label: viewerLabelFromAccountId(alum.accountId),
-    viewerKey: `alum:${alum.accountId}`,
-    canPost: false,
-  };
+  const locker = readHoyaAlumSession(jar.get(HOYA_ALUM_SESSION_COOKIE)?.value);
+  if (locker) {
+    return {
+      kind: "alum",
+      label: locker.label,
+      viewerKey: `alum:home:${locker.role}:${locker.label.toLowerCase()}`,
+      canPost: false,
+    };
+  }
+
+  return null;
 }
 
 export async function hasStaffSession() {

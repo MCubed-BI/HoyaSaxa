@@ -7,6 +7,7 @@ import {
   readAlumniSessionAccountId,
   readAlumniSessionFromCookies,
 } from "./alumni-auth";
+import { createHoyaAlumSessionToken, readHoyaAlumSession } from "./hoya-alum-session";
 import {
   canPostSgarlata,
   isAlumAllowedPath,
@@ -52,6 +53,13 @@ describe("alum session cookies", () => {
     const primary = readAlumniSessionFromCookies((name) => cookies[name]);
     assert.equal(primary?.accountId, "locker:guest");
     assert.equal(primary?.cookie, HOYA_ALUM_SESSION_COOKIE);
+  });
+
+  it("does not treat Home/Newsflash locker tokens as messages access-code sessions", () => {
+    const lockerToken = createHoyaAlumSessionToken("board", "Lars");
+    assert.equal(readHoyaAlumSession(lockerToken)?.role, "board");
+    assert.equal(readAlumniSessionAccountId(lockerToken), null);
+    assert.equal(readHoyaAlumSession(createAlumniSessionToken("locker:guest")), null);
   });
 });
 
