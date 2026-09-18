@@ -48,7 +48,7 @@ describe("roles", () => {
     );
     assert.deepEqual(
       navItemsForRole("alum").map((item) => item.href),
-      ["/home", "/directory", "/portal/events", "/portal/giving", "/messages"],
+      ["/home", "/directory", "/events", "/giving", "/messages"],
     );
     assert.equal(homePathForRole("alum"), "/portal");
     assert.equal(homePathForRole("board"), "/portal");
