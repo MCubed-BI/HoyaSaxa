@@ -12,6 +12,7 @@ export function AlumDirectory({
   pageSize,
   filters,
   basePath = "/alum",
+  profileHref = "/portal/profile",
 }: {
   rows: AlumniListItem[];
   total: number;
@@ -19,6 +20,7 @@ export function AlumDirectory({
   pageSize: number;
   filters: AlumniFilters;
   basePath?: string;
+  profileHref?: string;
 }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const prev = page > 1 ? `${basePath}?${filtersToSearchParams(filters, page - 1).toString()}` : null;
@@ -47,11 +49,16 @@ export function AlumDirectory({
         {rows.map((person) => (
           <Card key={person.id}>
             <CardContent className="flex gap-3 py-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-white">
+              <Link
+                href={profileHref}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-white"
+              >
                 {initials(person)}
-              </div>
+              </Link>
               <div className="min-w-0 space-y-1">
-                <p className="truncate font-medium text-navy">{displayName(person)}</p>
+                <Link href={profileHref} className="truncate font-medium text-navy hover:underline">
+                  {displayName(person)}
+                </Link>
                 <p className="text-sm text-muted-foreground">
                   {[person.position, person.class_year || person.seasons].filter(Boolean).join(" · ") ||
                     "Roster details pending"}

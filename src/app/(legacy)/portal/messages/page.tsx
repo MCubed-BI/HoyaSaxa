@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CoachMessageForm } from "@/components/portal-forms";
 import { PortalShell } from "@/components/portal-shell";
 import { StatusCard } from "@/components/status-card";
@@ -24,14 +25,34 @@ export default async function PortalMessagesPage() {
         : "Could not load messages.";
   }
 
+  const threads = [
+    {
+      href: "/portal/messages#sgarlata",
+      title: "Message from Sgarlata",
+      preview: messages[0]?.body || "Official coach channel — no note yet",
+      official: true,
+    },
+    {
+      href: "/portal/newsflash",
+      title: "Newsflash",
+      preview: news[0]?.title || "Board channel — no post yet",
+      official: true,
+    },
+    ...messages.slice(1).map((message) => ({
+      href: `/portal/messages#${message.id}`,
+      title: message.title || "Coach note",
+      preview: message.body,
+      official: false,
+    })),
+  ];
+
   return (
     <PortalShell viewer={viewer} current="messages">
       <div>
         <p className="text-[11px] uppercase tracking-[0.28em] text-gold">Messages</p>
-        <h2 className="font-heading text-3xl text-white">Official channels</h2>
+        <h2 className="font-heading text-3xl text-white">Inbox</h2>
         <p className="mt-1 text-sm text-white/65">
-          Message from Sgarlata is pinned here. Board Newsflash is the other official channel.
-          Coder 4 owns threads beyond this feed.
+          Official channels are pinned. Coder 4 owns teammate threads beyond this list.
         </p>
       </div>
       {canPostCoachMessage(viewer.role) ? (
@@ -44,46 +65,18 @@ export default async function PortalMessagesPage() {
           </CardContent>
         </Card>
       ) : null}
-      {errorMessage ? (
-        <StatusCard title="Messages unavailable" body={errorMessage} />
-      ) : (
-        <>
-          <Card className="border-gold/30">
-            <CardHeader>
-              <CardTitle>Message from Sgarlata</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {messages[0] ? (
-                <p className="whitespace-pre-wrap text-sm">{messages[0].body}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground">No coach note yet.</p>
-              )}
-            </CardContent>
-          </Card>
-          {news[0] ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Newsflash · {news[0].title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-sm">{news[0].body}</p>
-              </CardContent>
-            </Card>
-          ) : null}
-          <div className="space-y-3">
-            {messages.slice(1).map((message) => (
-              <Card key={message.id}>
-                <CardHeader>
-                  <CardTitle>{message.title || "Coach note"}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="whitespace-pre-wrap text-sm">{message.body}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </>
-      )}
+      {errorMessage ? <StatusCard title="Messages unavailable" body={errorMessage} /> : null}
+      <div className="divide-y divide-white/10 overflow-hidden rounded-xl border border-gold/20 bg-[#0d1f3c]">
+        {threads.map((thread) => (
+          <Link key={thread.href} href={thread.href} className="block px-4 py-4 hover:bg-white/5">
+            <p className="text-sm font-medium text-white">
+              {thread.title}
+              {thread.official ? <span className="ml-2 text-[11px] uppercase tracking-wide text-gold">Official</span> : null}
+            </p>
+            <p className="mt-1 line-clamp-2 text-sm text-white/55">{thread.preview}</p>
+          </Link>
+        ))}
+      </div>
     </PortalShell>
   );
 }

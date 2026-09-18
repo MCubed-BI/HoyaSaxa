@@ -1,6 +1,7 @@
 import { AlumDirectory } from "@/components/alum-directory";
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { PortalShell } from "@/components/portal-shell";
+import { PortalTabs } from "@/components/portal-tabs";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { hasActiveFilters, parseAlumniFilters, parsePage } from "@/lib/filters";
@@ -17,6 +18,7 @@ export default async function PortalDirectoryPage({
 }) {
   const viewer = await requireViewer();
   const params = await searchParams;
+  const audience = String(Array.isArray(params.audience) ? params.audience[0] : params.audience ?? "all");
   const filters = parseAlumniFilters(params);
   const page = parsePage(params);
 
@@ -38,11 +40,23 @@ export default async function PortalDirectoryPage({
         <p className="text-[11px] uppercase tracking-[0.28em] text-gold">Hoya Directory</p>
         <h2 className="font-heading text-3xl text-white">Find a Hoya</h2>
         <p className="mt-1 max-w-2xl text-sm text-white/65">
-          Read-only cards for alumni. Coder 1 owns richer profiles, photos, and All/Athletes/Alumni
-          pills. Contact emails and phones stay on the staff directory.
+          Search plus All / Athletes / Alumni / Coaches / Staff pills. Coder 1 owns photos and
+          profile rows. Contact emails stay on the staff directory.
         </p>
       </div>
-      {result ? (
+      <PortalTabs
+        tabs={["all", "athletes", "alumni", "coaches", "staff"].map((item) => ({
+          href: `/portal/directory?audience=${item}`,
+          label: item[0]!.toUpperCase() + item.slice(1),
+          active: audience === item,
+        }))}
+      />
+      {audience === "coaches" || audience === "staff" ? (
+        <StatusCard
+          title="Coder 1 extension point"
+          body="Coaches and staff lists are reserved. Alumni/athlete cards use the roster directory."
+        />
+      ) : result ? (
         <>
           <AlumniFiltersForm filters={filters} facets={result.facets} action="/portal/directory" submitLabel="Look up" />
           {result.total === 0 && !hasActiveFilters(filters) ? (
@@ -58,6 +72,7 @@ export default async function PortalDirectoryPage({
               pageSize={result.pageSize}
               filters={filters}
               basePath="/portal/directory"
+              profileHref="/portal/profile"
             />
           )}
         </>

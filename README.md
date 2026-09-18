@@ -112,11 +112,13 @@ Library: `src/lib/guhoyas-roster.ts` (`fetchGuhoyasRosters`, `mergeRostersIntoAl
 - `/alumni-login` — hook for claimed alumni sessions (`POST /api/alumni/login` from Register/Claim)
 - `/register` — hook; Football Program owns the claim flow
 - `/` — owner/coach directory
-- `/portal` — Legacy Locker home (Coder 5 feed can extend `/portal/feed`)
-- `/portal/directory` — alum directory cards (Coder 1 profiles)
-- `/portal/events` — stub for Coder 2
-- `/portal/giving` — fundraising MVP (Coder 3)
-- `/portal/messages` — Sgarlata + newsflash (Coder 4 threads)
+- `/portal` — Welcome home: hero, Directory/Events/News/Giving, upcoming event, recent activity
+- `/portal/feed` — For You / Teammates / Alumni / Following (Coder 5)
+- `/portal/directory` — search + All/Athletes/Alumni/Coaches/Staff pills (Coder 1)
+- `/portal/profile` — Overview/About/Sport/Career (Coder 1)
+- `/portal/events` — Upcoming/Past/My Events + Create Event for coach/board (Coder 2)
+- `/portal/giving` — $25/$50/$100/$250 + Give Now pledge intents (Coder 3)
+- `/portal/messages` — thread list with pinned Sgarlata + Newsflash (Coder 4)
 - `/portal/newsflash` — board posts
 - `/alum` — redirects to `/portal`
 - `/find-my-alum` — location groups; map slot if Find My Alum is already present
