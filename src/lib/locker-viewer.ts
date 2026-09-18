@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
 import {
   HOYA_ALUM_SESSION_COOKIE,
@@ -8,6 +9,7 @@ import {
   readHoyaAlumSession,
   type LockerRole,
 } from "@/lib/hoya-alum-session";
+import { viewerLabelFromAccountId } from "@/lib/messages-auth";
 
 export type LockerViewer = {
   role: LockerRole | "coach";
@@ -27,6 +29,17 @@ export async function getLockerViewer(): Promise<LockerViewer | null> {
       source: "hoya_alum_session",
       canPostNewsflash: canPostNewsflash(locker.role),
       roleLabel: lockerRoleLabel(locker.role),
+    };
+  }
+
+  const messagesAlum = readAlumniSessionFromCookies((name) => jar.get(name)?.value);
+  if (messagesAlum) {
+    return {
+      role: "alum",
+      label: viewerLabelFromAccountId(messagesAlum.accountId),
+      source: "hoya_alum_session",
+      canPostNewsflash: false,
+      roleLabel: lockerRoleLabel("alum"),
     };
   }
 
