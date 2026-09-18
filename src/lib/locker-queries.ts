@@ -1,4 +1,7 @@
 import { randomUUID } from "crypto";
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import { getDatabaseUrl, getSql } from "@/lib/db";
 import {
   DEMO_FEED,
@@ -12,8 +15,30 @@ import {
 } from "@/lib/locker-data";
 import { ensureLockerTables } from "@/lib/locker-schema";
 
-const memoryNewsflash: NewsflashPost[] = DEMO_NEWSFLASH.map((post) => ({ ...post }));
-const memoryFeed: FeedPost[] = DEMO_FEED.map((post) => ({ ...post }));
+type FallbackStore = { newsflash: NewsflashPost[]; feed: FeedPost[] };
+
+const fallbackPath = join(tmpdir(), "hoya-locker-fallback.json");
+
+function readFallback(): FallbackStore {
+  try {
+    if (existsSync(fallbackPath)) {
+      const parsed = JSON.parse(readFileSync(fallbackPath, "utf8")) as FallbackStore;
+      if (Array.isArray(parsed.newsflash) && Array.isArray(parsed.feed)) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Recreate demo content if the temp file is unreadable.
+  }
+  return {
+    newsflash: DEMO_NEWSFLASH.map((post) => ({ ...post })),
+    feed: DEMO_FEED.map((post) => ({ ...post })),
+  };
+}
+
+function writeFallback(store: FallbackStore) {
+  writeFileSync(fallbackPath, JSON.stringify(store));
+}
 
 export type LockerHomeData = {
   usingFallback: boolean;
@@ -31,7 +56,7 @@ async function query<T>(text: string, params: unknown[] = []) {
 
 export async function listNewsflashPosts(): Promise<NewsflashPost[]> {
   if (!getDatabaseUrl()) {
-    return memoryNewsflash;
+    return readFallback().newsflash;
   }
   await ensureLockerTables();
   return query<NewsflashPost[]>(
@@ -51,6 +76,7 @@ export async function createNewsflashPost(input: {
   authorLabel: string;
 }) {
   if (!getDatabaseUrl()) {
+    const store = readFallback();
     const post: NewsflashPost = {
       id: randomUUID(),
       title: input.title.trim(),
@@ -59,7 +85,8 @@ export async function createNewsflashPost(input: {
       author_label: input.authorLabel,
       created_at: new Date().toISOString(),
     };
-    memoryNewsflash.unshift(post);
+    store.newsflash.unshift(post);
+    writeFallback(store);
     return post;
   }
   await ensureLockerTables();
@@ -76,7 +103,7 @@ export async function createNewsflashPost(input: {
 
 export async function listLockerFeedPosts(): Promise<FeedPost[]> {
   if (!getDatabaseUrl()) {
-    return memoryFeed;
+    return readFallback().feed;
   }
   await ensureLockerTables();
   const rows = await query<Array<Omit<FeedPost, "source">>>(
@@ -226,8 +253,9 @@ function fallbackHome(reason: string): LockerHomeData {
 }
 
 function memoryHome(reason: string): LockerHomeData {
-  const newsflash = memoryNewsflash;
-  const feed = [...newsflash.map(newsflashToFeedPost), ...memoryFeed].sort(
+  const store = readFallback();
+  const newsflash = store.newsflash;
+  const feed = [...newsflash.map(newsflashToFeedPost), ...store.feed].sort(
     (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
   );
   return {
@@ -236,7 +264,7 @@ function memoryHome(reason: string): LockerHomeData {
     newsflash,
     feed,
     upcomingEvent: upcomingFromNewsflash(newsflash) ?? DEMO_UPCOMING_EVENT,
-    activity: activityFromContent(newsflash, memoryFeed),
+    activity: activityFromContent(newsflash, store.feed),
   };
 }
 
