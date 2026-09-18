@@ -2,7 +2,7 @@ export const LOCKER_PUBLIC_PATHS = ["/directory", "/athletes", "/locker"] as con
 
 const PUBLIC_PATHS = ["/login", "/api/login", "/home/login", "/api/locker/login"];
 
-const LOCKER_PATHS = ["/home", "/feed", "/newsflash", "/api/locker"];
+const LOCKER_PATHS = ["/home", "/feed", "/newsflash", "/events", "/api/locker", "/api/events"];
 
 export function isLockerPublicPath(pathname: string) {
   return LOCKER_PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));

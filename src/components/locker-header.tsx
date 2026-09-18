@@ -5,6 +5,7 @@ import type { LockerViewer } from "@/lib/locker-viewer";
 const NAV = [
   { href: "/home", key: "home", label: "Home" },
   { href: "/feed", key: "feed", label: "For You" },
+  { href: "/events", key: "events", label: "Events" },
   { href: "/newsflash", key: "newsflash", label: "Newsflash" },
 ] as const;
 
