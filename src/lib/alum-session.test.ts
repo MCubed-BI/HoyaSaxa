@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  ALUMNI_SESSION_COOKIE,
   ALUM_SESSION_COOKIE,
   alumSessionCookieName,
   createAlumSessionToken,
@@ -15,6 +16,7 @@ describe("hoya_alum_session contract", () => {
   it("exports the cookie name Football Program should set", () => {
     assert.equal(ALUM_SESSION_COOKIE, "hoya_alum_session");
     assert.equal(alumSessionCookieName, "hoya_alum_session");
+    assert.equal(ALUMNI_SESSION_COOKIE, "hoya_alum_session");
   });
 
   it("round-trips a signed alum session", () => {

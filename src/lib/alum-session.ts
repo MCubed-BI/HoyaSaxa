@@ -23,6 +23,8 @@ import { getCoachCredentials } from "@/lib/auth";
 
 export const ALUM_SESSION_COOKIE = "hoya_alum_session";
 export const alumSessionCookieName = ALUM_SESSION_COOKIE;
+/** Claim import alias — same cookie as `ALUM_SESSION_COOKIE`, not `ga_session`. */
+export const ALUMNI_SESSION_COOKIE = ALUM_SESSION_COOKIE;
 export const LEGACY_ALUMNI_SESSION_COOKIE = "ga_alumni_session";
 export const ALUM_ROLE = "alum" as const;
 export const BOARD_ROLE = "board" as const;
