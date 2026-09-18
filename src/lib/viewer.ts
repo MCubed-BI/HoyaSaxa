@@ -1,15 +1,11 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ALUMNI_SESSION_COOKIE, readAlumniSessionAccountId } from "@/lib/alumni-auth";
+import { ALUM_SESSION_COOKIE, isPreviewAlumSession, readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
 import { getDatabaseUrl } from "@/lib/db";
 import { lookupAlumniClaim, lookupStaffRole } from "@/lib/portal-queries";
-import {
-  homePathForRole,
-  resolveRoleFromEnv,
-  roleLabel,
-  type Role,
-} from "@/lib/roles";
+import { homePathForRole, resolveRoleFromEnv, roleLabel, type Role } from "@/lib/roles";
 
 export type Viewer = {
   role: Role;
@@ -18,7 +14,7 @@ export type Viewer = {
   email: string | null;
   accountId: string | null;
   alumniId: string | null;
-  source: "staff" | "alumni";
+  source: "staff" | "alum-session" | "alumni";
   homePath: string;
 };
 
@@ -27,10 +23,13 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
   const staffUsername = getSessionUsername(jar.get(SESSION_COOKIE)?.value);
   if (staffUsername) {
     let role = resolveRoleFromEnv(staffUsername, getCoachCredentials().username);
+    if (role === "alum" || role === "board") {
+      role = "coach";
+    }
     if (getDatabaseUrl()) {
       try {
         const assigned = await lookupStaffRole(staffUsername);
-        if (assigned) role = assigned;
+        if (assigned && assigned !== "alum" && assigned !== "board") role = assigned;
       } catch {
         // Env mapping is enough when portal tables are not reachable.
       }
@@ -47,6 +46,20 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
     };
   }
 
+  const contract = readAlumSession(jar.get(ALUM_SESSION_COOKIE)?.value ?? null);
+  if (contract) {
+    return {
+      role: contract.role,
+      label: contract.name || contract.email || roleLabel(contract.role),
+      username: null,
+      email: contract.email || null,
+      accountId: null,
+      alumniId: isPreviewAlumSession(contract) ? null : contract.alumniId,
+      source: "alum-session",
+      homePath: "/portal",
+    };
+  }
+
   const accountId = readAlumniSessionAccountId(jar.get(ALUMNI_SESSION_COOKIE)?.value);
   if (!accountId) return null;
 
@@ -58,7 +71,7 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
       email = claim.account?.email ?? null;
       alumniId = claim.alumniId;
     } catch {
-      // Claim tables live on the Register/Claim branch. Session still counts as alum.
+      // Claim tables live on Register/Claim. Session still counts as alum.
     }
   }
 
@@ -70,7 +83,7 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
     accountId,
     alumniId,
     source: "alumni",
-    homePath: "/alum",
+    homePath: "/portal",
   };
 }
 
@@ -91,6 +104,7 @@ export async function requireRole(allowed: Role[]) {
 export function viewerSubtitle(viewer: Viewer) {
   const role = roleLabel(viewer.role);
   if (viewer.alumniId) return `${role} · claimed record linked`;
+  if (viewer.source === "alum-session") return `${role} · hoya_alum_session`;
   if (viewer.source === "alumni") return `${role} · claim hook ready`;
   return role;
 }

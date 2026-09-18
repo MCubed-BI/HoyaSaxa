@@ -8,8 +8,8 @@ import { ALUMNI_SESSION_COOKIE, isValidAlumniSessionToken } from "@/lib/alumni-a
 import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
 
 function safeNextPath(value: string | undefined) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/alum";
-  if (value === "/login" || value.startsWith("/api/")) return "/alum";
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/portal";
+  if (value === "/login" || value.startsWith("/api/")) return "/portal";
   return value;
 }
 
@@ -24,7 +24,7 @@ export default async function AlumniLoginHookPage({
     redirect(safeNextPath(params.next));
   }
   if (isValidSessionToken(jar.get(SESSION_COOKIE)?.value)) {
-    redirect("/alum");
+    redirect("/portal");
   }
 
   return (

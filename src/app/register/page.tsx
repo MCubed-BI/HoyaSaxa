@@ -16,9 +16,9 @@ export default function RegisterHookPage() {
         </div>
         <div className="space-y-4 px-6 py-6 text-sm text-muted-foreground">
           <p>
-            This portal does not rebuild claim. After that PR merges, this route is the last-name +
-            graduating-class claim flow. Until then, preview the alumnus shell with staff username{" "}
-            <strong>Alum</strong>.
+            This portal does not rebuild claim.             After that PR merges, this route is the last-name + graduating-class claim flow. Set{" "}
+            <code>hoya_alum_session</code> from <code>src/lib/alum-session.ts</code>. Until then,
+            preview Legacy Locker with staff username <strong>Alum</strong>.
           </p>
           <div className="flex flex-col gap-2">
             <Button asChild>

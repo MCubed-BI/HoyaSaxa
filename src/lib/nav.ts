@@ -3,11 +3,18 @@ import { canUseBlast, canUseOwnerTools, type Role } from "@/lib/roles";
 export type NavKey =
   | "directory"
   | "alum"
+  | "home"
+  | "portal-directory"
+  | "events"
+  | "giving"
+  | "messages"
+  | "feed"
+  | "newsflash"
+  | "profile"
   | "reports"
   | "blast"
   | "sync"
   | "message"
-  | "newsflash"
   | "fundraising"
   | "find-my-alum"
   | "me";
@@ -19,18 +26,16 @@ export type NavItem = {
 };
 
 export function navItemsForRole(role: Role): NavItem[] {
-  const items: NavItem[] = [];
-
-  if (role === "alum") {
-    items.push({ href: "/alum", label: "Home", key: "alum" });
-  } else {
-    items.push({ href: "/", label: "Directory", key: "directory" });
+  if (role === "alum" || role === "board") {
+    return portalNavItems();
   }
 
-  items.push({ href: "/find-my-alum", label: "Find My Alum", key: "find-my-alum" });
-  items.push({ href: "/message", label: "Coach note", key: "message" });
-  items.push({ href: "/newsflash", label: "Newsflash", key: "newsflash" });
-  items.push({ href: "/fundraising", label: "Give", key: "fundraising" });
+  const items: NavItem[] = [
+    { href: "/", label: "Directory", key: "directory" },
+    { href: "/message", label: "Coach note", key: "message" },
+    { href: "/newsflash", label: "Newsflash", key: "newsflash" },
+    { href: "/fundraising", label: "Give", key: "fundraising" },
+  ];
 
   if (canUseOwnerTools(role)) {
     items.push({ href: "/reports", label: "Reports", key: "reports" });
@@ -41,11 +46,30 @@ export function navItemsForRole(role: Role): NavItem[] {
   if (canUseOwnerTools(role)) {
     items.push({ href: "/sync", label: "Sync", key: "sync" });
   }
-  if (role !== "alum") {
-    items.push({ href: "/alum", label: "Alum view", key: "alum" });
-  } else {
-    items.push({ href: "/me", label: "My record", key: "me" });
-  }
+  items.push({ href: "/portal", label: "Alum view", key: "alum" });
+  return items;
+}
 
+export function portalNavItems(): NavItem[] {
+  return [
+    { href: "/portal", label: "Home", key: "home" },
+    { href: "/portal/directory", label: "Directory", key: "portal-directory" },
+    { href: "/portal/events", label: "Events", key: "events" },
+    { href: "/portal/giving", label: "Giving", key: "giving" },
+    { href: "/portal/messages", label: "Messages", key: "messages" },
+  ];
+}
+
+export function portalMoreItems(role: Role): NavItem[] {
+  const items: NavItem[] = [
+    { href: "/portal/feed", label: "For You", key: "feed" },
+    { href: "/portal/newsflash", label: "Newsflash", key: "newsflash" },
+    { href: "/portal/profile", label: "Profile", key: "profile" },
+    { href: "/find-my-alum", label: "Find My Alum", key: "find-my-alum" },
+    { href: "/me", label: "My record", key: "me" },
+  ];
+  if (role === "owner" || role === "coach") {
+    items.unshift({ href: "/", label: "Staff tools", key: "directory" });
+  }
   return items;
 }

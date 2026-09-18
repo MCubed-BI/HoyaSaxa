@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { createFundraisingPledge } from "@/lib/portal-queries";
+import { safeNextPath } from "@/lib/safe-next";
 import { getCurrentViewer } from "@/lib/viewer";
 
 function dollarsToCents(value: string) {
@@ -14,10 +15,11 @@ export async function POST(request: Request) {
   if (!viewer) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const form = await request.formData();
+  const next = safeNextPath(form.get("next"), "/fundraising");
   const campaignId = String(form.get("campaign_id") ?? "").trim();
   const amountCents = dollarsToCents(String(form.get("amount_dollars") ?? ""));
   if (!campaignId || !amountCents) {
-    return NextResponse.redirect(new URL("/fundraising", request.url), { status: 303 });
+    return NextResponse.redirect(new URL(next, request.url), { status: 303 });
   }
 
   try {
@@ -30,10 +32,10 @@ export async function POST(request: Request) {
       note: String(form.get("note") ?? ""),
       source: "intent",
     });
-    return NextResponse.redirect(new URL("/fundraising", request.url), { status: 303 });
+    return NextResponse.redirect(new URL(next, request.url), { status: 303 });
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {
-      return NextResponse.redirect(new URL("/fundraising", request.url), { status: 303 });
+      return NextResponse.redirect(new URL(next, request.url), { status: 303 });
     }
     throw error;
   }

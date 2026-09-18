@@ -39,16 +39,29 @@ Four roles: **owner**, **coach**, **alum**, and **board** (Lars).
 
 | Role | How it is assigned | What they see |
 | --- | --- | --- |
-| `owner` | `COACH_USERNAME` (default `Hoyas`) and `HOYA_OWNER_USERNAMES` | Full staff shell: directory, blast, sync, reports, coach messages, newsflash, fundraising |
-| `coach` | `HOYA_COACH_USERNAMES` | Same owner tools (blast stays on) |
-| `board` | `HOYA_BOARD_USERNAMES` (default `Lars`) | Staff directory without blast/sync/reports; can post Newsflash and manage campaigns |
-| `alum` | `ga_alumni_session` from Register/Claim, or preview username `Alum` | Alum portal only: read-only directory cards, Find My Alum, coach notes, newsflash, fundraising |
+| `owner` | `COACH_USERNAME` (default `Hoyas`) and `HOYA_OWNER_USERNAMES` → `ga_session` | Full staff shell: directory, blast, sync, reports, coach messages, newsflash, fundraising |
+| `coach` | `HOYA_COACH_USERNAMES` → `ga_session` | Same owner tools (blast stays on) |
+| `board` | `HOYA_BOARD_USERNAMES` (default `Lars`) → `hoya_alum_session` | Legacy Locker + Newsflash write. Never unlocks Data Sync or coach blast. |
+| `alum` | `hoya_alum_session` from Register/Claim, or preview username `Alum` | Legacy Locker only |
 
-Role assignment is env-first, with optional Neon overrides in `staff_roles` (`username` or `email` → `role`). A claimed alum session is tied to `alumni_id` when `alumni_claims` exists (owned by `cursor/hoya-register-claim-*`). This portal does not rebuild Register myself / claim; it reads the same cookie (`ga_alumni_session`) and leaves `/register`, `/alumni-login`, and `/me` as hooks.
+### Alum session contract
 
-**Email blast:** coach/owner blast is unchanged. Alum blast is hidden until claim auth is real. Self-selected alum-to-group blast is out of scope for this MVP.
+Football Program (Register/Claim) should import `src/lib/alum-session.ts` and set this cookie — do not reuse `ga_session`.
 
-Local preview without claim auth: sign in at `/login` as `Alum` with the coach password. That is a staff-gate preview, not a claimed roster session.
+| Field | Value |
+| --- | --- |
+| Cookie | `hoya_alum_session` (`alumSessionCookieName`) |
+| Flags | httpOnly, Secure in production, SameSite=Lax, path `/` |
+| Payload | HMAC-signed `base64url(JSON).signature` |
+| JSON | `{ v: 1, role: "alum" \| "board", alumniId, email, name, exp }` |
+
+Helpers: `readAlumSession(req)`, `createAlumSessionToken`, `requireAlumRole(...roles)`, `GET /api/alum/session`.
+
+`ga_alumni_session` is still accepted as a fallback hook until claim switches over. Alum cookies never unlock `/sync`, `/blast`, or `/reports`.
+
+**Email blast:** coach/owner blast is unchanged. Alum blast is hidden until claim auth is real.
+
+Local preview: `/login` as `Alum` or `Lars` with the coach password mints `hoya_alum_session` and opens `/portal`.
 
 4. Install and run:
 
@@ -95,15 +108,21 @@ Library: `src/lib/guhoyas-roster.ts` (`fetchGuhoyasRosters`, `mergeRostersIntoAl
 
 ## Pages
 
-- `/login` — shared coach password gate (owner / coach / board / alum preview)
+- `/login` — staff gate (`ga_session` for owner/coach; `Alum`/`Lars` mint `hoya_alum_session`)
 - `/alumni-login` — hook for claimed alumni sessions (`POST /api/alumni/login` from Register/Claim)
 - `/register` — hook; Football Program owns the claim flow
-- `/` — owner/coach/board directory (cards on mobile, table on desktop)
-- `/alum` — alum home: read-only directory cards plus links to coach notes, newsflash, fundraising
+- `/` — owner/coach directory
+- `/portal` — Legacy Locker home (Coder 5 feed can extend `/portal/feed`)
+- `/portal/directory` — alum directory cards (Coder 1 profiles)
+- `/portal/events` — stub for Coder 2
+- `/portal/giving` — fundraising MVP (Coder 3)
+- `/portal/messages` — Sgarlata + newsflash (Coder 4 threads)
+- `/portal/newsflash` — board posts
+- `/alum` — redirects to `/portal`
 - `/find-my-alum` — location groups; map slot if Find My Alum is already present
-- `/message` — Message from Coach Sgarlata (`coach_messages`)
-- `/newsflash` — board news/events (`newsflash_posts`)
-- `/fundraising` — campaigns + pledge intents (`fundraising_campaigns`, `fundraising_pledges`)
+- `/message` — staff compose for Coach Sgarlata (`coach_messages`)
+- `/newsflash` — staff/board news (`newsflash_posts`)
+- `/fundraising` — staff campaigns
 - `/me` — hook for the claim editor; shows linked `alumni_id` when a claim exists
 - `/alumni/[id]` — full player card (staff only)
 - `/reports` — build a group, download CSV, jump to text or email blast

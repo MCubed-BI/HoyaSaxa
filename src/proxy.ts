@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ALUMNI_SESSION_COOKIE, isValidAlumniSessionToken } from "@/lib/alumni-auth";
+import { ALUM_SESSION_COOKIE, readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
 import { isAlumAllowedPath, isPublicPath, loginPathFor } from "@/lib/portal-paths";
 
@@ -11,20 +12,21 @@ export function proxy(request: NextRequest) {
   }
 
   const staffToken = request.cookies.get(SESSION_COOKIE)?.value;
-  const alumniToken = request.cookies.get(ALUMNI_SESSION_COOKIE)?.value;
   const hasStaff = isValidSessionToken(staffToken);
-  const hasAlumni = isValidAlumniSessionToken(alumniToken);
+  const hasAlumContract = Boolean(readAlumSession(request.cookies.get(ALUM_SESSION_COOKIE)?.value ?? null));
+  const hasLegacyAlumni = isValidAlumniSessionToken(request.cookies.get(ALUMNI_SESSION_COOKIE)?.value);
+  const hasAlum = hasAlumContract || hasLegacyAlumni;
 
   if (hasStaff) {
     return NextResponse.next();
   }
 
-  if (hasAlumni && isAlumAllowedPath(pathname)) {
+  if (hasAlum && isAlumAllowedPath(pathname)) {
     return NextResponse.next();
   }
 
-  if (hasAlumni && !isAlumAllowedPath(pathname)) {
-    return NextResponse.redirect(new URL("/alum", request.url));
+  if (hasAlum && !isAlumAllowedPath(pathname)) {
+    return NextResponse.redirect(new URL("/portal", request.url));
   }
 
   if (pathname.startsWith("/api/")) {

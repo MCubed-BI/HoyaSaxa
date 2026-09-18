@@ -3,9 +3,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-export function CoachMessageForm() {
+export function CoachMessageForm({ next = "/message" }: { next?: string }) {
   return (
     <form action="/api/portal/coach-messages" method="post" className="space-y-3">
+      <input type="hidden" name="next" value={next} />
       <div className="space-y-1.5">
         <Label htmlFor="title">Title</Label>
         <Input id="title" name="title" placeholder="From Coach Sgarlata" />
@@ -19,9 +20,10 @@ export function CoachMessageForm() {
   );
 }
 
-export function NewsflashForm() {
+export function NewsflashForm({ next = "/newsflash" }: { next?: string }) {
   return (
     <form action="/api/portal/newsflash" method="post" className="space-y-3">
+      <input type="hidden" name="next" value={next} />
       <div className="space-y-1.5">
         <Label htmlFor="title">Headline</Label>
         <Input id="title" name="title" required placeholder="Weekend gathering, game week, board note…" />
@@ -39,9 +41,10 @@ export function NewsflashForm() {
   );
 }
 
-export function FundraisingCampaignForm() {
+export function FundraisingCampaignForm({ next = "/fundraising" }: { next?: string }) {
   return (
     <form action="/api/portal/fundraising/campaigns" method="post" className="space-y-3">
+      <input type="hidden" name="next" value={next} />
       <div className="space-y-1.5">
         <Label htmlFor="title">Campaign</Label>
         <Input id="title" name="title" required placeholder="Spring giving challenge" />
@@ -69,6 +72,7 @@ export function FundraisingPledgeForm({ campaignId, defaultName }: { campaignId:
   return (
     <form action="/api/portal/fundraising/pledges" method="post" className="space-y-3">
       <input type="hidden" name="campaign_id" value={campaignId} />
+      <input type="hidden" name="next" value="/portal/giving" />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor={`name-${campaignId}`}>Name</Label>

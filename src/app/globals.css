@@ -41,6 +41,8 @@
   --color-card: var(--card);
   --color-navy: var(--navy);
   --color-navy-foreground: var(--navy-foreground);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -53,6 +55,8 @@
 :root {
   --navy: #041e42;
   --navy-foreground: #f4f5f7;
+  --gold: #c5a35a;
+  --gold-foreground: #141108;
   --background: #f3f4f6;
   --foreground: #1c2430;
   --card: #ffffff;
@@ -103,4 +107,21 @@
   .font-heading {
     font-family: var(--font-source-serif), ui-serif, Georgia, serif;
   }
+}
+
+.legacy-locker {
+  --background: #071428;
+  --foreground: #f4f1e8;
+  --card: #0d1f3c;
+  --card-foreground: #f4f1e8;
+  --muted: #122544;
+  --muted-foreground: #c5bda8;
+  --border: #1d3358;
+  --primary: #c5a35a;
+  --primary-foreground: #141108;
+  min-height: 100%;
+  background:
+    radial-gradient(1200px 480px at 10% -10%, rgba(197, 163, 90, 0.16), transparent 55%),
+    #071428;
+  color: #f4f1e8;
 }

@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE, createSessionToken, sessionCookieOptions, verifyCredentials } from "@/lib/auth";
-import { getCoachCredentials } from "@/lib/auth";
+import {
+  ALUM_SESSION_COOKIE,
+  alumSessionCookieOptions,
+  createAlumSessionToken,
+} from "@/lib/alum-session";
+import {
+  SESSION_COOKIE,
+  createSessionToken,
+  getCoachCredentials,
+  sessionCookieOptions,
+  verifyCredentials,
+} from "@/lib/auth";
 import { homePathForRole, resolveRoleFromEnv } from "@/lib/roles";
 
 function safeNextPath(value: string | null, roleHome: string) {
@@ -10,7 +20,7 @@ function safeNextPath(value: string | null, roleHome: string) {
 
 export async function POST(request: Request) {
   const form = await request.formData();
-  const username = String(form.get("username") ?? "");
+  const username = String(form.get("username") ?? "").trim();
   const password = String(form.get("password") ?? "");
   const requestedNext = typeof form.get("next") === "string" ? String(form.get("next")) : null;
 
@@ -21,9 +31,23 @@ export async function POST(request: Request) {
     return NextResponse.redirect(url, { status: 303 });
   }
 
-  const role = resolveRoleFromEnv(username.trim(), getCoachCredentials().username);
+  const role = resolveRoleFromEnv(username, getCoachCredentials().username);
   const next = safeNextPath(requestedNext, homePathForRole(role));
   const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
-  response.cookies.set(SESSION_COOKIE, createSessionToken(username.trim()), sessionCookieOptions());
+
+  if (role === "alum" || role === "board") {
+    response.cookies.set(
+      ALUM_SESSION_COOKIE,
+      createAlumSessionToken({
+        role,
+        email: "",
+        name: username,
+      }),
+      alumSessionCookieOptions(),
+    );
+    return response;
+  }
+
+  response.cookies.set(SESSION_COOKIE, createSessionToken(username), sessionCookieOptions());
   return response;
 }

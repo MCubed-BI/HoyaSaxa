@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { createNewsflashPost } from "@/lib/portal-queries";
 import { canPostNewsflash } from "@/lib/roles";
+import { safeNextPath } from "@/lib/safe-next";
 import { getCurrentViewer } from "@/lib/viewer";
 
 export async function POST(request: Request) {
@@ -12,11 +13,12 @@ export async function POST(request: Request) {
   }
 
   const form = await request.formData();
+  const next = safeNextPath(form.get("next"), "/newsflash");
   const title = String(form.get("title") ?? "").trim();
   const body = String(form.get("body") ?? "").trim();
   const eventDate = String(form.get("event_at") ?? "").trim();
   if (!title || !body) {
-    return NextResponse.redirect(new URL("/newsflash", request.url), { status: 303 });
+    return NextResponse.redirect(new URL(next, request.url), { status: 303 });
   }
 
   try {
@@ -26,10 +28,10 @@ export async function POST(request: Request) {
       eventAt: eventDate ? `${eventDate}T12:00:00.000Z` : null,
       authorLabel: viewer.label,
     });
-    return NextResponse.redirect(new URL("/newsflash", request.url), { status: 303 });
+    return NextResponse.redirect(new URL(next, request.url), { status: 303 });
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {
-      return NextResponse.redirect(new URL("/newsflash", request.url), { status: 303 });
+      return NextResponse.redirect(new URL(next, request.url), { status: 303 });
     }
     throw error;
   }

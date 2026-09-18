@@ -50,9 +50,9 @@ export default async function LoginPage({
             <p className="text-sm text-destructive">That username or password is not recognized.</p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Shared staff password. <span className="font-medium">Hoyas</span> is owner,{" "}
-              <span className="font-medium">Lars</span> is board, <span className="font-medium">Alum</span>{" "}
-              previews the alumnus shell until claim auth merges.
+              Shared staff password. <span className="font-medium">Hoyas</span> is owner.{" "}
+              <span className="font-medium">Lars</span> and <span className="font-medium">Alum</span> mint{" "}
+              <code>hoya_alum_session</code> and open Legacy Locker.
             </p>
           )}
           <Button type="submit" className="w-full">

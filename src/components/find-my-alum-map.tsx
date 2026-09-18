@@ -30,7 +30,7 @@ export function FindMyAlumMap({ groups }: { groups: LocationGroup[] }) {
         <Card key={state}>
           <CardHeader>
             <CardTitle className="text-base">
-              <Link href={`/alum?state=${encodeURIComponent(state)}`} className="hover:underline">
+              <Link href={`/portal/directory?state=${encodeURIComponent(state)}`} className="hover:underline">
                 {state}
               </Link>
             </CardTitle>
