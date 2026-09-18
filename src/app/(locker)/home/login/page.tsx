@@ -29,15 +29,15 @@ export default async function LockerLoginPage({
   }
 
   return (
-    <>
+    <div className="flex min-h-full flex-col">
       <LockerHeader />
       <main className="flex flex-1 items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md overflow-hidden rounded-2xl border border-gold/25 bg-card shadow-sm">
+        <div className="w-full max-w-md overflow-hidden rounded-2xl border bg-card shadow-sm">
           <div className="bg-navy px-6 py-8 text-white">
-            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-gold">
-              Hoya Football
+            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/60">
+              Georgetown Football
             </p>
-            <h1 className="mt-1 font-heading text-3xl">Legacy Locker</h1>
+            <h1 className="mt-1 font-heading text-3xl">Home / Newsflash</h1>
             <p className="mt-2 text-sm text-white/70">
               Board (Lars) can publish Newsflash. Alumni can read Home, For You, and Newsflash.
             </p>
@@ -52,7 +52,6 @@ export default async function LockerLoginPage({
                 autoComplete="username"
                 required
                 defaultValue="Lars"
-                className="border-white/20 bg-navy/30 text-white"
               />
             </div>
             <div className="space-y-1.5">
@@ -63,26 +62,23 @@ export default async function LockerLoginPage({
                 type="password"
                 autoComplete="current-password"
                 required
-                className="border-white/20 bg-navy/30 text-white"
               />
             </div>
             {params.error ? (
-              <p className="text-sm text-destructive">That locker username or password is not recognized.</p>
+              <p className="text-sm text-destructive">That username or password is not recognized.</p>
             ) : (
-              <p className="text-sm text-white/60">
-                Demo: <code className="text-gold">Lars</code> (board) or <code className="text-gold">Alum</code>{" "}
-                (read). Password matches the shared staff default unless{" "}
-                <code className="text-gold">HOYA_BOARD_PASSWORD</code> /{" "}
-                <code className="text-gold">HOYA_ALUM_PASSWORD</code> is set. Sets{" "}
-                <code className="text-gold">hoya_alum_session</code>.
+              <p className="text-sm text-muted-foreground">
+                Demo: <code>Lars</code> (board) or <code>Alum</code> (read). Password matches the
+                shared staff default unless <code>HOYA_BOARD_PASSWORD</code> /{" "}
+                <code>HOYA_ALUM_PASSWORD</code> is set. Sets <code>hoya_alum_session</code>.
               </p>
             )}
-            <Button type="submit" className="w-full bg-gold text-navy hover:bg-gold/90">
-              Enter locker
+            <Button type="submit" className="w-full">
+              Sign in
             </Button>
-            <p className="text-center text-xs text-white/45">
+            <p className="text-center text-xs text-muted-foreground">
               Staff CRM lives at{" "}
-              <Link href="/login" className="text-gold hover:underline">
+              <Link href="/login" className="underline underline-offset-2">
                 coach login
               </Link>
               . Claim/register is a separate lane.
@@ -90,6 +86,6 @@ export default async function LockerLoginPage({
           </form>
         </div>
       </main>
-    </>
+    </div>
   );
 }

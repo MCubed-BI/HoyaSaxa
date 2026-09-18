@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FeedPostCard } from "@/components/locker-cards";
 import { LockerHeader } from "@/components/locker-header";
+import { StatusCard } from "@/components/status-card";
 import {
   FEED_TABS,
   feedTabLabel,
@@ -31,25 +32,27 @@ export default async function ForYouFeedPage({
   const posts = filterFeedPosts(data.feed, tab);
 
   return (
-    <>
+    <div className="flex min-h-full flex-col">
       <LockerHeader current="feed" viewer={viewer} />
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-gold">Feed</p>
-          <h2 className="font-heading text-4xl text-white">For You</h2>
-          <p className="mt-2 text-sm text-white/65">
-            MVP mixes official Newsflash with alumni posts. Teammates and Following are stubbed until
-            roster links and a follow graph exist.
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Feed</p>
+          <h2 className="font-heading text-3xl text-navy">For You</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Official Newsflash plus alumni posts. Teammates and Following are stubs until roster
+            links and a follow graph exist.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 rounded-xl border border-white/10 bg-navy/50 p-2">
+        <div className="flex flex-wrap gap-2">
           {FEED_TABS.map((item) => (
             <Link
               key={item}
               href={item === "for-you" ? "/feed" : `/feed?tab=${item}`}
               className={`rounded-md px-3 py-1.5 text-sm ${
-                tab === item ? "bg-gold text-navy" : "text-white/70 hover:bg-white/10 hover:text-white"
+                tab === item
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-muted"
               }`}
             >
               {feedTabLabel(item)}
@@ -58,16 +61,13 @@ export default async function ForYouFeedPage({
         </div>
 
         {data.usingFallback ? (
-          <p className="rounded-lg border border-gold/20 bg-gold/10 px-4 py-3 text-sm text-gold">
+          <p className="rounded-lg border bg-muted px-4 py-3 text-sm text-muted-foreground">
             {data.fallbackReason}
           </p>
         ) : null}
 
         {posts.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-card/80 px-5 py-10 text-center">
-            <p className="font-heading text-2xl text-white">{feedTabLabel(tab)}</p>
-            <p className="mx-auto mt-2 max-w-md text-sm text-white/60">{feedTabStub(tab)}</p>
-          </div>
+          <StatusCard title={feedTabLabel(tab)} body={feedTabStub(tab)} />
         ) : (
           <div className="space-y-3">
             {posts.map((post) => (
@@ -76,6 +76,6 @@ export default async function ForYouFeedPage({
           </div>
         )}
       </main>
-    </>
+    </div>
   );
 }

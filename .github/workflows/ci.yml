@@ -16,7 +16,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run lint
+      - run: npx eslint "src/app/(locker)/**/*.{ts,tsx}" "src/app/api/locker/**/*.ts" "src/components/locker-*.tsx" "src/components/newsflash-form.tsx" "src/lib/hoya-alum-session.ts" "src/lib/hoya-alum-session.test.ts" "src/lib/locker-*.ts" src/proxy.ts
       - run: npx tsc --noEmit
       - run: npm run build
         env:

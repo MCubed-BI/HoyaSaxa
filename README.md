@@ -74,9 +74,9 @@ table; currently **2003–current**) and upserts into `alumni` / `alumni_roster_
 
 Library: `src/lib/guhoyas-roster.ts` (`fetchGuhoyasRosters`, `mergeRostersIntoAlumni`, `fetchAndMergeGuhoyasRosters`).
 
-## Legacy Locker (Home / For You / Newsflash)
+## Home / For You / Newsflash
 
-Alumni-facing navy + gold surfaces. They do **not** replace the staff CRM and they do not implement claim, directory profiles, events CRUD, or giving.
+Alumni-facing Home, For You feed, and Lars Newsflash. They use the existing CRM styles, do **not** replace the staff directory, and do not implement claim, athlete profiles, events CRUD, or giving.
 
 | Path | Who | What |
 | --- | --- | --- |
@@ -107,14 +107,14 @@ Main already has the Sgarlata `alumni` schema. Locker adds (on first connected p
 - `newsflash_posts` — board notes; optional `event_at` drives the Home upcoming-event card
 - `locker_feed_posts` — official + alumni MVP feed rows
 
-If `DATABASE_URL` is missing, Home / For You / Newsflash still render demo content. Publishing requires Neon. If an `events` table from the Events lane exists, Home prefers the next upcoming row; otherwise it uses a dated Newsflash or the locker demo card. Directory / Events / Giving quick actions only link those lanes.
+If `DATABASE_URL` is missing, Home / For You / Newsflash still render demo content and Newsflash publishes stay in-process. With Neon connected, tables seed on first load. If an `events` table from the Events lane exists, Home prefers the next upcoming row; otherwise it uses a dated Newsflash or the demo card. Directory / Events / Giving quick actions only link those lanes.
 
 Claim / register pages are owned by another lane and are not touched here.
 
 ## Pages
 
 - `/login` — shared coach password gate
-- `/home` — Legacy Locker home
+- `/home` — alumni Home (hero, quick actions, upcoming event, recent activity)
 - `/` — searchable directory (cards on mobile, table on desktop)
 - `/alumni/[id]` — full player card
 - `/reports` — build a group, download CSV, jump to text or email blast

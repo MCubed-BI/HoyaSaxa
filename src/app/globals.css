@@ -41,8 +41,6 @@
   --color-card: var(--card);
   --color-navy: var(--navy);
   --color-navy-foreground: var(--navy-foreground);
-  --color-gold: var(--gold);
-  --color-gold-foreground: var(--gold-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -55,8 +53,6 @@
 :root {
   --navy: #041e42;
   --navy-foreground: #f4f5f7;
-  --gold: #c5b48a;
-  --gold-foreground: #041e42;
   --background: #f3f4f6;
   --foreground: #1c2430;
   --card: #ffffff;
@@ -107,29 +103,4 @@
   .font-heading {
     font-family: var(--font-source-serif), ui-serif, Georgia, serif;
   }
-}
-
-.locker-shell {
-  --background: #041e42;
-  --foreground: #f4f5f7;
-  --card: #16325c;
-  --card-foreground: #f4f5f7;
-  --popover: #16325c;
-  --popover-foreground: #f4f5f7;
-  --primary: #c5b48a;
-  --primary-foreground: #041e42;
-  --secondary: #0c2a52;
-  --secondary-foreground: #f4f5f7;
-  --muted: #0c2a52;
-  --muted-foreground: #c5cdd8;
-  --accent: #1b3d6b;
-  --accent-foreground: #f4f5f7;
-  --border: #2a4a7a;
-  --input: #2a4a7a;
-  --ring: #c5b48a;
-  min-height: 100%;
-  background:
-    radial-gradient(1200px 500px at 10% -10%, rgba(197, 180, 138, 0.16), transparent 55%),
-    #041e42;
-  color: var(--foreground);
 }

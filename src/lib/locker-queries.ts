@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { getDatabaseUrl, getSql } from "@/lib/db";
 import {
   DEMO_FEED,
@@ -10,6 +11,9 @@ import {
   type UpcomingEvent,
 } from "@/lib/locker-data";
 import { ensureLockerTables } from "@/lib/locker-schema";
+
+const memoryNewsflash: NewsflashPost[] = DEMO_NEWSFLASH.map((post) => ({ ...post }));
+const memoryFeed: FeedPost[] = DEMO_FEED.map((post) => ({ ...post }));
 
 export type LockerHomeData = {
   usingFallback: boolean;
@@ -26,6 +30,9 @@ async function query<T>(text: string, params: unknown[] = []) {
 }
 
 export async function listNewsflashPosts(): Promise<NewsflashPost[]> {
+  if (!getDatabaseUrl()) {
+    return memoryNewsflash;
+  }
   await ensureLockerTables();
   return query<NewsflashPost[]>(
     `
@@ -43,6 +50,18 @@ export async function createNewsflashPost(input: {
   eventAt?: string | null;
   authorLabel: string;
 }) {
+  if (!getDatabaseUrl()) {
+    const post: NewsflashPost = {
+      id: randomUUID(),
+      title: input.title.trim(),
+      body: input.body.trim(),
+      event_at: input.eventAt ?? null,
+      author_label: input.authorLabel,
+      created_at: new Date().toISOString(),
+    };
+    memoryNewsflash.unshift(post);
+    return post;
+  }
   await ensureLockerTables();
   const rows = await query<NewsflashPost[]>(
     `
@@ -56,6 +75,9 @@ export async function createNewsflashPost(input: {
 }
 
 export async function listLockerFeedPosts(): Promise<FeedPost[]> {
+  if (!getDatabaseUrl()) {
+    return memoryFeed;
+  }
   await ensureLockerTables();
   const rows = await query<Array<Omit<FeedPost, "source">>>(
     `
@@ -203,10 +225,25 @@ function fallbackHome(reason: string): LockerHomeData {
   };
 }
 
+function memoryHome(reason: string): LockerHomeData {
+  const newsflash = memoryNewsflash;
+  const feed = [...newsflash.map(newsflashToFeedPost), ...memoryFeed].sort(
+    (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+  );
+  return {
+    usingFallback: true,
+    fallbackReason: reason,
+    newsflash,
+    feed,
+    upcomingEvent: upcomingFromNewsflash(newsflash) ?? DEMO_UPCOMING_EVENT,
+    activity: activityFromContent(newsflash, memoryFeed),
+  };
+}
+
 export async function loadLockerHome(): Promise<LockerHomeData> {
   if (!getDatabaseUrl()) {
-    return fallbackHome(
-      "DATABASE_URL is not set. Locker tables (`newsflash_posts`, `locker_feed_posts`) seed on first connected load.",
+    return memoryHome(
+      "DATABASE_URL is not set. Locker tables (`newsflash_posts`, `locker_feed_posts`) seed on first connected load. Newsflash publishes stay in this process until Neon is configured.",
     );
   }
 

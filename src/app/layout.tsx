@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   description: "Coach Sgarlata's Georgetown football alumni directory and outreach lists.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
