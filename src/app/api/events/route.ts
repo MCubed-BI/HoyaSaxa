@@ -1,7 +1,6 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE } from "@/lib/auth";
-import { canCreateEvents, getEventActorFromToken, isEventCategory } from "@/lib/event-auth";
+import { getEventActor } from "@/lib/event-actor";
+import { canCreateEvents, isEventCategory } from "@/lib/event-auth";
 import { parseEventDateTime } from "@/lib/event-datetime";
 import { createEvent } from "@/lib/event-queries";
 
@@ -22,8 +21,7 @@ function redirectWithError(request: Request, path: string, error: string) {
 }
 
 export async function POST(request: Request) {
-  const jar = await cookies();
-  const actor = getEventActorFromToken(jar.get(SESSION_COOKIE)?.value);
+  const actor = await getEventActor();
   if (!actor) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

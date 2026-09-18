@@ -1,12 +1,11 @@
-import { cookies } from "next/headers";
-import { AppHeader } from "@/components/app-header";
+import { EventsChrome } from "@/components/events-chrome";
 import { EventsList } from "@/components/events-list";
 import { StatusCard } from "@/components/status-card";
-import { SESSION_COOKIE } from "@/lib/auth";
-import { getEventActorFromToken } from "@/lib/event-auth";
+import { getEventActor } from "@/lib/event-actor";
 import { listEvents } from "@/lib/event-queries";
 import { parseEventTab } from "@/lib/event-types";
 import { isMissingDatabaseConfig } from "@/lib/db";
+import { getLockerViewer } from "@/lib/locker-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -17,25 +16,22 @@ export default async function EventsPage({
 }) {
   const params = await searchParams;
   const tab = parseEventTab(params.tab);
-  const jar = await cookies();
-  const actor = getEventActorFromToken(jar.get(SESSION_COOKIE)?.value);
+  const [actor, locker] = await Promise.all([getEventActor(), getLockerViewer()]);
 
   if (!actor) {
     return (
-      <div className="flex min-h-full flex-col">
-        <AppHeader current="events" />
+      <EventsChrome locker={locker}>
         <main className="mx-auto w-full max-w-6xl px-4 py-6">
-          <StatusCard title="Sign in required" body="Staff login is required to view events." />
+          <StatusCard title="Sign in required" body="Sign in to view events." />
         </main>
-      </div>
+      </EventsChrome>
     );
   }
 
   try {
     const result = await listEvents(tab, actor);
     return (
-      <div className="flex min-h-full flex-col">
-        <AppHeader current="events" />
+      <EventsChrome locker={locker}>
         <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
           <EventsList
             actor={actor}
@@ -48,12 +44,11 @@ export default async function EventsPage({
             forbidden={params.error === "forbidden"}
           />
         </main>
-      </div>
+      </EventsChrome>
     );
   } catch (error) {
     return (
-      <div className="flex min-h-full flex-col">
-        <AppHeader current="events" />
+      <EventsChrome locker={locker}>
         <main className="mx-auto w-full max-w-6xl px-4 py-6">
           <StatusCard
             title="Events unavailable"
@@ -66,7 +61,7 @@ export default async function EventsPage({
             }
           />
         </main>
-      </div>
+      </EventsChrome>
     );
   }
 }

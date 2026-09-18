@@ -30,12 +30,12 @@ export type EventActor = {
  * (`COACH_USERNAME`, default Hoyas). That session is treated as **coach**,
  * so Create Event is visible to the current staff login.
  *
- * Optional env lists (same names the alum-portal PR uses, read here only):
+ * Optional env lists (already used by Home / Newsflash):
  * - `HOYA_BOARD_USERNAMES` — those usernames resolve to board (can create)
  * - `HOYA_ALUM_USERNAMES` — those usernames resolve to alum (cannot create)
  *
- * This module does not add alumni login, Register myself, or a portal shell.
- * When those land, they should keep using `canCreateEvents(role)`.
+ * A locker `hoya_alum_session` with role `board` can create. Role `alum` cannot.
+ * This module does not change Register myself / claim or the portal shell.
  */
 export function parseUsernameList(value: string | undefined | null) {
   if (!value) return [];

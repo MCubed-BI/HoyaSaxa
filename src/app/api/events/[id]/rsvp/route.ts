@@ -1,7 +1,5 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE } from "@/lib/auth";
-import { getEventActorFromToken } from "@/lib/event-auth";
+import { getEventActor } from "@/lib/event-actor";
 import { toggleEventRsvp } from "@/lib/event-queries";
 
 function safeReturnPath(value: string | null) {
@@ -10,8 +8,7 @@ function safeReturnPath(value: string | null) {
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const jar = await cookies();
-  const actor = getEventActorFromToken(jar.get(SESSION_COOKIE)?.value);
+  const actor = await getEventActor();
   if (!actor) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
