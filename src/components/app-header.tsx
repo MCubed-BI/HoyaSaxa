@@ -8,7 +8,7 @@ export function AppHeader({
   current,
   shell = "staff",
 }: {
-  current?: "directory" | "reports" | "blast" | "sync" | "messages";
+  current?: "directory" | "reports" | "blast" | "sync" | "messages" | "giving";
   shell?: "staff" | "alum";
 }) {
   const count = useOptionalSelectionCount();
@@ -43,11 +43,19 @@ export function AppHeader({
               <NavLink href="/sync" active={current === "sync"}>
                 Sync
               </NavLink>
+              <NavLink href="/giving" active={current === "giving"}>
+                Give
+              </NavLink>
             </>
           ) : (
-            <NavLink href="/messages" active={current === "messages"}>
-              Messages
-            </NavLink>
+            <>
+              <NavLink href="/messages" active={current === "messages"}>
+                Messages
+              </NavLink>
+              <NavLink href="/giving" active={current === "giving"}>
+                Give
+              </NavLink>
+            </>
           )}
           <form action="/api/logout" method="post">
             <Button

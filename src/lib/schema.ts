@@ -195,3 +195,11 @@ export const alumniRecordMerges = pgTable("alumni_record_merges", {
   mergedAlumniId: uuid("merged_alumni_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const givingPledges = pgTable("giving_pledges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  amountCents: integer("amount_cents").notNull(),
+  donorLabel: text("donor_label"),
+  status: text("status").notNull().default("unpaid_intent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
