@@ -65,6 +65,12 @@ type RosterRow = {
   latest_roster_class: string | null;
 };
 
+function cleanCell(value?: string | null) {
+  const text = value?.trim() ?? "";
+  if (!text || /^#(?:REF!|N\/A|VALUE!|NAME\?)$/i.test(text)) return null;
+  return text;
+}
+
 function mapRosterRow(row: RosterRow): LockerPerson {
   const kind = classifyLockerKind({
     classYear: row.class_year,
@@ -74,28 +80,28 @@ function mapRosterRow(row: RosterRow): LockerPerson {
   const mapped: LockerPerson = {
     id: row.id,
     kind,
-    firstName: row.first_name,
+    firstName: cleanCell(row.first_name),
     lastName: row.last_name,
-    preferredName: row.preferred_name,
-    fullName: row.full_name,
-    position: row.position,
-    classYear: row.class_year,
+    preferredName: cleanCell(row.preferred_name),
+    fullName: cleanCell(row.full_name),
+    position: cleanCell(row.position),
+    classYear: cleanCell(row.class_year),
     classLabel: classLabel({
-      classYear: row.class_year,
-      latestRosterClass: row.latest_roster_class,
+      classYear: cleanCell(row.class_year),
+      latestRosterClass: cleanCell(row.latest_roster_class),
       latestRosterYear: row.latest_roster_year,
     }),
     sport: "Football",
-    city: row.current_city,
-    state: row.current_state,
-    hometownCity: row.hometown_city,
-    hometownState: row.hometown_state,
-    linkedinUrl: row.linkedin_url,
-    headline: row.headline,
-    companyName: row.company_name,
-    jobTitle: row.job_title,
-    industry: row.industry,
-    seasons: row.seasons,
+    city: cleanCell(row.current_city),
+    state: cleanCell(row.current_state),
+    hometownCity: cleanCell(row.hometown_city),
+    hometownState: cleanCell(row.hometown_state),
+    linkedinUrl: cleanCell(row.linkedin_url),
+    headline: cleanCell(row.headline),
+    companyName: cleanCell(row.company_name),
+    jobTitle: cleanCell(row.job_title),
+    industry: cleanCell(row.industry),
+    seasons: cleanCell(row.seasons),
     latestRosterYear: row.latest_roster_year,
     photoUrl: null,
     about: null,
