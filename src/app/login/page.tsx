@@ -52,6 +52,14 @@ export default async function LoginPage({
           <Button type="submit" className="w-full">
             Sign in
           </Button>
+          <div className="flex flex-col items-center gap-1 pt-1 text-sm">
+            <Link href="/register" className="text-navy underline-offset-4 hover:underline">
+              Register myself
+            </Link>
+            <Link href="/alumni-login" className="text-muted-foreground underline-offset-4 hover:underline">
+              Alumni login
+            </Link>
+          </div>
           <p className="text-center text-sm text-muted-foreground">
             Alumni locker:{" "}
             <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">

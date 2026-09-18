@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
+import { ALUMNI_SESSION_COOKIE, isValidAlumniSessionToken, readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
 import { HOYA_ALUM_SESSION_COOKIE, isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
 import {
@@ -14,15 +14,32 @@ import {
   loginPathFor as messagesLoginPathFor,
 } from "@/lib/messages-auth";
 
+const CLAIM_PUBLIC_PATHS = [
+  "/register",
+  "/alumni-login",
+  "/api/alumni/lookup",
+  "/api/alumni/register",
+  "/api/alumni/login",
+];
+
+function isClaimPublicPath(pathname: string) {
+  return CLAIM_PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
 function isPublicPath(pathname: string) {
-  return isHomePublicPath(pathname) || isMessagesPublicPath(pathname);
+  return isHomePublicPath(pathname) || isMessagesPublicPath(pathname) || isClaimPublicPath(pathname);
 }
 
 function isAlumFacingPath(pathname: string) {
   return isLockerPath(pathname) || isAlumAllowedPath(pathname);
 }
 
+function isAlumniPath(pathname: string) {
+  return pathname === "/me" || pathname.startsWith("/me/") || pathname.startsWith("/api/alumni/");
+}
+
 function loginPathFor(pathname: string) {
+  if (isAlumniPath(pathname)) return "/alumni-login";
   if (isLockerPath(pathname)) return lockerLoginPathFor(pathname);
   if (isAlumAllowedPath(pathname)) return messagesLoginPathFor(pathname);
   return "/login";
@@ -35,11 +52,28 @@ function hasAlumSession(request: NextRequest) {
   return Boolean(readAlumniSessionFromCookies((name) => request.cookies.get(name)?.value));
 }
 
+function hasClaimSession(request: NextRequest) {
+  return isValidAlumniSessionToken(request.cookies.get(ALUMNI_SESSION_COOKIE)?.value);
+}
+
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   if (isPublicPath(pathname)) {
     return NextResponse.next();
+  }
+
+  if (isAlumniPath(pathname)) {
+    if (hasClaimSession(request)) {
+      return NextResponse.next();
+    }
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const loginUrl = new URL("/alumni-login", request.url);
+    const next = `${pathname}${search}`;
+    if (next && next !== "/") loginUrl.searchParams.set("next", next);
+    return NextResponse.redirect(loginUrl);
   }
 
   const staffToken = request.cookies.get(SESSION_COOKIE)?.value;

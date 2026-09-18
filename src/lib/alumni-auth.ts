@@ -5,6 +5,7 @@ import { getCoachCredentials } from "@/lib/auth";
 export const HOYA_ALUM_SESSION_COOKIE = "hoya_alum_session";
 /** Register/Claim + portal PRs still mint this name — accept it too. */
 export const LEGACY_ALUMNI_SESSION_COOKIE = "ga_alumni_session";
+export const ALUMNI_SESSION_COOKIE = LEGACY_ALUMNI_SESSION_COOKIE;
 export const ALUMNI_SESSION_COOKIES = [HOYA_ALUM_SESSION_COOKIE, LEGACY_ALUMNI_SESSION_COOKIE] as const;
 
 function hmac(secret: string, value: string) {

@@ -165,3 +165,33 @@ export const messageReads = pgTable(
   },
   (table) => [unique("message_reads_viewer_channel").on(table.viewerKey, table.channelId)],
 );
+
+export const alumniAccounts = pgTable("alumni_accounts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const alumniClaims = pgTable("alumni_claims", {
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => alumniAccounts.id, { onDelete: "cascade" }),
+  alumniId: uuid("alumni_id")
+    .notNull()
+    .references(() => alumni.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const alumniRecordMerges = pgTable("alumni_record_merges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => alumniAccounts.id, { onDelete: "cascade" }),
+  keeperAlumniId: uuid("keeper_alumni_id")
+    .notNull()
+    .references(() => alumni.id, { onDelete: "cascade" }),
+  mergedAlumniId: uuid("merged_alumni_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
