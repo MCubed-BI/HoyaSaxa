@@ -10,7 +10,12 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function GivingPage() {
+export default async function GivingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ recorded?: string; error?: string }>;
+}) {
+  const params = await searchParams;
   let summary = emptyGivingSummary;
   let errorMessage: string | null = null;
 
@@ -35,7 +40,15 @@ export default async function GivingPage() {
             Choose an impact amount and record an unpaid pledge intent. Stripe is not required for this MVP.
           </p>
         </div>
-        {errorMessage ? <StatusCard title="Giving unavailable" body={errorMessage} /> : <GivingScreen initial={summary} />}
+        {errorMessage ? (
+          <StatusCard title="Giving unavailable" body={errorMessage} />
+        ) : (
+          <GivingScreen
+            initial={summary}
+            recorded={params.recorded === "1"}
+            amountError={params.error === "amount"}
+          />
+        )}
       </main>
     </div>
   );

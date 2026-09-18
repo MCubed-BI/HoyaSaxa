@@ -13,7 +13,6 @@ import {
 } from "@/lib/giving";
 
 type Tab = "impact" | "funds" | "leaderboards";
-type Preset = (typeof IMPACT_AMOUNT_DOLLARS)[number] | "other";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "impact", label: "Impact" },
@@ -21,22 +20,30 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "leaderboards", label: "Leaderboards" },
 ];
 
-export function GivingScreen({ initial }: { initial: GivingSummary }) {
+export function GivingScreen({
+  initial,
+  recorded,
+  amountError,
+}: {
+  initial: GivingSummary;
+  recorded?: boolean;
+  amountError?: boolean;
+}) {
   const [tab, setTab] = useState<Tab>("impact");
-  const [preset, setPreset] = useState<Preset>(25);
-  const [otherDollars, setOtherDollars] = useState("");
+  const [amountDollars, setAmountDollars] = useState("25");
   const [donorLabel, setDonorLabel] = useState("");
   const [summary, setSummary] = useState(initial);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    amountError ? "Choose a valid impact amount of at least $1." : null,
+  );
+  const [notice, setNotice] = useState<string | null>(recorded ? "Recorded unpaid intent." : null);
 
   async function onGiveNow(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setError(null);
     setNotice(null);
-    const amountDollars = preset === "other" ? otherDollars : preset;
     try {
       const response = await fetch("/api/giving/pledges", {
         method: "POST",
@@ -87,43 +94,41 @@ export function GivingScreen({ initial }: { initial: GivingSummary }) {
             <CardTitle>Choose impact</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={onGiveNow} className="space-y-4">
+            <form method="post" action="/api/giving/pledges" onSubmit={onGiveNow} className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 {IMPACT_AMOUNT_DOLLARS.map((amount) => (
                   <Button
                     key={amount}
                     type="button"
-                    variant={preset === amount ? "default" : "outline"}
-                    aria-pressed={preset === amount}
-                    onClick={() => setPreset(amount)}
+                    variant={amountDollars === String(amount) ? "default" : "outline"}
+                    aria-pressed={amountDollars === String(amount)}
+                    onClick={() => setAmountDollars(String(amount))}
                   >
                     ${amount}
                   </Button>
                 ))}
                 <Button
                   type="button"
-                  variant={preset === "other" ? "default" : "outline"}
-                  aria-pressed={preset === "other"}
-                  onClick={() => setPreset("other")}
+                  variant={!IMPACT_AMOUNT_DOLLARS.map(String).includes(amountDollars) ? "default" : "outline"}
+                  aria-pressed={!IMPACT_AMOUNT_DOLLARS.map(String).includes(amountDollars)}
+                  onClick={() => setAmountDollars("")}
                 >
                   Other
                 </Button>
               </div>
-              {preset === "other" ? (
-                <div className="space-y-1.5">
-                  <Label htmlFor="other-amount">Other amount (USD)</Label>
-                  <Input
-                    id="other-amount"
-                    name="amountDollars"
-                    type="number"
-                    min="1"
-                    step="1"
-                    required
-                    value={otherDollars}
-                    onChange={(event) => setOtherDollars(event.target.value)}
-                  />
-                </div>
-              ) : null}
+              <div className="space-y-1.5">
+                <Label htmlFor="amount-dollars">Amount (USD)</Label>
+                <Input
+                  id="amount-dollars"
+                  name="amountDollars"
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+                  value={amountDollars}
+                  onChange={(event) => setAmountDollars(event.target.value)}
+                />
+              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="donor-label">Donor label (optional)</Label>
                 <Input

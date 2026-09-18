@@ -62,14 +62,22 @@ export async function POST(request: Request) {
   const amountCents = parseAmountCents(body);
 
   if (amountCents === null) {
+    if (!contentType.includes("application/json")) {
+      return NextResponse.redirect(new URL("/giving?error=amount", request.url), { status: 303 });
+    }
     return jsonError("Choose a valid impact amount of at least $1.", 400);
   }
+
+  const wantsJson = contentType.includes("application/json");
 
   try {
     const pledge = await createGivingPledge({
       amountCents,
       donorLabel: normalizeDonorLabel(body.donorLabel ?? body.donor_label),
     });
+    if (!wantsJson) {
+      return NextResponse.redirect(new URL("/giving?recorded=1", request.url), { status: 303 });
+    }
     const summary = await listGivingSummary();
     return NextResponse.json({ pledge, ...summary }, { status: 201 });
   } catch (error) {
