@@ -77,10 +77,24 @@ Library: `src/lib/guhoyas-roster.ts` (`fetchGuhoyasRosters`, `mergeRostersIntoAl
 ## Pages
 
 - `/login` — shared coach password gate
+- `/locker` — alumni session access (`hoya_alum_session`; not Register myself)
 - `/` — searchable directory (cards on mobile, table on desktop)
 - `/alumni/[id]` — full player card
+- `/messages` — inbox with All / Unread / Groups filters
+- `/messages/sgarlata` — official pinned Message from Sgarlata channel
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
+
+## Messages
+
+Staff (existing `ga_session` coach gate) can post to **Message from Sgarlata**. Alumni with `hoya_alum_session` (or the Register/Claim `ga_alumni_session` cookie) can read Messages only — Data Sync and other owner tools stay locked.
+
+Tables (`message_channels`, `message_posts`, `message_reads`) are created on first use, same pattern as blast tables. The official Sgarlata channel is seeded pinned.
+
+### Demo
+
+1. Staff: open `/login`, sign in as `Hoyas` / `Sgarlata35`, go to **Messages**, open **Message from Sgarlata**, post a note.
+2. Alum: sign out, open `/locker`, enter access code `HoyaSaxa` (local default). That sets `hoya_alum_session`. Read Messages and the Sgarlata channel — no compose box. Visiting `/sync` redirects back to Messages.
 
 Filters are multi-select: state, city, position, class/grad year, season year, plus has email / phone / LinkedIn. Check alumni on the directory to add a manual blast list. That same list feeds both channels.
 
