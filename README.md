@@ -129,6 +129,7 @@ Claim / register pages are owned by another lane and are not touched here.
 - `/messages/sgarlata` — official pinned Message from Sgarlata channel
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
+- `/giving` — fundraising MVP: $25 / $50 / $100 / $250 / Other, Give Now, Impact / Funds / Leaderboards tabs. Pledges are unpaid intents in Neon (`giving_pledges`). Stripe is later.
 
 Alumni login is a distinct **alum** session, not coach. Portal detect:
 

@@ -32,8 +32,17 @@ function isClaimPublicPath(pathname: string) {
   return CLAIM_PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
+function isGivingPublicPath(pathname: string) {
+  return pathname === "/giving" || pathname.startsWith("/giving/") || pathname.startsWith("/api/giving");
+}
+
 function isPublicPath(pathname: string) {
-  return isHomePublicPath(pathname) || isMessagesPublicPath(pathname) || isClaimPublicPath(pathname);
+  return (
+    isHomePublicPath(pathname) ||
+    isMessagesPublicPath(pathname) ||
+    isClaimPublicPath(pathname) ||
+    isGivingPublicPath(pathname)
+  );
 }
 
 function isAlumFacingPath(pathname: string) {
