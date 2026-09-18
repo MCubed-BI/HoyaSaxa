@@ -5,23 +5,20 @@
  *   import { isAlumLoggedIn } from "@/lib/alum-session";
  *   const alum = isAlumLoggedIn(await cookies());
  *
- * Canonical alum cookie lives in `src/lib/alum-session.ts`:
+ * Canonical cookie lives in `src/lib/alum-session.ts` (same signer as GTown portal):
  *   - alum:  httpOnly `hoya_alum_session` — HMAC JSON `{ v:1, role:"alum"|"board", alumniId, email, name, exp }`
  *   - coach: httpOnly `ga_session` — staff gate; never treat as alum
  *   - hint:  readable `ga_role=alum|coach` for client chrome only (not authorization)
  *   - JSON:  GET /api/session → { role, roles, alum, coach }
- *
- * `isAlumLoggedIn` is the portal detect helper. `ga_role` is a hint, not proof.
  */
 import {
   ALUM_ROLE,
   ALUM_SESSION_COOKIE,
   LEGACY_ALUMNI_SESSION_COOKIE,
-  alumSessionCookieOptions,
-  createAlumSessionToken,
   isAlumLoggedIn,
-  type AlumSessionPayload,
-  type CookieReader,
+  setAlumSessionCookies as writePortalAlumCookie,
+  type AlumRole,
+  type CookieJar,
 } from "@/lib/alum-session";
 import { COACH_ROLE, SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
 
@@ -38,15 +35,15 @@ export type SessionInfo = {
   coach: boolean;
 };
 
-function cookieValue(cookies: CookieReader, name: string) {
+function cookieValue(cookies: CookieJar, name: string) {
   return cookies.get(name)?.value;
 }
 
-export function isCoachLoggedIn(cookies: CookieReader) {
+export function isCoachLoggedIn(cookies: CookieJar) {
   return isValidSessionToken(cookieValue(cookies, SESSION_COOKIE));
 }
 
-export function readSessionInfo(cookies: CookieReader): SessionInfo {
+export function readSessionInfo(cookies: CookieJar): SessionInfo {
   const roles: SessionRole[] = [];
   if (isAlumLoggedIn(cookies)) roles.push(ALUM_ROLE);
   if (isCoachLoggedIn(cookies)) roles.push(COACH_ROLE);
@@ -76,18 +73,14 @@ type CookieSetter = {
 
 export function setAlumSessionCookies(
   response: CookieSetter,
-  identity: Pick<AlumSessionPayload, "alumniId" | "email" | "name"> & { role?: AlumSessionPayload["role"] },
+  identity: { alumniId: string; email: string; name: string; role?: AlumRole },
 ) {
-  response.cookies.set(
-    ALUM_SESSION_COOKIE,
-    createAlumSessionToken({
-      alumniId: identity.alumniId,
-      email: identity.email,
-      name: identity.name,
-      role: identity.role ?? ALUM_ROLE,
-    }),
-    alumSessionCookieOptions(),
-  );
+  writePortalAlumCookie(response, {
+    role: identity.role ?? ALUM_ROLE,
+    alumniId: identity.alumniId,
+    email: identity.email,
+    name: identity.name,
+  });
   response.cookies.set(LEGACY_ALUMNI_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
   response.cookies.set(SESSION_ROLE_COOKIE, ALUM_ROLE, roleHintCookieOptions());
 }

@@ -16,8 +16,8 @@ import {
 
 // Auth boundary: alum vs coach. Claim/register must call isAlumLoggedIn(cookies)
 // from `@/lib/alum-session` (cookie `hoya_alum_session`, role `"alum"`).
-// Locker Home uses a locker-format token on the same cookie name.
-// Do not use isCoachLoggedIn / `ga_session` for alum.
+// Same HMAC signer as GTown portal. Locker Home uses a locker-format token on
+// the same cookie name. Do not use isCoachLoggedIn / `ga_session` for alum.
 
 const CLAIM_PUBLIC_PATHS = [
   "/register",

@@ -5,7 +5,7 @@ import {
   parseClassYearInput,
 } from "@/lib/alumni-class-year";
 import { hashAlumniPassword, isValidEmail, verifyAlumniPassword } from "@/lib/alumni-auth";
-import { ALUM_ROLE, getAlumSession, type AlumSessionPayload, type CookieReader } from "@/lib/alum-session";
+import { ALUM_ROLE, ALUM_SESSION_COOKIE, parseAlumSessionToken, type AlumRole, type CookieJar } from "@/lib/alum-session";
 import type { AlumniDetail, AlumniListItem } from "@/lib/types";
 
 export type ClaimMatch = AlumniListItem & {
@@ -268,9 +268,12 @@ export function alumDisplayName(
   return fallback;
 }
 
-export async function alumSessionIdentityForAccount(account: { id: string; email: string }): Promise<
-  Pick<AlumSessionPayload, "alumniId" | "email" | "name"> & { role: typeof ALUM_ROLE }
-> {
+export async function alumSessionIdentityForAccount(account: { id: string; email: string }): Promise<{
+  role: AlumRole;
+  alumniId: string;
+  email: string;
+  name: string;
+}> {
   const records = await getClaimedRecords(account.id);
   const primary = records[0];
   if (!primary) {
@@ -284,9 +287,9 @@ export async function alumSessionIdentityForAccount(account: { id: string; email
   };
 }
 
-export async function accountIdFromCookies(cookies: CookieReader) {
-  const session = getAlumSession(cookies);
-  if (!session) return null;
+export async function accountIdFromCookies(cookies: CookieJar) {
+  const session = parseAlumSessionToken(cookies.get(ALUM_SESSION_COOKIE)?.value);
+  if (!session?.email) return null;
   const account = await getAccountByEmail(session.email);
   return account?.id ?? null;
 }
