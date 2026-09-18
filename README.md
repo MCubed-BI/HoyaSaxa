@@ -77,8 +77,10 @@ Library: `src/lib/guhoyas-roster.ts` (`fetchGuhoyasRosters`, `mergeRostersIntoAl
 ## Pages
 
 - `/login` — shared coach password gate
-- `/` — searchable directory (cards on mobile, table on desktop)
-- `/alumni/[id]` — full player card
+- `/directory` — public Hoya Directory (search + All / Athletes / Alumni / Coaches / Staff)
+- `/athletes/[id]` — public athlete profile shell (Overview / Stats / Photos / Career / Q&A)
+- `/` — staff directory (cards on mobile, table on desktop)
+- `/alumni/[id]` — staff player card
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
 

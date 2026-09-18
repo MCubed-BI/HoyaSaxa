@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start --port 43173",
     "lint": "eslint",
+    "test": "tsx --test src/lib/*.test.ts",
     "import": "tsx scripts/import-alumni.ts"
   },
   "dependencies": {

@@ -23,6 +23,21 @@ export function emailConfigured() {
   return missingResendEnv().length === 0;
 }
 
+export function emailProvider(): "resend" | "sendgrid" | null {
+  if (process.env.RESEND_API_KEY?.trim() && emailFromAddress()) return "resend";
+  if (process.env.SENDGRID_API_KEY?.trim() && emailFromAddress()) return "sendgrid";
+  return null;
+}
+
+export function buildMailtoLink(emails: string[], subject: string, body: string) {
+  const to = emails.filter(Boolean).slice(0, 30).join(",");
+  const params = new URLSearchParams();
+  if (subject) params.set("subject", subject);
+  if (body) params.set("body", body);
+  const query = params.toString();
+  return query ? `mailto:${to}?${query}` : `mailto:${to}`;
+}
+
 export type EmailSendResult = {
   email: string;
   status: "sent" | "failed";

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
+import { isLockerPublicPath } from "@/lib/locker-paths";
 
 const PUBLIC_PATHS = ["/login", "/api/login"];
 
@@ -7,6 +8,7 @@ function isPublicPath(pathname: string) {
   if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
     return true;
   }
+  if (isLockerPublicPath(pathname)) return true;
   if (pathname.startsWith("/_next")) return true;
   if (pathname === "/favicon.ico" || pathname === "/robots.txt") return true;
   if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/.test(pathname)) return true;
