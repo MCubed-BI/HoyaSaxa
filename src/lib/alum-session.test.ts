@@ -6,6 +6,7 @@ import {
   createAlumSessionToken,
   parseAlumSessionToken,
   readAlumSession,
+  setAlumSessionCookies,
 } from "./alum-session";
 
 describe("hoya_alum_session contract", () => {
@@ -27,6 +28,28 @@ describe("hoya_alum_session contract", () => {
     assert.equal(session?.alumniId, "11111111-1111-1111-1111-111111111111");
     assert.equal(session?.email, "pat@example.com");
     assert.equal(readAlumSession(token)?.name, "Pat Hoya");
+  });
+
+  it("setAlumSessionCookies writes hoya_alum_session for claim login", () => {
+    const jar = new Map<string, string>();
+    setAlumSessionCookies(
+      {
+        cookies: {
+          set(name, value) {
+            jar.set(name, value);
+          },
+        },
+      },
+      {
+        role: "alum",
+        alumniId: "22222222-2222-2222-2222-222222222222",
+        email: "claim@example.com",
+        name: "Claimed Hoya",
+      },
+    );
+    const token = jar.get("hoya_alum_session");
+    assert.ok(token);
+    assert.equal(parseAlumSessionToken(token)?.email, "claim@example.com");
   });
 
   it("rejects a tampered token and an expired session", () => {

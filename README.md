@@ -46,7 +46,7 @@ Four roles: **owner**, **coach**, **alum**, and **board** (Lars).
 
 ### Alum session contract
 
-Football Program (Register/Claim) should import `src/lib/alum-session.ts` and set this cookie — do not reuse `ga_session`.
+Football Program owns Register myself / claim on `cursor/hoya-register-claim-*`. Import `src/lib/alum-session.ts` after a successful claim/login and call `setAlumSessionCookies(response, { role, alumniId, email, name })`. Do not reuse `ga_session`. This repo does not rebuild claim UI.
 
 | Field | Value |
 | --- | --- |
@@ -55,7 +55,7 @@ Football Program (Register/Claim) should import `src/lib/alum-session.ts` and se
 | Payload | HMAC-signed `base64url(JSON).signature` |
 | JSON | `{ v: 1, role: "alum" \| "board", alumniId, email, name, exp }` |
 
-Helpers: `readAlumSession(req)`, `createAlumSessionToken`, `requireAlumRole(...roles)`, `GET /api/alum/session`.
+Helpers: `readAlumSession(req)`, `alumSessionCookieName`, `AlumSession`, `requireAlumRole(...roles)`, `setAlumSessionCookies`, `GET /api/alum/session`.
 
 `ga_alumni_session` is still accepted as a fallback hook until claim switches over. Alum cookies never unlock `/sync`, `/blast`, or `/reports`.
 

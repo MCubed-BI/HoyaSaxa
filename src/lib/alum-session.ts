@@ -1,3 +1,15 @@
+/**
+ * Alum / board session contract for Football Program (Register/Claim).
+ *
+ * Import this module. Do not reuse the coach `ga_session` cookie.
+ *
+ * Cookie: hoya_alum_session (httpOnly, Secure in production, SameSite=Lax, path=/)
+ * Token:  base64url(JSON).hmacSha256
+ * JSON:   { v: 1, role: "alum" | "board", alumniId, email, name, exp }
+ *
+ * `board` writes Newsflash only. Coach/owner post Sgarlata notes via ga_session.
+ * This cookie never unlocks Data Sync or coach blast.
+ */
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -48,6 +60,29 @@ export function alumSessionCookieOptions() {
     path: "/",
     maxAge: 60 * 60 * 24 * 14,
   };
+}
+
+type CookieSetter = {
+  cookies: {
+    set: (name: string, value: string, options?: Record<string, unknown>) => unknown;
+  };
+};
+
+/** Claim login should call this after authenticate — not the coach session helpers. */
+export function setAlumSessionCookies(
+  response: CookieSetter,
+  session: {
+    role: AlumRole;
+    alumniId: string;
+    email: string;
+    name: string;
+  },
+) {
+  response.cookies.set(ALUM_SESSION_COOKIE, createAlumSessionToken(session), alumSessionCookieOptions());
+}
+
+export function clearAlumSessionCookies(response: CookieSetter) {
+  response.cookies.set(ALUM_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
 }
 
 export function createAlumSessionToken(input: {
