@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AppHeader } from "@/components/app-header";
+import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { displayName, formatPhone, initials, jobLabel, locationLabel } from "@/lib/format";
 import { getAlumniById } from "@/lib/queries";
+import { requireRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function AlumniDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireRole(["owner", "coach", "board"]);
   const { id } = await params;
 
   try {
@@ -45,7 +47,7 @@ export default async function AlumniDetailPage({
 
     return (
       <div className="flex min-h-full flex-col">
-        <AppHeader current="directory" />
+        <SiteHeader current="directory" />
         <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
           <Link href="/" className="text-sm text-navy hover:underline">
             ← Back to directory
@@ -194,7 +196,7 @@ export default async function AlumniDetailPage({
     if (isMissingDatabaseConfig(error)) {
       return (
         <div className="flex min-h-full flex-col">
-          <AppHeader current="directory" />
+          <SiteHeader current="directory" />
           <main className="mx-auto w-full max-w-4xl px-4 py-12 text-center">
             <h2 className="font-heading text-2xl text-navy">Database is not configured</h2>
             <p className="mt-2 text-sm text-muted-foreground">Set DATABASE_URL and reload.</p>

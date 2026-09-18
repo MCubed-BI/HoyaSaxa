@@ -1,0 +1,96 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { ALUMNI_SESSION_COOKIE, readAlumniSessionAccountId } from "@/lib/alumni-auth";
+import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
+import { getDatabaseUrl } from "@/lib/db";
+import { lookupAlumniClaim, lookupStaffRole } from "@/lib/portal-queries";
+import {
+  homePathForRole,
+  resolveRoleFromEnv,
+  roleLabel,
+  type Role,
+} from "@/lib/roles";
+
+export type Viewer = {
+  role: Role;
+  label: string;
+  username: string | null;
+  email: string | null;
+  accountId: string | null;
+  alumniId: string | null;
+  source: "staff" | "alumni";
+  homePath: string;
+};
+
+export async function getCurrentViewer(): Promise<Viewer | null> {
+  const jar = await cookies();
+  const staffUsername = getSessionUsername(jar.get(SESSION_COOKIE)?.value);
+  if (staffUsername) {
+    let role = resolveRoleFromEnv(staffUsername, getCoachCredentials().username);
+    if (getDatabaseUrl()) {
+      try {
+        const assigned = await lookupStaffRole(staffUsername);
+        if (assigned) role = assigned;
+      } catch {
+        // Env mapping is enough when portal tables are not reachable.
+      }
+    }
+    return {
+      role,
+      label: staffUsername,
+      username: staffUsername,
+      email: null,
+      accountId: null,
+      alumniId: null,
+      source: "staff",
+      homePath: homePathForRole(role),
+    };
+  }
+
+  const accountId = readAlumniSessionAccountId(jar.get(ALUMNI_SESSION_COOKIE)?.value);
+  if (!accountId) return null;
+
+  let email: string | null = null;
+  let alumniId: string | null = null;
+  if (getDatabaseUrl()) {
+    try {
+      const claim = await lookupAlumniClaim(accountId);
+      email = claim.account?.email ?? null;
+      alumniId = claim.alumniId;
+    } catch {
+      // Claim tables live on the Register/Claim branch. Session still counts as alum.
+    }
+  }
+
+  return {
+    role: "alum",
+    label: email ?? "Alumnus",
+    username: null,
+    email,
+    accountId,
+    alumniId,
+    source: "alumni",
+    homePath: "/alum",
+  };
+}
+
+export async function requireViewer() {
+  const viewer = await getCurrentViewer();
+  if (!viewer) redirect("/login");
+  return viewer;
+}
+
+export async function requireRole(allowed: Role[]) {
+  const viewer = await requireViewer();
+  if (!allowed.includes(viewer.role)) {
+    redirect(viewer.homePath);
+  }
+  return viewer;
+}
+
+export function viewerSubtitle(viewer: Viewer) {
+  const role = roleLabel(viewer.role);
+  if (viewer.alumniId) return `${role} · claimed record linked`;
+  if (viewer.source === "alumni") return `${role} · claim hook ready`;
+  return role;
+}

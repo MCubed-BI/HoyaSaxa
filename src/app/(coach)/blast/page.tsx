@@ -1,10 +1,11 @@
-import { AppHeader } from "@/components/app-header";
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { BlastComposer, type BlastChannel } from "@/components/blast-composer";
+import { SiteHeader } from "@/components/site-header";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { parseAlumniFilters } from "@/lib/filters";
 import { getAlumniFacets } from "@/lib/queries";
+import { requireRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export default async function BlastPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await requireRole(["owner", "coach"]);
   const params = await searchParams;
   const filters = parseAlumniFilters(params);
   const channel = parseChannel(params.channel);
@@ -26,7 +28,7 @@ export default async function BlastPage({
     const facets = await getAlumniFacets();
     return (
       <div className="flex min-h-full flex-col">
-        <AppHeader current="blast" />
+        <SiteHeader current="blast" />
         <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Outreach</p>
@@ -44,7 +46,7 @@ export default async function BlastPage({
   } catch (error) {
     return (
       <div className="flex min-h-full flex-col">
-        <AppHeader current="blast" />
+        <SiteHeader current="blast" />
         <main className="mx-auto w-full max-w-6xl px-4 py-6">
           <StatusCard
             title="Blast unavailable"

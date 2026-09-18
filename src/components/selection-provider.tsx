@@ -68,3 +68,7 @@ export function useSelection() {
   }
   return value;
 }
+
+export function useOptionalSelectionCount() {
+  return useContext(SelectionContext)?.count ?? 0;
+}

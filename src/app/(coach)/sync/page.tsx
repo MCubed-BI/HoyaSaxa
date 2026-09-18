@@ -1,13 +1,15 @@
-import { AppHeader } from "@/components/app-header";
+import { SiteHeader } from "@/components/site-header";
 import { DataSyncPanel } from "@/components/data-sync-panel";
 import { StatusCard } from "@/components/status-card";
 import { listDataSyncBatches, type DataSyncBatch } from "@/lib/data-sync";
 import { ensureDataSyncTable } from "@/lib/data-sync-schema";
 import { isMissingDatabaseConfig } from "@/lib/db";
+import { requireRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 
 export default async function SyncPage() {
+  await requireRole(["owner", "coach"]);
   let batches: DataSyncBatch[] = [];
   let errorMessage: string | null = null;
 
@@ -24,7 +26,7 @@ export default async function SyncPage() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <AppHeader current="sync" />
+      <SiteHeader current="sync" />
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">

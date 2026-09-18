@@ -1,56 +1,55 @@
 "use client";
 
 import Link from "next/link";
+import { useOptionalSelectionCount } from "@/components/selection-provider";
 import { Button } from "@/components/ui/button";
-import { useSelection } from "@/components/selection-provider";
+import { navItemsForRole, type NavKey } from "@/lib/nav";
+import { roleLabel, type Role } from "@/lib/roles";
 
-export function AppHeader({ current }: { current?: "directory" | "reports" | "blast" | "sync" }) {
-  const { count } = useSelection();
+export function AppHeader({
+  current,
+  role,
+  viewerLabel,
+}: {
+  current?: NavKey;
+  role?: Role;
+  viewerLabel?: string;
+}) {
+  const resolvedRole = role ?? "owner";
+  const count = useOptionalSelectionCount();
+  const items = navItemsForRole(resolvedRole);
+  const homeHref = resolvedRole === "alum" ? "/alum" : "/";
 
   return (
     <header className="border-b border-white/10 bg-navy text-navy-foreground">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <div className="min-w-0">
-          <Link href="/" className="block">
+          <Link href={homeHref} className="block">
             <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/60">
               Georgetown Football
             </p>
-            <h1 className="font-heading text-xl tracking-tight text-white sm:text-2xl">Georgetown Alum</h1>
+            <h1 className="font-heading text-xl tracking-tight text-white sm:text-2xl">
+              {resolvedRole === "alum" ? "Hoya Alum Portal" : "Georgetown Alum"}
+            </h1>
           </Link>
+          <p className="mt-0.5 truncate text-[11px] text-white/55">
+            {roleLabel(resolvedRole)}
+            {viewerLabel ? ` · ${viewerLabel}` : ""}
+          </p>
         </div>
         <nav className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
-          <Link
-            href="/"
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              current === "directory" ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            Directory
-          </Link>
-          <Link
-            href="/reports"
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              current === "reports" ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            Reports
-          </Link>
-          <Link
-            href="/blast"
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              current === "blast" ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            Blast{count > 0 ? ` (${count})` : ""}
-          </Link>
-          <Link
-            href="/sync"
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              current === "sync" ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            Sync
-          </Link>
+          {items.map((item) => (
+            <Link
+              key={`${item.key}-${item.href}`}
+              href={item.href}
+              className={`rounded-md px-3 py-1.5 text-sm ${
+                current === item.key ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {item.label}
+              {item.key === "blast" && count > 0 ? ` (${count})` : ""}
+            </Link>
+          ))}
           <form action="/api/logout" method="post">
             <Button
               type="submit"
