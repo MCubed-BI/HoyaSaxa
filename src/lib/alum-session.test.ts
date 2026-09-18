@@ -4,9 +4,11 @@ import {
   ALUM_SESSION_COOKIE,
   alumSessionCookieName,
   createAlumSessionToken,
+  isAlumLoggedIn,
   parseAlumSessionToken,
   readAlumSession,
   setAlumSessionCookies,
+  writeAlumSessionCookie,
 } from "./alum-session";
 
 describe("hoya_alum_session contract", () => {
@@ -60,5 +62,33 @@ describe("hoya_alum_session contract", () => {
       exp: Math.floor(Date.now() / 1000) - 10,
     });
     assert.equal(parseAlumSessionToken(expired), null);
+  });
+
+  it("isAlumLoggedIn is true only for a verified alum-role contract cookie", () => {
+    const jar = new Map<string, { value: string }>();
+    writeAlumSessionCookie(
+      {
+        cookies: {
+          set(name, value) {
+            jar.set(name, { value });
+          },
+        },
+      },
+      { role: "alum", alumniId: "33333333-3333-3333-3333-333333333333", email: "a@hoya.edu", name: "A" },
+    );
+    assert.equal(isAlumLoggedIn({ get: (name) => jar.get(name) }), true);
+
+    const boardJar = new Map<string, { value: string }>();
+    writeAlumSessionCookie(
+      {
+        cookies: {
+          set(name, value) {
+            boardJar.set(name, { value });
+          },
+        },
+      },
+      { role: "board", alumniId: "44444444-4444-4444-4444-444444444444", email: "lars@hoya.edu", name: "Lars" },
+    );
+    assert.equal(isAlumLoggedIn({ get: (name) => boardJar.get(name) }), false);
   });
 });

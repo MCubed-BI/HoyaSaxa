@@ -1,5 +1,5 @@
 /**
- * Alum / board session contract for Football Program (Register/Claim).
+ * Shared alum / board session contract (claim PR + GTown portal).
  *
  * Import this module. Do not reuse the coach `ga_session` cookie.
  *
@@ -7,8 +7,14 @@
  * Token:  base64url(JSON).hmacSha256
  * JSON:   { v: 1, role: "alum" | "board", alumniId, email, name, exp }
  *
+ * How portal checks “is alum logged in”:
+ *   import { isAlumLoggedIn, parseAlumSessionToken, ALUM_SESSION_COOKIE } from "@/lib/alum-session";
+ *   const alum = isAlumLoggedIn(await cookies());
+ *
+ * Register myself / alumni login always set role `"alum"` (never `"board"`).
  * `board` writes Newsflash only. Coach/owner post Sgarlata notes via ga_session.
  * This cookie never unlocks Data Sync or coach blast.
+ * Locker-preview tokens ({ role, label, iat }) are a separate signer — see hoya-alum-session.ts.
  */
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
@@ -17,6 +23,9 @@ import { getCoachCredentials } from "@/lib/auth";
 
 export const ALUM_SESSION_COOKIE = "hoya_alum_session";
 export const alumSessionCookieName = ALUM_SESSION_COOKIE;
+export const LEGACY_ALUMNI_SESSION_COOKIE = "ga_alumni_session";
+export const ALUM_ROLE = "alum" as const;
+export const BOARD_ROLE = "board" as const;
 
 export type AlumRole = "alum" | "board";
 
@@ -27,6 +36,12 @@ export type AlumSession = {
   email: string;
   name: string;
   exp: number;
+};
+
+export type AlumSessionPayload = AlumSession;
+
+export type CookieJar = {
+  get(name: string): { value: string } | undefined;
 };
 
 const PREVIEW_ALUMNI_ID = "00000000-0000-0000-0000-000000000000";
@@ -69,7 +84,7 @@ type CookieSetter = {
 };
 
 /** Claim login should call this after authenticate — not the coach session helpers. */
-export function setAlumSessionCookies(
+export function writeAlumSessionCookie(
   response: CookieSetter,
   session: {
     role: AlumRole;
@@ -81,8 +96,24 @@ export function setAlumSessionCookies(
   response.cookies.set(ALUM_SESSION_COOKIE, createAlumSessionToken(session), alumSessionCookieOptions());
 }
 
-export function clearAlumSessionCookies(response: CookieSetter) {
+export function setAlumSessionCookies(
+  response: CookieSetter,
+  session: {
+    role: AlumRole;
+    alumniId: string;
+    email: string;
+    name: string;
+  },
+) {
+  writeAlumSessionCookie(response, session);
+}
+
+export function clearAlumSessionCookie(response: CookieSetter) {
   response.cookies.set(ALUM_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+}
+
+export function clearAlumSessionCookies(response: CookieSetter) {
+  clearAlumSessionCookie(response);
 }
 
 export function createAlumSessionToken(input: {
@@ -171,4 +202,13 @@ export async function requireAlumRole(...roles: AlumRole[]) {
 
 export function isPreviewAlumSession(session: AlumSession) {
   return session.alumniId === PREVIEW_ALUMNI_ID;
+}
+
+/** Portal/auth-boundary: true only when `hoya_alum_session` verifies as role `alum`. */
+export function isAlumLoggedIn(cookies: CookieJar) {
+  return parseAlumSessionToken(cookies.get(ALUM_SESSION_COOKIE)?.value)?.role === ALUM_ROLE;
+}
+
+export function getAlumSession(cookies: CookieJar) {
+  return parseAlumSessionToken(cookies.get(ALUM_SESSION_COOKIE)?.value);
 }

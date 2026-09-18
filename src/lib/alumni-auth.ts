@@ -1,7 +1,11 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { getCoachCredentials } from "@/lib/auth";
 
+/** Claim/messages account-id tokens. The portal contract lives in alum-session.ts. */
+export const HOYA_ALUM_SESSION_COOKIE = "hoya_alum_session";
 export const ALUMNI_SESSION_COOKIE = "ga_alumni_session";
+export const LEGACY_ALUMNI_SESSION_COOKIE = ALUMNI_SESSION_COOKIE;
+export const ALUMNI_SESSION_COOKIES = [HOYA_ALUM_SESSION_COOKIE, LEGACY_ALUMNI_SESSION_COOKIE] as const;
 
 function hmac(secret: string, value: string) {
   return createHmac("sha256", secret).update(value).digest("hex");
@@ -45,8 +49,10 @@ export function createAlumniSessionToken(accountId: string) {
 export function readAlumniSessionAccountId(token: string | undefined | null) {
   if (!token) return null;
   const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  const [accountId, issuedAt, signature] = parts;
+  if (parts.length < 3) return null;
+  const signature = parts.pop();
+  const issuedAt = parts.pop();
+  const accountId = parts.join(".");
   if (!accountId || !issuedAt || !signature) return null;
   const expected = hmac(alumniSessionSecret(), `${accountId}.${issuedAt}`);
   if (!safeEqual(signature, expected)) return null;
@@ -55,6 +61,14 @@ export function readAlumniSessionAccountId(token: string | undefined | null) {
 
 export function isValidAlumniSessionToken(token: string | undefined | null) {
   return Boolean(readAlumniSessionAccountId(token));
+}
+
+export function readAlumniSessionFromCookies(getCookie: (name: string) => string | undefined | null) {
+  for (const name of ALUMNI_SESSION_COOKIES) {
+    const accountId = readAlumniSessionAccountId(getCookie(name));
+    if (accountId) return { cookie: name, accountId };
+  }
+  return null;
 }
 
 export function alumniSessionCookieOptions() {

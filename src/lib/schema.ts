@@ -1,4 +1,4 @@
-import { bigint, boolean, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, integer, jsonb, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 export const alumni = pgTable("alumni", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -179,3 +179,37 @@ export const fundraisingPledges = pgTable("fundraising_pledges", {
   source: text("source").notNull().default("intent"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const messageChannels = pgTable("message_channels", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  kind: text("kind").notNull().default("group"),
+  description: text("description"),
+  isPinned: boolean("is_pinned").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const messagePosts = pgTable("message_posts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  channelId: uuid("channel_id")
+    .notNull()
+    .references(() => messageChannels.id, { onDelete: "cascade" }),
+  title: text("title"),
+  body: text("body").notNull(),
+  authorRole: text("author_role"),
+  authorLabel: text("author_label"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const messageReads = pgTable(
+  "message_reads",
+  {
+    viewerKey: text("viewer_key").notNull(),
+    channelId: uuid("channel_id")
+      .notNull()
+      .references(() => messageChannels.id, { onDelete: "cascade" }),
+    lastReadAt: timestamp("last_read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("message_reads_viewer_channel").on(table.viewerKey, table.channelId)],
+);

@@ -57,7 +57,7 @@ Football Program owns Register myself / claim on `cursor/hoya-register-claim-*`.
 
 Helpers: `readAlumSession(req)`, `alumSessionCookieName`, `AlumSession`, `requireAlumRole(...roles)`, `setAlumSessionCookies`, `GET /api/alum/session`.
 
-`ga_alumni_session` is still accepted as a fallback hook until claim switches over. Alum cookies never unlock `/sync`, `/blast`, or `/reports`.
+`ga_alumni_session` is still accepted as a fallback hook until claim switches over. Home/Newsflash preview login may write a locker-shaped token (`{ role, label, iat }` via `hoya-alum-session.ts`) on the same cookie name — portal proxy and viewers accept both. Alum cookies never unlock `/sync`, `/blast`, or `/reports`.
 
 **Email blast:** coach/owner blast is unchanged. Alum blast is hidden until claim auth is real.
 
@@ -106,29 +106,80 @@ table; currently **2003–current**) and upserts into `alumni` / `alumni_roster_
 
 Library: `src/lib/guhoyas-roster.ts` (`fetchGuhoyasRosters`, `mergeRostersIntoAlumni`, `fetchAndMergeGuhoyasRosters`).
 
+## Home / For You / Newsflash
+
+Alumni-facing Home, For You feed, and Lars Newsflash. They use the existing CRM styles, do **not** replace the staff directory, and do not implement claim, athlete profiles, events CRUD, or giving.
+
+| Path | Who | What |
+| --- | --- | --- |
+| `/home/login` | public | Sets `hoya_alum_session` with `role=board` or `role=alum` |
+| `/home` | locker or staff session | Welcome hero, quick actions, upcoming event, recent activity |
+| `/feed` | locker or staff session | Tabs: For You / Teammates / Alumni / Following |
+| `/newsflash` | locker or staff session | Board publishes; alumni read |
+
+### Locker demo session
+
+| Username | Role | Cookie |
+| --- | --- | --- |
+| `Lars` | board (can publish Newsflash) | `hoya_alum_session` `role=board` |
+| `Alum` | alumnus (read Home, For You, Newsflash) | `hoya_alum_session` `role=alum` |
+
+Password defaults to `COACH_PASSWORD` (`Sgarlata35` locally) unless `HOYA_BOARD_PASSWORD` / `HOYA_ALUM_PASSWORD` / `HOYA_LOCKER_PASSWORD` is set.
+
+Verify:
+
+1. Open `/home/login`, sign in as `Lars` / `Sgarlata35`. Confirm Home hero, quick actions, upcoming event, and recent activity.
+2. Open `/newsflash` as Lars and publish a headline. Confirm it appears for an `Alum` session after sign-out / sign-in.
+3. Open `/feed`. For You shows official + alumni posts. Teammates and Following are stubs.
+
+### Seed dependency
+
+Main already has the Sgarlata `alumni` schema. Locker adds (on first connected page load or Newsflash publish):
+
+- `newsflash_posts` — board notes; optional `event_at` drives the Home upcoming-event card
+- `locker_feed_posts` — official + alumni MVP feed rows
+
+If `DATABASE_URL` is missing, Home / For You / Newsflash still render demo content and Newsflash publishes stay in-process. With Neon connected, tables seed on first load. If an `events` table from the Events lane exists, Home prefers the next upcoming row; otherwise it uses a dated Newsflash or the demo card. Directory / Events / Giving quick actions only link those lanes.
+
+Claim / register pages are owned by another lane and are not touched here.
+
 ## Pages
 
-- `/login` — staff gate (`ga_session` for owner/coach; `Alum`/`Lars` mint `hoya_alum_session`)
-- `/alumni-login` — hook for claimed alumni sessions (`POST /api/alumni/login` from Register/Claim)
-- `/register` — hook; Football Program owns the claim flow
-- `/` — owner/coach directory
-- `/portal` — Welcome home: hero, Directory/Events/News/Giving, upcoming event, recent activity
-- `/portal/feed` — For You / Teammates / Alumni / Following (Coder 5)
-- `/portal/directory` — search + All/Athletes/Alumni/Coaches/Staff pills (Coder 1)
+Alum chrome uses existing CRM navy styles (function over polish). Primary nav is **Home · Directory · Events · Giving · Messages**.
+
+- `/login` — staff gate (`ga_session` for owner/coach; `Alum`/`Lars` mint the contract `hoya_alum_session`)
+- `/alumni-login` / `/register` — hooks only; Football Program owns claim ([PR #1](https://github.com/MCubed-BI/HoyaSaxa/pull/1))
+- `/portal` — alum entry; redirects to `/home`
+- `/home` — Welcome hero, Directory/Events/News/Giving, upcoming event, recent activity
+- `/feed` — For You / Teammates / Alumni / Following
+- `/newsflash` — Lars Newsflash (board publishes, alumni read)
+- `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
+- `/portal/directory` — search + All/Athletes/Alumni/Coaches/Staff (Coder 1)
 - `/portal/profile` — Overview/About/Sport/Career (Coder 1)
-- `/portal/events` — Upcoming/Past/My Events + Create Event for coach/board (Coder 2)
-- `/portal/giving` — $25/$50/$100/$250 + Give Now pledge intents (Coder 3)
-- `/portal/messages` — thread list with pinned Sgarlata + Newsflash (Coder 4)
-- `/portal/newsflash` — board posts
+- `/portal/events` — Upcoming/Past/My Events stub (Coder 2)
+- `/portal/giving` — $25/$50/$100/$250 pledge intents (Coder 3)
+- `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases to the shipped lanes
 - `/alum` — redirects to `/portal`
-- `/find-my-alum` — location groups; map slot if Find My Alum is already present
-- `/message` — staff compose for Coach Sgarlata (`coach_messages`)
-- `/newsflash` — staff/board news (`newsflash_posts`)
+- `/find-my-alum` — location groups
+- `/locker` — messages access-code preview (not Register myself)
+- `/home/login` — locker preview login (also writes `hoya_alum_session`)
+- `/` — owner/coach directory
+- `/alumni/[id]` — full player card (staff)
 - `/fundraising` — staff campaigns
-- `/me` — hook for the claim editor; shows linked `alumni_id` when a claim exists
-- `/alumni/[id]` — full player card (staff only)
+- `/me` — claim editor hook
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
+
+## Messages
+
+Staff (existing `ga_session` coach gate) can post to **Message from Sgarlata**. Alumni with `hoya_alum_session` (or the Register/Claim `ga_alumni_session` cookie) can read Messages only — Data Sync and other owner tools stay locked.
+
+Tables (`message_channels`, `message_posts`, `message_reads`) are created on first use, same pattern as blast tables. The official Sgarlata channel is seeded pinned.
+
+### Demo
+
+1. Staff: open `/login`, sign in as `Hoyas` / `Sgarlata35`, go to **Messages**, open **Message from Sgarlata**, post a note.
+2. Alum: sign out, open `/locker`, enter access code `HoyaSaxa` (local default). That sets `hoya_alum_session`. Read Messages and the Sgarlata channel — no compose box. Visiting `/sync` redirects back to Messages.
 
 Filters are multi-select: state, city, position, class/grad year, season year, plus has email / phone / LinkedIn. Check alumni on the directory to add a manual blast list. That same list feeds both channels.
 

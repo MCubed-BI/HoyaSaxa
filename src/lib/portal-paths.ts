@@ -2,7 +2,11 @@ const PUBLIC_PATHS = [
   "/login",
   "/register",
   "/alumni-login",
+  "/home/login",
+  "/locker",
   "/api/login",
+  "/api/locker/login",
+  "/api/messages/alum-session",
   "/api/alumni/lookup",
   "/api/alumni/register",
   "/api/alumni/login",
@@ -12,14 +16,24 @@ const PUBLIC_PATHS = [
 const ALUM_ALLOWED_PREFIXES = [
   "/portal",
   "/alum",
-  "/message",
+  "/home",
+  "/feed",
   "/newsflash",
+  "/messages",
+  "/message",
+  "/locker",
   "/fundraising",
   "/find-my-alum",
   "/me",
+  "/directory",
+  "/events",
+  "/giving",
+  "/athletes",
   "/api/portal",
   "/api/alumni",
   "/api/alum",
+  "/api/locker",
+  "/api/messages",
   "/api/logout",
 ];
 
@@ -37,6 +51,16 @@ export function isAlumAllowedPath(pathname: string) {
   return ALUM_ALLOWED_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
+export function isDataSyncPath(pathname: string) {
+  return pathname === "/sync" || pathname.startsWith("/sync/") || pathname.startsWith("/api/data-sync");
+}
+
 export function loginPathFor(pathname: string) {
+  if (pathname === "/home" || pathname.startsWith("/home/") || pathname === "/feed" || pathname.startsWith("/feed/")) {
+    return "/home/login";
+  }
+  if (pathname === "/messages" || pathname.startsWith("/messages/") || pathname === "/locker") {
+    return "/locker";
+  }
   return isAlumAllowedPath(pathname) ? "/alumni-login" : "/login";
 }

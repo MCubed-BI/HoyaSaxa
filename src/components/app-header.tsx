@@ -10,15 +10,17 @@ export function AppHeader({
   current,
   role,
   viewerLabel,
+  shell,
 }: {
   current?: NavKey;
   role?: Role;
   viewerLabel?: string;
+  shell?: "staff" | "alum";
 }) {
-  const resolvedRole = role ?? "owner";
+  const resolvedRole = role ?? (shell === "alum" ? "alum" : "owner");
   const count = useOptionalSelectionCount();
   const items = navItemsForRole(resolvedRole);
-  const homeHref = resolvedRole === "alum" ? "/alum" : "/";
+  const homeHref = resolvedRole === "alum" || resolvedRole === "board" ? "/portal" : "/";
 
   return (
     <header className="border-b border-white/10 bg-navy text-navy-foreground">
@@ -29,7 +31,7 @@ export function AppHeader({
               Georgetown Football
             </p>
             <h1 className="font-heading text-xl tracking-tight text-white sm:text-2xl">
-              {resolvedRole === "alum" ? "Hoya Alum Portal" : "Georgetown Alum"}
+              {resolvedRole === "alum" || resolvedRole === "board" ? "Legacy Locker" : "Georgetown Alum"}
             </h1>
           </Link>
           <p className="mt-0.5 truncate text-[11px] text-white/55">

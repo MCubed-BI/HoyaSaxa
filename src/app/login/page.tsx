@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SESSION_COOKIE, getSessionUsername } from "@/lib/auth";
-import { getCoachCredentials } from "@/lib/auth";
+import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
 import { homePathForRole, resolveRoleFromEnv } from "@/lib/roles";
 
 function safeNextPath(value: string | undefined) {
@@ -34,7 +33,7 @@ export default async function LoginPage({
             Georgetown Football
           </p>
           <h1 className="mt-1 font-heading text-3xl">Georgetown Alum</h1>
-          <p className="mt-2 text-sm text-white/70">Staff gate for owner, coach, and board</p>
+          <p className="mt-2 text-sm text-white/70">Staff gate for owner and coach</p>
         </div>
         <form action="/api/login" method="post" className="space-y-4 px-6 py-6">
           <input type="hidden" name="next" value={safeNextPath(params.next)} />
@@ -65,6 +64,16 @@ export default async function LoginPage({
             <Link href="/register" className="text-muted-foreground underline-offset-4 hover:underline">
               Register myself
             </Link>
+            <p className="pt-1 text-center text-muted-foreground">
+              Locker preview:{" "}
+              <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
+                Home
+              </Link>
+              {" · "}
+              <Link href="/locker" className="text-navy underline-offset-4 hover:underline">
+                Messages
+              </Link>
+            </p>
           </div>
         </form>
       </div>

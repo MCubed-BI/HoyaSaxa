@@ -17,14 +17,14 @@ export function PortalShell({
   const more = portalMoreItems(viewer.role);
 
   return (
-    <div className="legacy-locker flex min-h-full flex-col">
-      <header className="border-b border-gold/25">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+    <div className="flex min-h-full flex-col">
+      <header className="border-b border-white/10 bg-navy text-navy-foreground">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/portal" className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-gold">
+            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/60">
               Georgetown Football
             </p>
-            <h1 className="font-heading text-2xl tracking-tight text-white">Legacy Locker</h1>
+            <h1 className="font-heading text-xl tracking-tight text-white sm:text-2xl">Legacy Locker</h1>
             <p className="mt-0.5 truncate text-[11px] text-white/55">
               {roleLabel(viewer.role)} · {viewer.label}
             </p>
@@ -35,7 +35,7 @@ export function PortalShell({
                 key={item.key}
                 href={item.href}
                 className={`rounded-md px-3 py-1.5 text-sm ${
-                  current === item.key ? "bg-gold text-gold-foreground" : "text-white/75 hover:bg-white/10 hover:text-white"
+                  current === item.key ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 {item.label}
@@ -51,14 +51,14 @@ export function PortalShell({
       </header>
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 pb-24 sm:px-6">{children}</main>
       <MoreLinks items={more} role={viewer.role} />
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-gold/25 bg-[#071428]/95 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-navy text-navy-foreground md:hidden">
         <div className="mx-auto grid max-w-6xl grid-cols-5">
           {primary.map((item) => (
             <Link
               key={item.key}
               href={item.href}
               className={`px-2 py-3 text-center text-[11px] uppercase tracking-wide ${
-                current === item.key ? "text-gold" : "text-white/65"
+                current === item.key ? "text-white" : "text-white/65"
               }`}
             >
               {item.label}
@@ -72,9 +72,9 @@ export function PortalShell({
 
 function MoreLinks({ items, role }: { items: ReturnType<typeof portalMoreItems>; role: Role }) {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-wrap gap-3 px-4 pb-8 text-xs text-white/50 sm:px-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-wrap gap-3 px-4 pb-8 text-xs text-muted-foreground sm:px-6">
       {items.map((item) => (
-        <Link key={item.key} href={item.href} className="hover:text-gold">
+        <Link key={item.key} href={item.href} className="hover:text-navy">
           {item.label}
         </Link>
       ))}

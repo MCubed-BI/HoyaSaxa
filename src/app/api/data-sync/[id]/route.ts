@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { getDataSyncBatch } from "@/lib/data-sync";
 import { ensureDataSyncTable } from "@/lib/data-sync-schema";
 import { isMissingDatabaseConfig } from "@/lib/db";
+import { hasStaffSession, staffUnauthorized } from "@/lib/messages-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await hasStaffSession())) return staffUnauthorized();
   try {
     await ensureDataSyncTable();
     const { id } = await params;

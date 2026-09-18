@@ -4,6 +4,7 @@ import { getCoachCredentials } from "@/lib/auth";
 import { applyDataSyncBatch, createDataSyncBatch, listDataSyncBatches } from "@/lib/data-sync";
 import { ensureDataSyncTable } from "@/lib/data-sync-schema";
 import { isMissingDatabaseConfig } from "@/lib/db";
+import { hasStaffSession, staffUnauthorized } from "@/lib/messages-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ function jsonError(message: string, status: number) {
 }
 
 export async function GET() {
+  if (!(await hasStaffSession())) return staffUnauthorized();
   try {
     await ensureDataSyncTable();
     const batches = await listDataSyncBatches();
@@ -28,6 +30,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!(await hasStaffSession())) return staffUnauthorized();
   try {
     await ensureDataSyncTable();
     const form = await request.formData();

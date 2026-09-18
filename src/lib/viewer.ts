@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ALUMNI_SESSION_COOKIE, readAlumniSessionAccountId } from "@/lib/alumni-auth";
+import { ALUMNI_SESSION_COOKIE, readAlumniSessionAccountId, readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { ALUM_SESSION_COOKIE, isPreviewAlumSession, readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
+import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
 import { getDatabaseUrl } from "@/lib/db";
 import { lookupAlumniClaim, lookupStaffRole } from "@/lib/portal-queries";
 import { homePathForRole, resolveRoleFromEnv, roleLabel, type Role } from "@/lib/roles";
@@ -46,7 +47,8 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
     };
   }
 
-  const contract = readAlumSession(jar.get(ALUM_SESSION_COOKIE)?.value ?? null);
+  const token = jar.get(ALUM_SESSION_COOKIE)?.value ?? null;
+  const contract = readAlumSession(token);
   if (contract) {
     return {
       role: contract.role,
@@ -60,7 +62,22 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
     };
   }
 
-  const accountId = readAlumniSessionAccountId(jar.get(ALUMNI_SESSION_COOKIE)?.value);
+  const locker = readHoyaAlumSession(token);
+  if (locker) {
+    return {
+      role: locker.role,
+      label: locker.label,
+      username: null,
+      email: null,
+      accountId: null,
+      alumniId: null,
+      source: "alum-session",
+      homePath: "/portal",
+    };
+  }
+
+  const messagesAlum = readAlumniSessionFromCookies((name) => jar.get(name)?.value);
+  const accountId = messagesAlum?.accountId ?? readAlumniSessionAccountId(jar.get(ALUMNI_SESSION_COOKIE)?.value);
   if (!accountId) return null;
 
   let email: string | null = null;

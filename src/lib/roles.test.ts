@@ -46,6 +46,10 @@ describe("roles", () => {
       navItemsForRole("alum").some((item) => item.key === "blast"),
       false,
     );
+    assert.deepEqual(
+      navItemsForRole("alum").map((item) => item.href),
+      ["/home", "/portal/directory", "/portal/events", "/portal/giving", "/messages"],
+    );
     assert.equal(homePathForRole("alum"), "/portal");
     assert.equal(homePathForRole("board"), "/portal");
     assert.equal(homePathForRole("owner"), "/");
@@ -60,10 +64,16 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/alum"), true);
     assert.equal(isAlumAllowedPath("/portal"), true);
     assert.equal(isAlumAllowedPath("/portal/directory"), true);
+    assert.equal(isAlumAllowedPath("/home"), true);
+    assert.equal(isAlumAllowedPath("/feed"), true);
+    assert.equal(isAlumAllowedPath("/messages"), true);
     assert.equal(isAlumAllowedPath("/message"), true);
     assert.equal(isAlumAllowedPath("/api/portal/newsflash"), true);
     assert.equal(isAlumAllowedPath("/blast"), false);
+    assert.equal(isPublicPath("/home/login"), true);
     assert.equal(loginPathFor("/portal"), "/alumni-login");
+    assert.equal(loginPathFor("/home"), "/home/login");
+    assert.equal(loginPathFor("/messages"), "/locker");
     assert.equal(loginPathFor("/alum"), "/alumni-login");
     assert.equal(loginPathFor("/reports"), "/login");
   });
