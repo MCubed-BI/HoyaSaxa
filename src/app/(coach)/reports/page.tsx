@@ -1,4 +1,4 @@
-import { AppHeader } from "@/components/app-header";
+import { SiteHeader } from "@/components/site-header";
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { CopyContacts } from "@/components/copy-contacts";
 import { StatusCard } from "@/components/status-card";
@@ -8,6 +8,7 @@ import { isMissingDatabaseConfig } from "@/lib/db";
 import { filtersToSearchParams, hasActiveFilters, parseAlumniFilters } from "@/lib/filters";
 import { getAlumniFacets, getContactExportRows, getReportSummary } from "@/lib/queries";
 import { displayName } from "@/lib/format";
+import { requireRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await requireRole(["owner", "coach"]);
   const params = await searchParams;
   const filters = parseAlumniFilters(params);
   const query = filtersToSearchParams(filters).toString();
@@ -29,7 +31,7 @@ export default async function ReportsPage({
 
     return (
       <div className="flex min-h-full flex-col">
-        <AppHeader current="reports" />
+        <SiteHeader current="reports" />
         <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -126,7 +128,7 @@ export default async function ReportsPage({
   } catch (error) {
     return (
       <div className="flex min-h-full flex-col">
-        <AppHeader current="reports" />
+        <SiteHeader current="reports" />
         <main className="mx-auto w-full max-w-6xl px-4 py-6">
           <StatusCard
             title="Reports unavailable"

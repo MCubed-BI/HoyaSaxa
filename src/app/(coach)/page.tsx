@@ -1,11 +1,13 @@
-import { AppHeader } from "@/components/app-header";
 import { AlumniDirectory } from "@/components/alumni-directory";
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { BlastBar } from "@/components/blast-bar";
+import { SiteHeader } from "@/components/site-header";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { hasActiveFilters, parseAlumniFilters, parsePage } from "@/lib/filters";
 import { searchAlumni } from "@/lib/queries";
+import { canUseBlast } from "@/lib/roles";
+import { requireRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,7 @@ export default async function DirectoryPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const viewer = await requireRole(["owner", "coach", "board"]);
   const params = await searchParams;
   const filters = parseAlumniFilters(params);
   const page = parsePage(params);
@@ -33,7 +36,7 @@ export default async function DirectoryPage({
 
   return (
     <div className="flex min-h-full flex-col">
-      <AppHeader current="directory" />
+      <SiteHeader current="directory" />
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -63,11 +66,13 @@ export default async function DirectoryPage({
                   pageSize={result.pageSize}
                   filters={filters}
                 />
-                <BlastBar
-                  filters={filters}
-                  pageIds={result.rows.map((row) => row.id)}
-                  totalMatching={result.total}
-                />
+                {canUseBlast(viewer.role) ? (
+                  <BlastBar
+                    filters={filters}
+                    pageIds={result.rows.map((row) => row.id)}
+                    totalMatching={result.total}
+                  />
+                ) : null}
               </>
             )}
           </>

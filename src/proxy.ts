@@ -1,69 +1,37 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isAlumLoggedIn, isCoachLoggedIn } from "@/lib/session";
+import { ALUM_SESSION_COOKIE, isAlumLoggedIn, readAlumSession } from "@/lib/alum-session";
 import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { HOYA_ALUM_SESSION_COOKIE, isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
-import {
-  isLockerPath,
-  isPublicPath as isHomePublicPath,
-  loginPathFor as lockerLoginPathFor,
-} from "@/lib/locker-paths";
+import { isLockerPath } from "@/lib/locker-paths";
 import {
   isAlumAllowedPath,
   isDataSyncPath,
-  isPublicPath as isMessagesPublicPath,
-  loginPathFor as messagesLoginPathFor,
-} from "@/lib/messages-auth";
+  isPublicPath,
+  loginPathFor as portalLoginPathFor,
+} from "@/lib/portal-paths";
+import { isCoachLoggedIn } from "@/lib/session";
 
-// Auth boundary: alum vs coach. Claim/register must call isAlumLoggedIn(cookies)
+// Auth boundary: alum vs coach. Portal and claim call isAlumLoggedIn(cookies)
 // from `@/lib/alum-session` (cookie `hoya_alum_session`, role `"alum"`).
-// Same HMAC signer as GTown portal. Locker Home uses a locker-format token on
-// the same cookie name. Do not use isCoachLoggedIn / `ga_session` for alum.
+// Same HMAC signer as GTown / Register myself. Locker Home may also mint a
+// locker-format token on the same cookie name. Do not use ga_session for alum.
 
-const CLAIM_PUBLIC_PATHS = [
-  "/register",
-  "/alumni-login",
-  "/api/alumni/lookup",
-  "/api/alumni/register",
-  "/api/alumni/login",
-  "/api/session",
-];
-
-function isClaimPublicPath(pathname: string) {
-  return CLAIM_PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
-}
-
-function isGivingPublicPath(pathname: string) {
-  return pathname === "/giving" || pathname.startsWith("/giving/") || pathname.startsWith("/api/giving");
-}
-
-function isPublicPath(pathname: string) {
-  return (
-    isHomePublicPath(pathname) ||
-    isMessagesPublicPath(pathname) ||
-    isClaimPublicPath(pathname) ||
-    isGivingPublicPath(pathname)
-  );
-}
-
-function isAlumFacingPath(pathname: string) {
-  return isLockerPath(pathname) || isAlumAllowedPath(pathname);
-}
-
-function isAlumniPath(pathname: string) {
+function isAlumniClaimPath(pathname: string) {
   return pathname === "/me" || pathname.startsWith("/me/") || pathname.startsWith("/api/alumni/");
 }
 
 function loginPathFor(pathname: string) {
-  if (isAlumniPath(pathname)) return "/alumni-login";
-  if (isLockerPath(pathname)) return lockerLoginPathFor(pathname);
-  if (isAlumAllowedPath(pathname)) return messagesLoginPathFor(pathname);
-  return "/login";
+  if (isAlumniClaimPath(pathname)) return "/alumni-login";
+  return portalLoginPathFor(pathname);
 }
 
 function hasPortalAlumSession(request: NextRequest) {
-  if (isValidHoyaAlumSession(request.cookies.get(HOYA_ALUM_SESSION_COOKIE)?.value)) {
-    return true;
-  }
+  if (isAlumLoggedIn(request.cookies)) return true;
+  const token =
+    request.cookies.get(ALUM_SESSION_COOKIE)?.value ??
+    request.cookies.get(HOYA_ALUM_SESSION_COOKIE)?.value ??
+    null;
+  if (readAlumSession(token) || isValidHoyaAlumSession(token)) return true;
   return Boolean(readAlumniSessionFromCookies((name) => request.cookies.get(name)?.value));
 }
 
@@ -74,7 +42,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isAlumniPath(pathname)) {
+  if (isAlumniClaimPath(pathname)) {
     if (isAlumLoggedIn(request.cookies)) {
       return NextResponse.next();
     }
@@ -92,23 +60,24 @@ export function proxy(request: NextRequest) {
   }
 
   const alum = hasPortalAlumSession(request);
+  const alumFacing = isAlumAllowedPath(pathname) || isLockerPath(pathname);
 
   if (alum && isDataSyncPath(pathname)) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.redirect(new URL("/messages", request.url));
+    return NextResponse.redirect(new URL("/portal", request.url));
   }
 
-  if (alum && isAlumFacingPath(pathname)) {
+  if (alum && alumFacing) {
     return NextResponse.next();
   }
 
-  if (alum && !isAlumFacingPath(pathname)) {
+  if (alum && !alumFacing) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.redirect(new URL("/messages", request.url));
+    return NextResponse.redirect(new URL("/portal", request.url));
   }
 
   if (pathname.startsWith("/api/")) {

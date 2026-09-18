@@ -132,6 +132,54 @@ export const dataSync = pgTable("data_sync", {
   appliedAt: timestamp("applied_at", { withTimezone: true }),
 });
 
+export const staffRoles = pgTable("staff_roles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  username: text("username"),
+  email: text("email"),
+  role: text("role").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const coachMessages = pgTable("coach_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title"),
+  body: text("body").notNull(),
+  authorRole: text("author_role"),
+  authorLabel: text("author_label"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const newsflashPosts = pgTable("newsflash_posts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  eventAt: timestamp("event_at", { withTimezone: true }),
+  authorLabel: text("author_label"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const fundraisingCampaigns = pgTable("fundraising_campaigns", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  description: text("description"),
+  goalCents: integer("goal_cents"),
+  donateUrl: text("donate_url"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const fundraisingPledges = pgTable("fundraising_pledges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  campaignId: uuid("campaign_id").references(() => fundraisingCampaigns.id, { onDelete: "set null" }),
+  alumniId: uuid("alumni_id"),
+  name: text("name"),
+  email: text("email"),
+  amountCents: integer("amount_cents"),
+  note: text("note"),
+  source: text("source").notNull().default("intent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const messageChannels = pgTable("message_channels", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: text("slug").notNull().unique(),

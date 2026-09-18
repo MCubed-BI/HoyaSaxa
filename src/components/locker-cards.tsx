@@ -17,16 +17,16 @@ export function formatLockerDate(value: string) {
 export function QuickActions({ canOpenStaffDirectory }: { canOpenStaffDirectory: boolean }) {
   const actions = [
     {
-      href: canOpenStaffDirectory ? "/" : "/feed?tab=alumni",
+      href: canOpenStaffDirectory ? "/" : "/directory",
       title: "Directory",
       body: canOpenStaffDirectory
         ? "Staff directory and athlete cards."
-        : "Alumni posts for now. Profiles land with the Directory lane.",
+        : "Read-only Hoya Directory. Profiles stay with the Directory lane.",
     },
     {
-      href: "/events",
+      href: "/portal/events",
       title: "Events",
-      body: "Calendar and RSVP live with the Events lane.",
+      body: "Upcoming / Past / My Events stub until the Events lane lands.",
     },
     {
       href: "/newsflash",
@@ -34,9 +34,9 @@ export function QuickActions({ canOpenStaffDirectory }: { canOpenStaffDirectory:
       body: "Lars Newsflash — board writes, alumni read.",
     },
     {
-      href: "/giving",
+      href: "/portal/giving",
       title: "Giving",
-      body: "Campaigns and pledges live with the Giving lane.",
+      body: "Pledge amounts now. Stripe and campaigns stay with the Giving lane.",
     },
   ];
 

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
+import { ALUM_SESSION_COOKIE, readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
 import {
   HOYA_ALUM_SESSION_COOKIE,
@@ -21,7 +22,19 @@ export type LockerViewer = {
 
 export async function getLockerViewer(): Promise<LockerViewer | null> {
   const jar = await cookies();
-  const locker = readHoyaAlumSession(jar.get(HOYA_ALUM_SESSION_COOKIE)?.value);
+  const token = jar.get(HOYA_ALUM_SESSION_COOKIE)?.value ?? jar.get(ALUM_SESSION_COOKIE)?.value;
+  const contract = readAlumSession(token);
+  if (contract) {
+    return {
+      role: contract.role,
+      label: contract.name || contract.email || lockerRoleLabel(contract.role),
+      source: "hoya_alum_session",
+      canPostNewsflash: canPostNewsflash(contract.role),
+      roleLabel: lockerRoleLabel(contract.role),
+    };
+  }
+
+  const locker = readHoyaAlumSession(token);
   if (locker) {
     return {
       role: locker.role,

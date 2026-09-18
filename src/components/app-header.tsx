@@ -1,18 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { useOptionalSelectionCount } from "@/components/selection-provider";
+import { Button } from "@/components/ui/button";
+import { navItemsForRole, type NavKey } from "@/lib/nav";
+import { roleLabel, type Role } from "@/lib/roles";
 
 export function AppHeader({
   current,
-  shell = "staff",
+  role,
+  viewerLabel,
+  shell,
 }: {
-  current?: "directory" | "events" | "reports" | "blast" | "sync" | "messages" | "giving";
+  current?: NavKey;
+  role?: Role;
+  viewerLabel?: string;
   shell?: "staff" | "alum";
 }) {
+  const resolvedRole = role ?? (shell === "alum" ? "alum" : "owner");
   const count = useOptionalSelectionCount();
-  const homeHref = shell === "alum" ? "/messages" : "/";
+  const items = navItemsForRole(resolvedRole);
+  const homeHref = resolvedRole === "alum" || resolvedRole === "board" ? "/portal" : "/";
 
   return (
     <header className="border-b border-white/10 bg-navy text-navy-foreground">
@@ -22,47 +30,28 @@ export function AppHeader({
             <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/60">
               Georgetown Football
             </p>
-            <h1 className="font-heading text-xl tracking-tight text-white sm:text-2xl">Georgetown Alum</h1>
+            <h1 className="font-heading text-xl tracking-tight text-white sm:text-2xl">
+              {resolvedRole === "alum" || resolvedRole === "board" ? "Legacy Locker" : "Georgetown Alum"}
+            </h1>
           </Link>
+          <p className="mt-0.5 truncate text-[11px] text-white/55">
+            {roleLabel(resolvedRole)}
+            {viewerLabel ? ` · ${viewerLabel}` : ""}
+          </p>
         </div>
         <nav className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
-          {shell === "staff" ? (
-            <>
-              <NavLink href="/" active={current === "directory"}>
-                Directory
-              </NavLink>
-              <NavLink href="/events" active={current === "events"}>
-                Events
-              </NavLink>
-              <NavLink href="/messages" active={current === "messages"}>
-                Messages
-              </NavLink>
-              <NavLink href="/reports" active={current === "reports"}>
-                Reports
-              </NavLink>
-              <NavLink href="/blast" active={current === "blast"}>
-                Blast{count > 0 ? ` (${count})` : ""}
-              </NavLink>
-              <NavLink href="/sync" active={current === "sync"}>
-                Sync
-              </NavLink>
-              <NavLink href="/giving" active={current === "giving"}>
-                Give
-              </NavLink>
-            </>
-          ) : (
-            <>
-              <NavLink href="/events" active={current === "events"}>
-                Events
-              </NavLink>
-              <NavLink href="/messages" active={current === "messages"}>
-                Messages
-              </NavLink>
-              <NavLink href="/giving" active={current === "giving"}>
-                Give
-              </NavLink>
-            </>
-          )}
+          {items.map((item) => (
+            <Link
+              key={`${item.key}-${item.href}`}
+              href={item.href}
+              className={`rounded-md px-3 py-1.5 text-sm ${
+                current === item.key ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {item.label}
+              {item.key === "blast" && count > 0 ? ` (${count})` : ""}
+            </Link>
+          ))}
           <form action="/api/logout" method="post">
             <Button
               type="submit"
@@ -75,18 +64,5 @@ export function AppHeader({
         </nav>
       </div>
     </header>
-  );
-}
-
-function NavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className={`rounded-md px-3 py-1.5 text-sm ${
-        active ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"
-      }`}
-    >
-      {children}
-    </Link>
   );
 }

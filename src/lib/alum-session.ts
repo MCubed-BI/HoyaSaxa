@@ -13,7 +13,9 @@
  *   // or: parseAlumSessionToken(jar.get(ALUM_SESSION_COOKIE)?.value)?.role === "alum"
  *
  * Register myself / alumni login always set role `"alum"` (never `"board"`).
+ * `board` writes Newsflash only. Coach/owner post Sgarlata notes via ga_session.
  * This cookie never unlocks Data Sync, owner blast, or other staff gates.
+ * Locker-preview tokens ({ role, label, iat }) are a separate signer — see hoya-alum-session.ts.
  */
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
@@ -22,6 +24,7 @@ import { getCoachCredentials } from "@/lib/auth";
 
 export const ALUM_SESSION_COOKIE = "hoya_alum_session";
 export const alumSessionCookieName = ALUM_SESSION_COOKIE;
+/** Claim import alias — same cookie as `ALUM_SESSION_COOKIE`, not `ga_session`. */
 export const ALUMNI_SESSION_COOKIE = ALUM_SESSION_COOKIE;
 export const LEGACY_ALUMNI_SESSION_COOKIE = "ga_alumni_session";
 export const ALUM_ROLE = "alum" as const;
@@ -110,6 +113,10 @@ export function setAlumSessionCookies(
 
 export function clearAlumSessionCookie(response: CookieSetter) {
   response.cookies.set(ALUM_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+}
+
+export function clearAlumSessionCookies(response: CookieSetter) {
+  clearAlumSessionCookie(response);
 }
 
 export function createAlumSessionToken(input: {

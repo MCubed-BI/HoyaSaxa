@@ -3,6 +3,7 @@ import {
   HOYA_ALUM_SESSION_COOKIE,
   readAlumniSessionFromCookies,
 } from "@/lib/alumni-auth";
+import { readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
 import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
 
@@ -91,6 +92,17 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
     };
   }
 
+  const token = jar.get(HOYA_ALUM_SESSION_COOKIE)?.value;
+  const contract = readAlumSession(token);
+  if (contract) {
+    return {
+      kind: "alum",
+      label: contract.name || contract.email || "Alumnus",
+      viewerKey: `alum:contract:${contract.alumniId}`,
+      canPost: false,
+    };
+  }
+
   const alum = readAlumniSessionFromCookies((name) => jar.get(name)?.value);
   if (alum) {
     return {
@@ -101,7 +113,7 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
     };
   }
 
-  const locker = readHoyaAlumSession(jar.get(HOYA_ALUM_SESSION_COOKIE)?.value);
+  const locker = readHoyaAlumSession(token);
   if (locker) {
     return {
       kind: "alum",

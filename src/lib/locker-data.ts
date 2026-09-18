@@ -48,7 +48,7 @@ export const DEMO_UPCOMING_EVENT: UpcomingEvent = {
   startsAt: "2026-10-17T16:00:00.000Z",
   location: "Cooper Field · Georgetown",
   source: "demo",
-  href: "/events",
+  href: "/portal/events",
 };
 
 export const DEMO_NEWSFLASH: NewsflashPost[] = [

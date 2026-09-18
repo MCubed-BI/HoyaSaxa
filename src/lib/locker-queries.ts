@@ -160,7 +160,7 @@ async function loadEventsLaneEvent(): Promise<UpcomingEvent | null> {
       startsAt: row.starts_at,
       location: row.location ?? null,
       source: "events",
-      href: "/events",
+      href: "/portal/events",
     };
   } catch {
     return null;

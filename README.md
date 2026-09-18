@@ -2,9 +2,11 @@
 
 Georgetown football alumni CRM (Hoya Football / Georgetown Alum).
 
-Coach-facing CRM for Georgetown football alumni. Head Coach Sgarlata can search the directory, open a player card, and send in-app text or email blasts.
+Coach-facing CRM for Georgetown football alumni, plus an alumnus portal for claimed players. Head Coach Sgarlata can search the directory, open a player card, and send in-app text or email blasts. Claimed alumni see a separate alum shell.
 
 The app reads the existing Neon schema in project **Sgarlata** (`alumni`, `alumni_emails`, `alumni_phones`, `alumni_roster_years`). It does not create those tables.
+
+Additive portal tables (created if missing): `staff_roles`, `coach_messages`, `newsflash_posts`, `fundraising_campaigns`, `fundraising_pledges`. Claim tables stay on the Register/Claim branch.
 
 ## Stack
 
@@ -30,6 +32,36 @@ The app reads the existing Neon schema in project **Sgarlata** (`alumni`, `alumn
    | `COACH_PASSWORD` | `Sgarlata35` | Set a strong shared password |
 
    Defaults are only for local and demo use. Set both variables on Vercel for production.
+
+## Roles
+
+Four roles: **owner**, **coach**, **alum**, and **board** (Lars).
+
+| Role | How it is assigned | What they see |
+| --- | --- | --- |
+| `owner` | `COACH_USERNAME` (default `Hoyas`) and `HOYA_OWNER_USERNAMES` → `ga_session` | Full staff shell: directory, blast, sync, reports, coach messages, newsflash, fundraising |
+| `coach` | `HOYA_COACH_USERNAMES` → `ga_session` | Same owner tools (blast stays on) |
+| `board` | `HOYA_BOARD_USERNAMES` (default `Lars`) → `hoya_alum_session` | Legacy Locker + Newsflash write. Never unlocks Data Sync or coach blast. |
+| `alum` | `hoya_alum_session` from Register/Claim, or preview username `Alum` | Legacy Locker only |
+
+### Alum session contract
+
+Football Program owns Register myself / claim on `cursor/hoya-register-claim-*`. Import `src/lib/alum-session.ts` after a successful claim/login and call `setAlumSessionCookies(response, { role, alumniId, email, name })`. Do not reuse `ga_session`. This repo does not rebuild claim UI.
+
+| Field | Value |
+| --- | --- |
+| Cookie | `hoya_alum_session` (`alumSessionCookieName`) |
+| Flags | httpOnly, Secure in production, SameSite=Lax, path `/` |
+| Payload | HMAC-signed `base64url(JSON).signature` |
+| JSON | `{ v: 1, role: "alum" \| "board", alumniId, email, name, exp }` |
+
+Helpers: `readAlumSession(req)`, `alumSessionCookieName`, `AlumSession`, `requireAlumRole(...roles)`, `setAlumSessionCookies`, `GET /api/alum/session`.
+
+`ga_alumni_session` is still accepted as a fallback hook until claim switches over. Home/Newsflash preview login may write a locker-shaped token (`{ role, label, iat }` via `hoya-alum-session.ts`) on the same cookie name — portal proxy and viewers accept both. Alum cookies never unlock `/sync`, `/blast`, or `/reports`.
+
+**Email blast:** coach/owner blast is unchanged. Alum blast is hidden until claim auth is real.
+
+Local preview: `/login` as `Alum` or `Lars` with the coach password mints `hoya_alum_session` and opens `/portal`.
 
 4. Install and run:
 
@@ -113,22 +145,31 @@ Claim / register pages are owned by another lane and are not touched here.
 
 ## Pages
 
-- `/login` — shared coach password gate, plus **Register myself** / **Alumni login**
-- `/register` — alumni claim: roster last name + graduating class (`’15` or `2015`)
+Alum chrome uses existing CRM styles (function over polish). Primary nav is **Home · Directory · Events · Giving · Messages**.
+
+- `/login` — staff gate (`ga_session` for owner/coach; `Alum`/`Lars` mint `hoya_alum_session`)
+- `/register` — alumni claim (last name + graduating class)
 - `/alumni-login` — alumni email/password login
-- `/me` — edit claimed records or merge a duplicate roster row
-- `/directory` — public Legacy Locker directory (search + All / Athletes / Alumni / Coaches / Staff)
-- `/athletes/[id]` — public athlete profile shell (Overview / Stats / Photos / Career / Q&A)
-- `/home` — alumni Home (hero, quick actions, upcoming event, recent activity)
-- `/feed` — For You tabs (official Newsflash + alumni posts)
+- `/me` — edit claimed records or merge a duplicate
+- `/portal` — alum entry; redirects to `/home`
+- `/home` — Welcome hero, Directory/Events/News/Giving, upcoming event, recent activity
+- `/feed` — For You / Teammates / Alumni / Following
 - `/newsflash` — Lars Newsflash (board publishes, alumni read)
 - `/events` — Upcoming / Past / My Events (date, title, category, location, thumbnail)
 - `/events/new` — Create Event (coach and board only)
-- `/locker` — alumni session access (`hoya_alum_session`; not Register myself)
+- `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
+- `/directory` — public Hoya Directory (search + All/Athletes/Alumni/Coaches/Staff)
+- `/athletes/[id]` — public athlete profile (Overview/Stats/Photos/Career/Q&A)
+- `/portal/directory` / `/portal/profile` — aliases to `/directory`
+- `/portal/events` / `/portal/giving` — aliases to `/events` and `/giving`
+- `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases to the shipped lanes
+- `/alum` — redirects to `/portal`
+- `/find-my-alum` — location groups
+- `/locker` — messages access-code preview
+- `/home/login` — locker preview login
 - `/` — searchable staff directory (cards on mobile, table on desktop)
 - `/alumni/[id]` — full staff player card
-- `/messages` — inbox with All / Unread / Groups filters
-- `/messages/sgarlata` — official pinned Message from Sgarlata channel
+- `/fundraising` — staff campaigns
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
 - `/giving` — fundraising MVP: $25 / $50 / $100 / $250 / Other, Give Now, Impact / Funds / Leaderboards tabs. Pledges are unpaid intents in Neon (`giving_pledges`). Stripe is later.
@@ -196,4 +237,4 @@ Set `EMAIL_FROM` plus one API key to send from the app. Prefer Resend. Without t
 
 ## Deploy
 
-Deploy to Vercel. Set `DATABASE_URL`, `COACH_USERNAME`, and `COACH_PASSWORD`. Add Twilio and/or Resend (or SendGrid) when you are ready to send from the app. Auth stays on for every environment — unauthenticated visitors never see alumni data.
+Deploy to Vercel. Set `DATABASE_URL`, `COACH_USERNAME`, and `COACH_PASSWORD`. Optionally set `HOYA_OWNER_USERNAMES`, `HOYA_COACH_USERNAMES`, `HOYA_BOARD_USERNAMES`, `HOYA_ALUM_USERNAMES`, and `ALUMNI_SESSION_SECRET`. Add Twilio and/or Resend (or SendGrid) when you are ready to send from the app. Auth stays on for every environment — unauthenticated visitors never see alumni data.

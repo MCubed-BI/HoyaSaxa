@@ -4,10 +4,11 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
+import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
+import { homePathForRole, resolveRoleFromEnv } from "@/lib/roles";
 
 function safeNextPath(value: string | undefined) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "";
   return value;
 }
 
@@ -18,8 +19,10 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const jar = await cookies();
-  if (isValidSessionToken(jar.get(SESSION_COOKIE)?.value)) {
-    redirect(safeNextPath(params.next));
+  const staffUsername = getSessionUsername(jar.get(SESSION_COOKIE)?.value);
+  if (staffUsername) {
+    const role = resolveRoleFromEnv(staffUsername, getCoachCredentials().username);
+    redirect(safeNextPath(params.next) || homePathForRole(role));
   }
 
   return (
@@ -30,7 +33,7 @@ export default async function LoginPage({
             Georgetown Football
           </p>
           <h1 className="mt-1 font-heading text-3xl">Georgetown Alum</h1>
-          <p className="mt-2 text-sm text-white/70">Coach access for Head Coach Sgarlata</p>
+          <p className="mt-2 text-sm text-white/70">Staff gate for owner and coach</p>
         </div>
         <form action="/api/login" method="post" className="space-y-4 px-6 py-6">
           <input type="hidden" name="next" value={safeNextPath(params.next)} />
@@ -46,7 +49,9 @@ export default async function LoginPage({
             <p className="text-sm text-destructive">That username or password is not recognized.</p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Shared staff login. Do not share alumni lists outside the coaching staff.
+              Shared staff password. <span className="font-medium">Hoyas</span> is owner.{" "}
+              <span className="font-medium">Lars</span> and <span className="font-medium">Alum</span> mint{" "}
+              <code>hoya_alum_session</code> and open Legacy Locker.
             </p>
           )}
           <Button type="submit" className="w-full">
@@ -59,17 +64,17 @@ export default async function LoginPage({
             <Link href="/alumni-login" className="text-muted-foreground underline-offset-4 hover:underline">
               Alumni login
             </Link>
+            <p className="pt-1 text-center text-muted-foreground">
+              Locker preview:{" "}
+              <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
+                Home
+              </Link>
+              {" · "}
+              <Link href="/locker" className="text-navy underline-offset-4 hover:underline">
+                Messages
+              </Link>
+            </p>
           </div>
-          <p className="text-center text-sm text-muted-foreground">
-            Alumni locker:{" "}
-            <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
-              Home / For You / Newsflash
-            </Link>
-            {" · "}
-            <Link href="/locker" className="text-navy underline-offset-4 hover:underline">
-              Messages access
-            </Link>
-          </p>
         </form>
       </div>
     </main>

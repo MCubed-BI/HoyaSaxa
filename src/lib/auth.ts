@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { allStaffUsernames } from "@/lib/roles";
 
 export const SESSION_COOKIE = "ga_session";
 export const COACH_ROLE = "coach" as const;
@@ -27,33 +28,56 @@ function sessionSecret() {
   return hmac("georgetown-alum-session", `${username}:${password}`);
 }
 
-export function createSessionToken() {
-  const { username } = getCoachCredentials();
+function allowedStaffUsernames() {
+  return allStaffUsernames(getCoachCredentials().username);
+}
+
+function isAllowedStaffUsername(username: string) {
+  const needle = username.trim().toLowerCase();
+  return allowedStaffUsernames().some((item) => item.toLowerCase() === needle);
+}
+
+function boardPassword() {
+  return process.env.HOYA_BOARD_PASSWORD || getCoachCredentials().password;
+}
+
+export function createSessionToken(username?: string) {
+  const staffUsername = (username?.trim() || getCoachCredentials().username).trim();
   const issuedAt = Date.now().toString();
-  const payload = `${username}.${issuedAt}`;
+  const payload = `${staffUsername}.${issuedAt}`;
   return `${payload}.${hmac(sessionSecret(), payload)}`;
 }
 
-export function isValidSessionToken(token: string | undefined | null) {
-  if (!token) return false;
+export function readSessionUsername(token: string | undefined | null) {
+  if (!token) return null;
   const parts = token.split(".");
-  if (parts.length !== 3) return false;
+  if (parts.length !== 3) return null;
   const [username, issuedAt, signature] = parts;
-  if (!username || !issuedAt || !signature) return false;
-  const { username: expectedUser } = getCoachCredentials();
-  if (!safeEqual(username, expectedUser)) return false;
+  if (!username || !issuedAt || !signature) return null;
   const expected = hmac(sessionSecret(), `${username}.${issuedAt}`);
-  return safeEqual(signature, expected);
+  if (!safeEqual(signature, expected)) return null;
+  if (!isAllowedStaffUsername(username)) return null;
+  return username;
 }
 
 export function getSessionUsername(token: string | undefined | null) {
-  if (!token || !isValidSessionToken(token)) return null;
-  return token.split(".")[0] ?? null;
+  return readSessionUsername(token);
+}
+
+export function isValidSessionToken(token: string | undefined | null) {
+  return Boolean(readSessionUsername(token));
 }
 
 export function verifyCredentials(username: string, password: string) {
-  const creds = getCoachCredentials();
-  return safeEqual(username.trim(), creds.username) && safeEqual(password, creds.password);
+  const trimmed = username.trim();
+  if (!isAllowedStaffUsername(trimmed)) return false;
+  const { password: coachPassword } = getCoachCredentials();
+  const boardNames = (process.env.HOYA_BOARD_USERNAMES || "Lars")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  const useBoardPassword = Boolean(process.env.HOYA_BOARD_PASSWORD) && boardNames.includes(trimmed.toLowerCase());
+  return safeEqual(password, useBoardPassword ? boardPassword() : coachPassword);
 }
 
 export function sessionCookieOptions() {
