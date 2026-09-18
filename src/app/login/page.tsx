@@ -51,6 +51,13 @@ export default async function LoginPage({
           <Button type="submit" className="w-full">
             Sign in
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Alumni locker (Home / For You / Newsflash) is a separate session at{" "}
+            <a href="/home/login" className="underline underline-offset-2">
+              /home/login
+            </a>
+            .
+          </p>
         </form>
       </div>
     </main>
