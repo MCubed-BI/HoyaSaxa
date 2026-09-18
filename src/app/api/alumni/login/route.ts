@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { authenticateAlumni } from "@/lib/alumni-claim";
+import { alumSessionIdentityForAccount, authenticateAlumni } from "@/lib/alumni-claim";
 import { setAlumSessionCookies } from "@/lib/session";
 
 function safeNextPath(value: string | null) {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       const body = (await request.json()) as { email?: string; password?: string };
       const account = await authenticateAlumni(body.email ?? "", body.password ?? "");
       const response = NextResponse.json({ ok: true, role: "alum" });
-      setAlumSessionCookies(response, account.id);
+      setAlumSessionCookies(response, await alumSessionIdentityForAccount(account));
       return response;
     }
 
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const next = safeNextPath(typeof form.get("next") === "string" ? String(form.get("next")) : "/me");
     const account = await authenticateAlumni(email, password);
     const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
-    setAlumSessionCookies(response, account.id);
+    setAlumSessionCookies(response, await alumSessionIdentityForAccount(account));
     return response;
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {

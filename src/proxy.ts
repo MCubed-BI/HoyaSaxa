@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ALUMNI_SESSION_COOKIE, isValidAlumniSessionToken, readAlumniSessionFromCookies } from "@/lib/alumni-auth";
-import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
+import { isAlumLoggedIn, isCoachLoggedIn } from "@/lib/session";
+import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { HOYA_ALUM_SESSION_COOKIE, isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
 import {
   isLockerPath,
@@ -13,6 +13,11 @@ import {
   isPublicPath as isMessagesPublicPath,
   loginPathFor as messagesLoginPathFor,
 } from "@/lib/messages-auth";
+
+// Auth boundary: alum vs coach. Claim/register must call isAlumLoggedIn(cookies)
+// from `@/lib/alum-session` (cookie `hoya_alum_session`, role `"alum"`).
+// Locker Home uses a locker-format token on the same cookie name.
+// Do not use isCoachLoggedIn / `ga_session` for alum.
 
 const CLAIM_PUBLIC_PATHS = [
   "/register",
@@ -46,15 +51,11 @@ function loginPathFor(pathname: string) {
   return "/login";
 }
 
-function hasAlumSession(request: NextRequest) {
+function hasPortalAlumSession(request: NextRequest) {
   if (isValidHoyaAlumSession(request.cookies.get(HOYA_ALUM_SESSION_COOKIE)?.value)) {
     return true;
   }
   return Boolean(readAlumniSessionFromCookies((name) => request.cookies.get(name)?.value));
-}
-
-function hasClaimSession(request: NextRequest) {
-  return isValidAlumniSessionToken(request.cookies.get(ALUMNI_SESSION_COOKIE)?.value);
 }
 
 export function proxy(request: NextRequest) {
@@ -65,7 +66,7 @@ export function proxy(request: NextRequest) {
   }
 
   if (isAlumniPath(pathname)) {
-    if (hasClaimSession(request)) {
+    if (isAlumLoggedIn(request.cookies)) {
       return NextResponse.next();
     }
     if (pathname.startsWith("/api/")) {
@@ -77,12 +78,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const staffToken = request.cookies.get(SESSION_COOKIE)?.value;
-  if (isValidSessionToken(staffToken)) {
+  if (isCoachLoggedIn(request.cookies)) {
     return NextResponse.next();
   }
 
-  const alum = hasAlumSession(request);
+  const alum = hasPortalAlumSession(request);
 
   if (alum && isDataSyncPath(pathname)) {
     if (pathname.startsWith("/api/")) {

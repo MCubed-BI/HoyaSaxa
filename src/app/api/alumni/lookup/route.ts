@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { ALUMNI_SESSION_COOKIE, readAlumniSessionAccountId } from "@/lib/alumni-auth";
+import { accountIdFromCookies, lookupRosterMatches, publicMatch } from "@/lib/alumni-claim";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { lookupRosterMatches, publicMatch } from "@/lib/alumni-claim";
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { lastName?: string; classYear?: string };
     const jar = await cookies();
-    const accountId = readAlumniSessionAccountId(jar.get(ALUMNI_SESSION_COOKIE)?.value);
+    const accountId = await accountIdFromCookies(jar);
     const result = await lookupRosterMatches(body.lastName ?? "", body.classYear ?? "", accountId);
     return NextResponse.json({
       lastName: result.lastName,

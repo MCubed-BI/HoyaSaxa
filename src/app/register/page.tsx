@@ -3,11 +3,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth-shell";
 import { RegisterMyself } from "@/components/register-myself";
-import { ALUMNI_SESSION_COOKIE, isValidAlumniSessionToken } from "@/lib/alumni-auth";
+import { isAlumLoggedIn } from "@/lib/alum-session";
 
 export default async function RegisterPage() {
   const jar = await cookies();
-  if (isValidAlumniSessionToken(jar.get(ALUMNI_SESSION_COOKIE)?.value)) {
+  if (isAlumLoggedIn(jar)) {
     redirect("/me");
   }
 

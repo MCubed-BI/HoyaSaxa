@@ -1,5 +1,32 @@
-import { ALUM_ROLE, ALUMNI_SESSION_COOKIE, alumniSessionCookieOptions, createAlumniSessionToken, isValidAlumniSessionToken } from "@/lib/alumni-auth";
+/**
+ * Auth-boundary session helpers.
+ *
+ * How portal checks “is alum logged in”:
+ *   import { isAlumLoggedIn } from "@/lib/alum-session";
+ *   const alum = isAlumLoggedIn(await cookies());
+ *
+ * Canonical alum cookie lives in `src/lib/alum-session.ts`:
+ *   - alum:  httpOnly `hoya_alum_session` — HMAC JSON `{ v:1, role:"alum"|"board", alumniId, email, name, exp }`
+ *   - coach: httpOnly `ga_session` — staff gate; never treat as alum
+ *   - hint:  readable `ga_role=alum|coach` for client chrome only (not authorization)
+ *   - JSON:  GET /api/session → { role, roles, alum, coach }
+ *
+ * `isAlumLoggedIn` is the portal detect helper. `ga_role` is a hint, not proof.
+ */
+import {
+  ALUM_ROLE,
+  ALUM_SESSION_COOKIE,
+  LEGACY_ALUMNI_SESSION_COOKIE,
+  alumSessionCookieOptions,
+  createAlumSessionToken,
+  isAlumLoggedIn,
+  type AlumSessionPayload,
+  type CookieReader,
+} from "@/lib/alum-session";
 import { COACH_ROLE, SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
+
+export { ALUM_ROLE, ALUM_SESSION_COOKIE, ALUMNI_SESSION_COOKIE, BOARD_ROLE, getAlumSession, isAlumLoggedIn } from "@/lib/alum-session";
+export { COACH_ROLE, SESSION_COOKIE } from "@/lib/auth";
 
 export const SESSION_ROLE_COOKIE = "ga_role";
 export type SessionRole = typeof ALUM_ROLE | typeof COACH_ROLE;
@@ -11,14 +38,18 @@ export type SessionInfo = {
   coach: boolean;
 };
 
-function cookieValue(cookies: { get(name: string): { value: string } | undefined }, name: string) {
+function cookieValue(cookies: CookieReader, name: string) {
   return cookies.get(name)?.value;
 }
 
-export function readSessionInfo(cookies: { get(name: string): { value: string } | undefined }): SessionInfo {
+export function isCoachLoggedIn(cookies: CookieReader) {
+  return isValidSessionToken(cookieValue(cookies, SESSION_COOKIE));
+}
+
+export function readSessionInfo(cookies: CookieReader): SessionInfo {
   const roles: SessionRole[] = [];
-  if (isValidAlumniSessionToken(cookieValue(cookies, ALUMNI_SESSION_COOKIE))) roles.push(ALUM_ROLE);
-  if (isValidSessionToken(cookieValue(cookies, SESSION_COOKIE))) roles.push(COACH_ROLE);
+  if (isAlumLoggedIn(cookies)) roles.push(ALUM_ROLE);
+  if (isCoachLoggedIn(cookies)) roles.push(COACH_ROLE);
   return {
     role: roles[0] ?? null,
     roles,
@@ -43,13 +74,27 @@ type CookieSetter = {
   };
 };
 
-export function setAlumSessionCookies(response: CookieSetter, accountId: string) {
-  response.cookies.set(ALUMNI_SESSION_COOKIE, createAlumniSessionToken(accountId), alumniSessionCookieOptions());
+export function setAlumSessionCookies(
+  response: CookieSetter,
+  identity: Pick<AlumSessionPayload, "alumniId" | "email" | "name"> & { role?: AlumSessionPayload["role"] },
+) {
+  response.cookies.set(
+    ALUM_SESSION_COOKIE,
+    createAlumSessionToken({
+      alumniId: identity.alumniId,
+      email: identity.email,
+      name: identity.name,
+      role: identity.role ?? ALUM_ROLE,
+    }),
+    alumSessionCookieOptions(),
+  );
+  response.cookies.set(LEGACY_ALUMNI_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
   response.cookies.set(SESSION_ROLE_COOKIE, ALUM_ROLE, roleHintCookieOptions());
 }
 
 export function clearAlumSessionCookies(response: CookieSetter, remainingCoach: boolean) {
-  response.cookies.set(ALUMNI_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+  response.cookies.set(ALUM_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+  response.cookies.set(LEGACY_ALUMNI_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
   if (remainingCoach) {
     response.cookies.set(SESSION_ROLE_COOKIE, COACH_ROLE, roleHintCookieOptions());
   } else {

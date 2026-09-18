@@ -1,13 +1,16 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { isValidAlumniSessionToken, readAlumniSessionFromCookies } from "@/lib/alumni-auth";
+import { isAlumLoggedIn } from "@/lib/alum-session";
+import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { SESSION_COOKIE } from "@/lib/auth";
+import { HOYA_ALUM_SESSION_COOKIE, isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
 import { clearCoachSessionCookies } from "@/lib/session";
 
 export async function POST(request: Request) {
   const jar = await cookies();
   const remainingAlum = Boolean(
-    isValidAlumniSessionToken(jar.get("ga_alumni_session")?.value) ||
+    isAlumLoggedIn(jar) ||
+      isValidHoyaAlumSession(jar.get(HOYA_ALUM_SESSION_COOKIE)?.value) ||
       readAlumniSessionFromCookies((name) => jar.get(name)?.value),
   );
   const cookieHeader = request.headers.get("cookie") ?? "";

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { registerAlumniAccount } from "@/lib/alumni-claim";
+import { alumSessionIdentityForAccount, registerAlumniAccount } from "@/lib/alumni-claim";
 import { setAlumSessionCookies } from "@/lib/session";
 
 export async function POST(request: Request) {
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       claimedIds: result.claimedIds,
       classYear: result.classYear,
     });
-    setAlumSessionCookies(response, result.account.id);
+    setAlumSessionCookies(response, await alumSessionIdentityForAccount(result.account));
     return response;
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {

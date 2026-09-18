@@ -5,9 +5,7 @@ import { getCoachCredentials } from "@/lib/auth";
 export const HOYA_ALUM_SESSION_COOKIE = "hoya_alum_session";
 /** Register/Claim + portal PRs still mint this name — accept it too. */
 export const LEGACY_ALUMNI_SESSION_COOKIE = "ga_alumni_session";
-export const ALUMNI_SESSION_COOKIE = LEGACY_ALUMNI_SESSION_COOKIE;
 export const ALUMNI_SESSION_COOKIES = [HOYA_ALUM_SESSION_COOKIE, LEGACY_ALUMNI_SESSION_COOKIE] as const;
-export const ALUM_ROLE = "alum" as const;
 
 function hmac(secret: string, value: string) {
   return createHmac("sha256", secret).update(value).digest("hex");
@@ -44,22 +42,13 @@ export function verifyAlumniPassword(password: string, stored: string) {
 
 export function createAlumniSessionToken(accountId: string) {
   const issuedAt = Date.now().toString();
-  const payload = `${ALUM_ROLE}.${accountId}.${issuedAt}`;
+  const payload = `${accountId}.${issuedAt}`;
   return `${payload}.${hmac(alumniSessionSecret(), payload)}`;
 }
 
 export function readAlumniSessionAccountId(token: string | undefined | null) {
   if (!token) return null;
   const parts = token.split(".");
-  if (parts.length >= 4) {
-    const signature = parts[parts.length - 1];
-    const issuedAt = parts[parts.length - 2];
-    const role = parts[0];
-    const accountId = parts.slice(1, -2).join(".");
-    if (role !== ALUM_ROLE || !accountId || !issuedAt || !signature) return null;
-    const expected = hmac(alumniSessionSecret(), `${role}.${accountId}.${issuedAt}`);
-    return safeEqual(signature, expected) ? accountId : null;
-  }
   if (parts.length < 3) return null;
   const signature = parts.pop();
   const issuedAt = parts.pop();

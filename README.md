@@ -130,7 +130,14 @@ Claim / register pages are owned by another lane and are not touched here.
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
 
-Alumni login is a distinct **alum** session, not coach: httpOnly `ga_alumni_session` (token role `alum`) plus a readable `ga_role=alum` hint. Coach stays on `ga_session` / `ga_role=coach`. `GET /api/session` returns `{ role, roles, alum, coach }` for a future portal shell. Claiming a roster row never unlocks the directory, reports, blast, or sync pages.
+Alumni login is a distinct **alum** session, not coach. Portal detect:
+
+```ts
+import { isAlumLoggedIn, getAlumSession } from "@/lib/alum-session";
+const alum = isAlumLoggedIn(await cookies()); // cookie `hoya_alum_session`, role `"alum"`
+```
+
+Cookie `hoya_alum_session` is httpOnly, Secure in production, SameSite=Lax. Value is HMAC-signed JSON `{ v:1, role:"alum"|"board", alumniId, email, name, exp }`. Register myself always sets `role: "alum"`. Do not use `ga_session` / `isCoachLoggedIn` for alum — that cookie never unlocks Data Sync or owner blast. Optional: readable `ga_role=alum` hint, or `GET /api/session` `{ role, roles, alum, coach }`. Claiming a roster row never unlocks the directory, reports, blast, or sync pages.
 
 The app uses existing Neon tables `alumni_accounts`, `alumni_claims`, and `alumni_record_merges` when present, and creates them if they are missing.
 

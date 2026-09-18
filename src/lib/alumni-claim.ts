@@ -5,6 +5,7 @@ import {
   parseClassYearInput,
 } from "@/lib/alumni-class-year";
 import { hashAlumniPassword, isValidEmail, verifyAlumniPassword } from "@/lib/alumni-auth";
+import { ALUM_ROLE, getAlumSession, type AlumSessionPayload, type CookieReader } from "@/lib/alum-session";
 import type { AlumniDetail, AlumniListItem } from "@/lib/types";
 
 export type ClaimMatch = AlumniListItem & {
@@ -247,6 +248,47 @@ export async function authenticateAlumni(email: string, password: string) {
     throw new Error("That email or password is not recognized.");
   }
   return { id: account.id, email: account.email };
+}
+
+export function alumDisplayName(
+  record?: {
+    preferred_name?: string | null;
+    full_name?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+  } | null,
+  fallback = "",
+) {
+  const preferred = record?.preferred_name?.trim();
+  if (preferred) return preferred;
+  const full = record?.full_name?.trim();
+  if (full) return full;
+  const parts = [record?.first_name, record?.last_name].map((value) => value?.trim()).filter(Boolean);
+  if (parts.length) return parts.join(" ");
+  return fallback;
+}
+
+export async function alumSessionIdentityForAccount(account: { id: string; email: string }): Promise<
+  Pick<AlumSessionPayload, "alumniId" | "email" | "name"> & { role: typeof ALUM_ROLE }
+> {
+  const records = await getClaimedRecords(account.id);
+  const primary = records[0];
+  if (!primary) {
+    throw new Error("Claim a roster row before signing in.");
+  }
+  return {
+    role: ALUM_ROLE,
+    alumniId: primary.id,
+    email: account.email,
+    name: alumDisplayName(primary, account.email),
+  };
+}
+
+export async function accountIdFromCookies(cookies: CookieReader) {
+  const session = getAlumSession(cookies);
+  if (!session) return null;
+  const account = await getAccountByEmail(session.email);
+  return account?.id ?? null;
 }
 
 export async function getClaimedRecords(accountId: string): Promise<ClaimedRecord[]> {

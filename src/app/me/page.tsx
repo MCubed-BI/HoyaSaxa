@@ -3,15 +3,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AlumniMePanel } from "@/components/alumni-me-panel";
 import { Button } from "@/components/ui/button";
-import { ALUMNI_SESSION_COOKIE, readAlumniSessionAccountId } from "@/lib/alumni-auth";
-import { findSameLastNameCandidates, getAccountById, getClaimedRecords } from "@/lib/alumni-claim";
+import { accountIdFromCookies, findSameLastNameCandidates, getAccountById, getClaimedRecords } from "@/lib/alumni-claim";
 import { isMissingDatabaseConfig } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export default async function MePage() {
   const jar = await cookies();
-  const accountId = readAlumniSessionAccountId(jar.get(ALUMNI_SESSION_COOKIE)?.value);
+  const accountId = await accountIdFromCookies(jar);
   if (!accountId) redirect("/alumni-login?next=/me");
 
   try {

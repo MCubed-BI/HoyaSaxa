@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { ALUMNI_SESSION_COOKIE, readAlumniSessionAccountId } from "@/lib/alumni-auth";
-import { findSameLastNameCandidates, getAccountById, getClaimedRecords } from "@/lib/alumni-claim";
+import { accountIdFromCookies, findSameLastNameCandidates, getAccountById, getClaimedRecords } from "@/lib/alumni-claim";
 import { isMissingDatabaseConfig } from "@/lib/db";
 
 export async function GET() {
   try {
     const jar = await cookies();
-    const accountId = readAlumniSessionAccountId(jar.get(ALUMNI_SESSION_COOKIE)?.value);
+    const accountId = await accountIdFromCookies(jar);
     if (!accountId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const account = await getAccountById(accountId);
     if (!account) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

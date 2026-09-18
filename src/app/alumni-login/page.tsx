@@ -5,7 +5,7 @@ import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ALUMNI_SESSION_COOKIE, isValidAlumniSessionToken } from "@/lib/alumni-auth";
+import { isAlumLoggedIn } from "@/lib/alum-session";
 
 function safeNextPath(value: string | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/me";
@@ -20,7 +20,7 @@ export default async function AlumniLoginPage({
 }) {
   const params = await searchParams;
   const jar = await cookies();
-  if (isValidAlumniSessionToken(jar.get(ALUMNI_SESSION_COOKIE)?.value)) {
+  if (isAlumLoggedIn(jar)) {
     redirect(safeNextPath(params.next));
   }
 

@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { ALUMNI_SESSION_COOKIE, readAlumniSessionAccountId } from "@/lib/alumni-auth";
-import { updateClaimedRecord, type AlumniEditInput } from "@/lib/alumni-claim";
+import { accountIdFromCookies, updateClaimedRecord, type AlumniEditInput } from "@/lib/alumni-claim";
 import { isMissingDatabaseConfig } from "@/lib/db";
 
 export async function POST(request: Request) {
   try {
     const jar = await cookies();
-    const accountId = readAlumniSessionAccountId(jar.get(ALUMNI_SESSION_COOKIE)?.value);
+    const accountId = await accountIdFromCookies(jar);
     if (!accountId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = (await request.json()) as { alumniId?: string; patch?: AlumniEditInput };
     if (!body.alumniId) return NextResponse.json({ error: "Missing alumniId" }, { status: 400 });
