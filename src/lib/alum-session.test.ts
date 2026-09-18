@@ -11,6 +11,8 @@ import {
   setAlumSessionCookies,
   writeAlumSessionCookie,
 } from "./alum-session";
+import { createSessionToken, isValidSessionToken } from "./auth";
+import { isCoachLoggedIn, readSessionInfo } from "./session";
 
 describe("hoya_alum_session contract", () => {
   it("exports the cookie name Football Program should set", () => {
@@ -54,6 +56,7 @@ describe("hoya_alum_session contract", () => {
     const token = jar.get("hoya_alum_session");
     assert.ok(token);
     assert.equal(parseAlumSessionToken(token)?.email, "claim@example.com");
+    assert.equal(jar.has("ga_alumni_session"), false);
   });
 
   it("rejects a tampered token and an expired session", () => {
@@ -92,5 +95,50 @@ describe("hoya_alum_session contract", () => {
       { role: "board", alumniId: "44444444-4444-4444-4444-444444444444", email: "lars@hoya.edu", name: "Lars" },
     );
     assert.equal(isAlumLoggedIn({ get: (name) => boardJar.get(name) }), false);
+  });
+
+  it("does not treat an alum token as a coach session", () => {
+    const alum = createAlumSessionToken({
+      role: "alum",
+      alumniId: "11111111-1111-1111-1111-111111111111",
+      email: "pat@example.com",
+      name: "Pat Hoya",
+    });
+    assert.equal(isValidSessionToken(alum), false);
+  });
+
+  it("does not treat a coach token as an alum session", () => {
+    const coach = createSessionToken();
+    assert.equal(parseAlumSessionToken(coach), null);
+    assert.equal(isValidSessionToken(coach), true);
+  });
+
+  it("reports alum from hoya_alum_session for the portal shell", () => {
+    const token = createAlumSessionToken({
+      role: "alum",
+      alumniId: "22222222-2222-4222-8222-222222222222",
+      email: "kasten.claim.smoke@example.com",
+      name: "Michael Kasten",
+    });
+    const cookies = {
+      get(name: string) {
+        if (name === ALUM_SESSION_COOKIE) return { value: token };
+        return undefined;
+      },
+    };
+    assert.equal(isAlumLoggedIn(cookies), true);
+    assert.equal(isCoachLoggedIn(cookies), false);
+    assert.deepEqual(readSessionInfo(cookies), { role: "alum", roles: ["alum"], alum: true, coach: false });
+  });
+
+  it("ignores the legacy ga_alumni_session cookie", () => {
+    const token = createAlumSessionToken({ role: "alum", email: "pat@example.com", name: "Pat" });
+    const cookies = {
+      get(name: string) {
+        if (name === "ga_alumni_session") return { value: token };
+        return undefined;
+      },
+    };
+    assert.equal(isAlumLoggedIn(cookies), false);
   });
 });

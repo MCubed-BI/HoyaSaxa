@@ -12,6 +12,7 @@ import {
   verifyCredentials,
 } from "@/lib/auth";
 import { homePathForRole, resolveRoleFromEnv } from "@/lib/roles";
+import { setCoachRoleHint } from "@/lib/session";
 
 function safeNextPath(value: string | null, roleHome: string) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return roleHome;
@@ -49,5 +50,6 @@ export async function POST(request: Request) {
   }
 
   response.cookies.set(SESSION_COOKIE, createSessionToken(username), sessionCookieOptions());
+  setCoachRoleHint(response);
   return response;
 }

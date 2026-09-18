@@ -10,10 +10,11 @@
  * How portal checks “is alum logged in”:
  *   import { isAlumLoggedIn, parseAlumSessionToken, ALUM_SESSION_COOKIE } from "@/lib/alum-session";
  *   const alum = isAlumLoggedIn(await cookies());
+ *   // or: parseAlumSessionToken(jar.get(ALUM_SESSION_COOKIE)?.value)?.role === "alum"
  *
  * Register myself / alumni login always set role `"alum"` (never `"board"`).
  * `board` writes Newsflash only. Coach/owner post Sgarlata notes via ga_session.
- * This cookie never unlocks Data Sync or coach blast.
+ * This cookie never unlocks Data Sync, owner blast, or other staff gates.
  * Locker-preview tokens ({ role, label, iat }) are a separate signer — see hoya-alum-session.ts.
  */
 import { createHmac, timingSafeEqual } from "crypto";
@@ -181,7 +182,10 @@ function tokenFromRequest(req: Request | CookieReader | string | null | undefine
     return req.cookies.get(ALUM_SESSION_COOKIE)?.value ?? null;
   }
   const cookie = (req as Request).headers?.get("cookie") ?? "";
-  const match = cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${ALUM_SESSION_COOKIE}=`));
+  const match = cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${ALUM_SESSION_COOKIE}=`));
   return match ? decodeURIComponent(match.slice(ALUM_SESSION_COOKIE.length + 1)) : null;
 }
 

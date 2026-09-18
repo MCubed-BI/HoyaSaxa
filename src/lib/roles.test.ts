@@ -61,6 +61,7 @@ describe("portal paths", () => {
     assert.equal(isPublicPath("/alumni-login"), true);
     assert.equal(isPublicPath("/register"), true);
     assert.equal(isPublicPath("/api/alumni/login"), true);
+    assert.equal(isPublicPath("/api/session"), true);
     assert.equal(isAlumAllowedPath("/alum"), true);
     assert.equal(isAlumAllowedPath("/portal"), true);
     assert.equal(isAlumAllowedPath("/portal/directory"), true);

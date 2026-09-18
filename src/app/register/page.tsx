@@ -1,35 +1,28 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { AuthShell } from "@/components/auth-shell";
+import { RegisterMyself } from "@/components/register-myself";
+import { isAlumLoggedIn } from "@/lib/alum-session";
 
-export default function RegisterHookPage() {
+export default async function RegisterPage() {
+  const jar = await cookies();
+  if (isAlumLoggedIn(jar)) {
+    redirect("/me");
+  }
+
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <div className="bg-navy px-6 py-8 text-white">
-          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/60">
-            Georgetown Football
-          </p>
-          <h1 className="mt-1 font-heading text-3xl">Register myself</h1>
-          <p className="mt-2 text-sm text-white/70">
-            Roster claim is owned by the Football Program branch <code>cursor/hoya-register-claim-*</code>.
-          </p>
-        </div>
-        <div className="space-y-4 px-6 py-6 text-sm text-muted-foreground">
-          <p>
-            This portal does not rebuild claim.             After that PR merges, this route is the last-name + graduating-class claim flow. Set{" "}
-            <code>hoya_alum_session</code> from <code>src/lib/alum-session.ts</code>. Until then,
-            preview Legacy Locker with staff username <strong>Alum</strong>.
-          </p>
-          <div className="flex flex-col gap-2">
-            <Button asChild>
-              <Link href="/alumni-login">Alumni login hook</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/login">Staff login</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    </main>
+    <AuthShell
+      title="Register myself"
+      subtitle="Claim your roster row with last name and graduating class, then create an alumni login."
+    >
+      <RegisterMyself />
+      <p className="text-center text-sm text-muted-foreground">
+        Coaching staff?{" "}
+        <Link href="/login" className="text-navy underline-offset-4 hover:underline">
+          Coach login
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

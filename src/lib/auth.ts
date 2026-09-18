@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { allStaffUsernames } from "@/lib/roles";
 
 export const SESSION_COOKIE = "ga_session";
+export const COACH_ROLE = "coach" as const;
 export const DEFAULT_COACH_USERNAME = "Hoyas";
 export const DEFAULT_COACH_PASSWORD = "Sgarlata35";
 

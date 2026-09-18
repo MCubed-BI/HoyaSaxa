@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
   "/api/alumni/register",
   "/api/alumni/login",
   "/api/alum/session",
+  "/api/session",
 ];
 
 const ALUM_ALLOWED_PREFIXES = [

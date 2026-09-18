@@ -145,10 +145,12 @@ Claim / register pages are owned by another lane and are not touched here.
 
 ## Pages
 
-Alum chrome uses existing CRM navy styles (function over polish). Primary nav is **Home · Directory · Events · Giving · Messages**.
+Alum chrome uses existing CRM styles (function over polish). Primary nav is **Home · Directory · Events · Giving · Messages**.
 
-- `/login` — staff gate (`ga_session` for owner/coach; `Alum`/`Lars` mint the contract `hoya_alum_session`)
-- `/alumni-login` / `/register` — hooks only; Football Program owns claim ([PR #1](https://github.com/MCubed-BI/HoyaSaxa/pull/1))
+- `/login` — staff gate (`ga_session` for owner/coach; `Alum`/`Lars` mint `hoya_alum_session`)
+- `/register` — alumni claim (last name + graduating class)
+- `/alumni-login` — alumni email/password login
+- `/me` — edit claimed records or merge a duplicate
 - `/portal` — alum entry; redirects to `/home`
 - `/home` — Welcome hero, Directory/Events/News/Giving, upcoming event, recent activity
 - `/feed` — For You / Teammates / Alumni / Following
@@ -162,14 +164,24 @@ Alum chrome uses existing CRM navy styles (function over polish). Primary nav is
 - `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases to the shipped lanes
 - `/alum` — redirects to `/portal`
 - `/find-my-alum` — location groups
-- `/locker` — messages access-code preview (not Register myself)
-- `/home/login` — locker preview login (also writes `hoya_alum_session`)
+- `/locker` — messages access-code preview
+- `/home/login` — locker preview login
 - `/` — owner/coach directory
 - `/alumni/[id]` — full player card (staff)
 - `/fundraising` — staff campaigns
-- `/me` — claim editor hook
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
+
+Alumni login is a distinct **alum** session, not coach. Portal detect:
+
+```ts
+import { isAlumLoggedIn, getAlumSession } from "@/lib/alum-session";
+const alum = isAlumLoggedIn(await cookies()); // cookie `hoya_alum_session`, role `"alum"`
+```
+
+Cookie `hoya_alum_session` is httpOnly, Secure in production, SameSite=Lax. Value is HMAC-signed JSON `{ v:1, role:"alum"|"board", alumniId, email, name, exp }`. Register myself always sets `role: "alum"`. Do not use `ga_session` / `isCoachLoggedIn` for alum — that cookie never unlocks Data Sync or owner blast. Optional: readable `ga_role=alum` hint, or `GET /api/session` `{ role, roles, alum, coach }`. Claiming a roster row never unlocks the directory, reports, blast, or sync pages.
+
+The app uses existing Neon tables `alumni_accounts`, `alumni_claims`, and `alumni_record_merges` when present, and creates them if they are missing.
 
 ## Messages
 
