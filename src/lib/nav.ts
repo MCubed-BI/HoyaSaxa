@@ -32,9 +32,10 @@ export function navItemsForRole(role: Role): NavItem[] {
 
   const items: NavItem[] = [
     { href: "/", label: "Directory", key: "directory" },
+    { href: "/events", label: "Events", key: "events" },
     { href: "/messages", label: "Messages", key: "messages" },
     { href: "/newsflash", label: "Newsflash", key: "newsflash" },
-    { href: "/fundraising", label: "Give", key: "fundraising" },
+    { href: "/giving", label: "Give", key: "giving" },
   ];
 
   if (canUseOwnerTools(role)) {
@@ -55,8 +56,8 @@ export function portalNavItems(): NavItem[] {
   return [
     { href: "/home", label: "Home", key: "home" },
     { href: "/directory", label: "Directory", key: "portal-directory" },
-    { href: "/portal/events", label: "Events", key: "events" },
-    { href: "/portal/giving", label: "Giving", key: "giving" },
+    { href: "/events", label: "Events", key: "events" },
+    { href: "/giving", label: "Giving", key: "giving" },
     { href: "/messages", label: "Messages", key: "messages" },
   ];
 }

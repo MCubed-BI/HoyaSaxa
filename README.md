@@ -155,22 +155,24 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/home` — Welcome hero, Directory/Events/News/Giving, upcoming event, recent activity
 - `/feed` — For You / Teammates / Alumni / Following
 - `/newsflash` — Lars Newsflash (board publishes, alumni read)
+- `/events` — Upcoming / Past / My Events (date, title, category, location, thumbnail)
+- `/events/new` — Create Event (coach and board only)
 - `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
 - `/directory` — public Hoya Directory (search + All/Athletes/Alumni/Coaches/Staff)
 - `/athletes/[id]` — public athlete profile (Overview/Stats/Photos/Career/Q&A)
 - `/portal/directory` / `/portal/profile` — aliases to `/directory`
-- `/portal/events` — Upcoming/Past/My Events stub (Coder 2)
-- `/portal/giving` — $25/$50/$100/$250 pledge intents (Coder 3)
+- `/portal/events` / `/portal/giving` — aliases to `/events` and `/giving`
 - `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases to the shipped lanes
 - `/alum` — redirects to `/portal`
 - `/find-my-alum` — location groups
 - `/locker` — messages access-code preview
 - `/home/login` — locker preview login
-- `/` — owner/coach directory
-- `/alumni/[id]` — full player card (staff)
+- `/` — searchable staff directory (cards on mobile, table on desktop)
+- `/alumni/[id]` — full staff player card
 - `/fundraising` — staff campaigns
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
+- `/giving` — fundraising MVP: $25 / $50 / $100 / $250 / Other, Give Now, Impact / Funds / Leaderboards tabs. Pledges are unpaid intents in Neon (`giving_pledges`). Stripe is later.
 
 Alumni login is a distinct **alum** session, not coach. Portal detect:
 
@@ -182,6 +184,18 @@ const alum = isAlumLoggedIn(await cookies()); // cookie `hoya_alum_session`, rol
 Cookie `hoya_alum_session` is httpOnly, Secure in production, SameSite=Lax. Value is HMAC-signed JSON `{ v:1, role:"alum"|"board", alumniId, email, name, exp }`. Register myself always sets `role: "alum"`. Do not use `ga_session` / `isCoachLoggedIn` for alum — that cookie never unlocks Data Sync or owner blast. Optional: readable `ga_role=alum` hint, or `GET /api/session` `{ role, roles, alum, coach }`. Claiming a roster row never unlocks the directory, reports, blast, or sync pages.
 
 The app uses existing Neon tables `alumni_accounts`, `alumni_claims`, and `alumni_record_merges` when present, and creates them if they are missing.
+
+## Events
+
+`+ Create Event` and `POST /api/events` allow **coach** and **board** only.
+
+- Shared staff login (`COACH_USERNAME`, default `Hoyas`) is **coach** and can create.
+- Locker `hoya_alum_session` with role **board** (`HOYA_BOARD_USERNAMES`, default Lars) can create.
+- Locker **alum** and unauthenticated users cannot create. `/events/new` redirects to `/events?error=forbidden`.
+- My Events is the current viewer’s created rows plus **Add to My Events**.
+- Home’s upcoming-event card reads the next `events.starts_at` row when this table exists.
+
+This lane does not change Register myself / claim or the portal shell.
 
 ## Messages
 

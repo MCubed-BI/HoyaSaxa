@@ -1,16 +1,36 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { ALUM_SESSION_COOKIE, isAlumLoggedIn, readAlumSession } from "@/lib/alum-session";
-import { isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
-import { isAlumAllowedPath, isDataSyncPath, isPublicPath, loginPathFor } from "@/lib/portal-paths";
+import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
+import { HOYA_ALUM_SESSION_COOKIE, isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
+import { isLockerPath } from "@/lib/locker-paths";
+import {
+  isAlumAllowedPath,
+  isDataSyncPath,
+  isPublicPath,
+  loginPathFor as portalLoginPathFor,
+} from "@/lib/portal-paths";
 import { isCoachLoggedIn } from "@/lib/session";
 
-function isAlumniPath(pathname: string) {
+// Auth boundary: alum vs coach. Portal and claim call isAlumLoggedIn(cookies)
+// from `@/lib/alum-session` (cookie `hoya_alum_session`, role `"alum"`).
+// Same HMAC signer as GTown / Register myself. Locker Home may also mint a
+// locker-format token on the same cookie name. Do not use ga_session for alum.
+
+function isAlumniClaimPath(pathname: string) {
   return pathname === "/me" || pathname.startsWith("/me/") || pathname.startsWith("/api/alumni/");
 }
 
+function loginPathFor(pathname: string) {
+  if (isAlumniClaimPath(pathname)) return "/alumni-login";
+  return portalLoginPathFor(pathname);
+}
+
 function hasPortalAlumSession(request: NextRequest) {
-  const token = request.cookies.get(ALUM_SESSION_COOKIE)?.value ?? null;
+  if (isAlumLoggedIn(request.cookies)) return true;
+  const token =
+    request.cookies.get(ALUM_SESSION_COOKIE)?.value ??
+    request.cookies.get(HOYA_ALUM_SESSION_COOKIE)?.value ??
+    null;
   if (readAlumSession(token) || isValidHoyaAlumSession(token)) return true;
   return Boolean(readAlumniSessionFromCookies((name) => request.cookies.get(name)?.value));
 }
@@ -22,8 +42,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isAlumniPath(pathname)) {
-    if (isAlumLoggedIn(request.cookies) || hasPortalAlumSession(request)) {
+  if (isAlumniClaimPath(pathname)) {
+    if (isAlumLoggedIn(request.cookies)) {
       return NextResponse.next();
     }
     if (pathname.startsWith("/api/")) {
@@ -40,6 +60,7 @@ export function proxy(request: NextRequest) {
   }
 
   const alum = hasPortalAlumSession(request);
+  const alumFacing = isAlumAllowedPath(pathname) || isLockerPath(pathname);
 
   if (alum && isDataSyncPath(pathname)) {
     if (pathname.startsWith("/api/")) {
@@ -48,11 +69,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/portal", request.url));
   }
 
-  if (alum && isAlumAllowedPath(pathname)) {
+  if (alum && alumFacing) {
     return NextResponse.next();
   }
 
-  if (alum && !isAlumAllowedPath(pathname)) {
+  if (alum && !alumFacing) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

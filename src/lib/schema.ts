@@ -243,3 +243,34 @@ export const alumniRecordMerges = pgTable("alumni_record_merges", {
   mergedAlumniId: uuid("merged_alumni_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const givingPledges = pgTable("giving_pledges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  amountCents: integer("amount_cents").notNull(),
+  donorLabel: text("donor_label"),
+  status: text("status").notNull().default("unpaid_intent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const events = pgTable("events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  category: text("category").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  location: text("location"),
+  thumbnailUrl: text("thumbnail_url"),
+  description: text("description"),
+  createdBy: text("created_by").notNull(),
+  createdByRole: text("created_by_role").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const eventRsvps = pgTable("event_rsvps", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id")
+    .notNull()
+    .references(() => events.id, { onDelete: "cascade" }),
+  attendeeKey: text("attendee_key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
