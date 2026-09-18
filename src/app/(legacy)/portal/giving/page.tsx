@@ -33,18 +33,20 @@ export default async function PortalGivingPage() {
   return (
     <PortalShell viewer={viewer} current="giving">
       <div>
-        <p className="text-[11px] uppercase tracking-[0.28em] text-gold">Giving</p>
-        <h2 className="font-heading text-3xl text-white">Choose your impact</h2>
-        <p className="mt-1 text-sm text-white/65">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Giving</p>
+        <h2 className="font-heading text-3xl text-navy">Choose your impact</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           MVP pledge intents in Neon. Stripe is later. Coder 3 can replace amounts and checkout.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {IMPACT.map((amount) => (
-          <div key={amount} className="rounded-xl border border-gold/30 bg-[#0d1f3c] px-4 py-5 text-center">
-            <p className="font-heading text-2xl text-gold">${amount}</p>
-            <p className="text-xs text-white/55">Suggested</p>
-          </div>
+          <Card key={amount}>
+            <CardContent className="py-5 text-center">
+              <p className="font-heading text-2xl text-navy">${amount}</p>
+              <p className="text-xs text-muted-foreground">Suggested</p>
+            </CardContent>
+          </Card>
         ))}
       </div>
       {canManageFundraising(viewer.role) ? (

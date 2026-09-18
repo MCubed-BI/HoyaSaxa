@@ -12,7 +12,7 @@ export function PortalTabs({
           key={tab.href}
           href={tab.href}
           className={`rounded-full px-3 py-1.5 text-sm ${
-            tab.active ? "bg-gold text-gold-foreground" : "border border-gold/30 text-white/75 hover:bg-white/10"
+            tab.active ? "bg-navy text-white" : "bg-muted text-foreground hover:bg-accent"
           }`}
         >
           {tab.label}

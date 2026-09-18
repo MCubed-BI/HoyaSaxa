@@ -20,8 +20,8 @@ export default async function PortalEventsPage({
     <PortalShell viewer={viewer} current="events">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-gold">Events</p>
-          <h2 className="font-heading text-3xl text-white">More than a game</h2>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Events</p>
+          <h2 className="font-heading text-3xl text-navy">Upcoming / Past / My Events</h2>
         </div>
         {canCreate ? (
           <Button asChild>
