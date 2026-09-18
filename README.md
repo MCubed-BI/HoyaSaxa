@@ -114,12 +114,14 @@ Claim / register pages are owned by another lane and are not touched here.
 ## Pages
 
 - `/login` — shared coach password gate
+- `/directory` — public Legacy Locker directory (search + All / Athletes / Alumni / Coaches / Staff)
+- `/athletes/[id]` — public athlete profile shell (Overview / Stats / Photos / Career / Q&A)
 - `/home` — alumni Home (hero, quick actions, upcoming event, recent activity)
 - `/feed` — For You tabs (official Newsflash + alumni posts)
 - `/newsflash` — Lars Newsflash (board publishes, alumni read)
 - `/locker` — alumni session access (`hoya_alum_session`; not Register myself)
-- `/` — searchable directory (cards on mobile, table on desktop)
-- `/alumni/[id]` — full player card
+- `/` — searchable staff directory (cards on mobile, table on desktop)
+- `/alumni/[id]` — full staff player card
 - `/messages` — inbox with All / Unread / Groups filters
 - `/messages/sgarlata` — official pinned Message from Sgarlata channel
 - `/reports` — build a group, download CSV, jump to text or email blast

@@ -4,7 +4,7 @@ import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
 import { HOYA_ALUM_SESSION_COOKIE, isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
 import {
   isLockerPath,
-  isPublicPath as isLockerPublicPath,
+  isPublicPath as isHomePublicPath,
   loginPathFor as lockerLoginPathFor,
 } from "@/lib/locker-paths";
 import {
@@ -15,7 +15,7 @@ import {
 } from "@/lib/messages-auth";
 
 function isPublicPath(pathname: string) {
-  return isLockerPublicPath(pathname) || isMessagesPublicPath(pathname);
+  return isHomePublicPath(pathname) || isMessagesPublicPath(pathname);
 }
 
 function isAlumFacingPath(pathname: string) {
