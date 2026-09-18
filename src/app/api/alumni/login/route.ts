@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
-import {
-  ALUMNI_SESSION_COOKIE,
-  alumniSessionCookieOptions,
-  createAlumniSessionToken,
-} from "@/lib/alumni-auth";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { authenticateAlumni } from "@/lib/alumni-claim";
+import { setAlumSessionCookies } from "@/lib/session";
 
 function safeNextPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/me";
@@ -19,8 +15,8 @@ export async function POST(request: Request) {
     if (contentType.includes("application/json")) {
       const body = (await request.json()) as { email?: string; password?: string };
       const account = await authenticateAlumni(body.email ?? "", body.password ?? "");
-      const response = NextResponse.json({ ok: true });
-      response.cookies.set(ALUMNI_SESSION_COOKIE, createAlumniSessionToken(account.id), alumniSessionCookieOptions());
+      const response = NextResponse.json({ ok: true, role: "alum" });
+      setAlumSessionCookies(response, account.id);
       return response;
     }
 
@@ -30,7 +26,7 @@ export async function POST(request: Request) {
     const next = safeNextPath(typeof form.get("next") === "string" ? String(form.get("next")) : "/me");
     const account = await authenticateAlumni(email, password);
     const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
-    response.cookies.set(ALUMNI_SESSION_COOKIE, createAlumniSessionToken(account.id), alumniSessionCookieOptions());
+    setAlumSessionCookies(response, account.id);
     return response;
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {

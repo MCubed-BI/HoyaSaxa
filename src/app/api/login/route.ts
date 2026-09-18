@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE, createSessionToken, sessionCookieOptions, verifyCredentials } from "@/lib/auth";
+import { setCoachRoleHint } from "@/lib/session";
 
 function safeNextPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
@@ -21,5 +22,6 @@ export async function POST(request: Request) {
 
   const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
   response.cookies.set(SESSION_COOKIE, createSessionToken(), sessionCookieOptions());
+  setCoachRoleHint(response);
   return response;
 }

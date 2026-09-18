@@ -20,6 +20,7 @@ const CLAIM_PUBLIC_PATHS = [
   "/api/alumni/lookup",
   "/api/alumni/register",
   "/api/alumni/login",
+  "/api/session",
 ];
 
 function isClaimPublicPath(pathname: string) {

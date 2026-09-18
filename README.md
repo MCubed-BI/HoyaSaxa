@@ -130,7 +130,7 @@ Claim / register pages are owned by another lane and are not touched here.
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
 
-Alumni login is a separate cookie from the coach gate. Claiming a roster row never unlocks the directory, reports, blast, or sync pages.
+Alumni login is a distinct **alum** session, not coach: httpOnly `ga_alumni_session` (token role `alum`) plus a readable `ga_role=alum` hint. Coach stays on `ga_session` / `ga_role=coach`. `GET /api/session` returns `{ role, roles, alum, coach }` for a future portal shell. Claiming a roster row never unlocks the directory, reports, blast, or sync pages.
 
 The app uses existing Neon tables `alumni_accounts`, `alumni_claims`, and `alumni_record_merges` when present, and creates them if they are missing.
 

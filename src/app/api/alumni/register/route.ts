@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
-import {
-  ALUMNI_SESSION_COOKIE,
-  alumniSessionCookieOptions,
-  createAlumniSessionToken,
-} from "@/lib/alumni-auth";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { registerAlumniAccount } from "@/lib/alumni-claim";
+import { setAlumSessionCookies } from "@/lib/session";
 
 export async function POST(request: Request) {
   try {
@@ -29,10 +25,11 @@ export async function POST(request: Request) {
     });
     const response = NextResponse.json({
       ok: true,
+      role: "alum",
       claimedIds: result.claimedIds,
       classYear: result.classYear,
     });
-    response.cookies.set(ALUMNI_SESSION_COOKIE, createAlumniSessionToken(result.account.id), alumniSessionCookieOptions());
+    setAlumSessionCookies(response, result.account.id);
     return response;
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {
