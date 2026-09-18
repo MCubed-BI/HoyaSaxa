@@ -40,7 +40,7 @@ export default async function AthleteProfilePage({
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-      <Link href="/directory" className="text-sm hover:underline">
+      <Link href="/directory" className="text-sm text-gold hover:underline">
         ← Directory
       </Link>
 
@@ -48,7 +48,7 @@ export default async function AthleteProfilePage({
         <CardContent className="flex gap-4 py-6">
           <HoyaAvatar person={person} size="lg" />
           <div className="min-w-0 space-y-2">
-            <h1 className="font-heading text-3xl">{displayName(toNameFields(person))}</h1>
+            <h1 className="font-heading text-3xl text-white">{displayName(toNameFields(person))}</h1>
             <p className="text-sm text-muted-foreground">
               {[kindLabel(person.kind), person.classLabel, person.sport, city].filter(Boolean).join(" · ")}
             </p>
@@ -68,7 +68,9 @@ export default async function AthleteProfilePage({
               key={item.id}
               href={athleteHref(person.id, item.id)}
               className={`rounded-full border px-3 py-1 text-sm ${
-                active ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
+                active
+                  ? "border-gold bg-gold text-gold-foreground"
+                  : "border-gold/35 bg-card text-foreground hover:border-gold/70"
               }`}
             >
               {item.label}
@@ -98,7 +100,7 @@ export default async function AthleteProfilePage({
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">LinkedIn</p>
               {person.linkedinUrl ? (
-                <a href={person.linkedinUrl} target="_blank" rel="noreferrer" className="mt-1 block hover:underline">
+                <a href={person.linkedinUrl} target="_blank" rel="noreferrer" className="mt-1 block text-gold hover:underline">
                   {person.linkedinUrl.replace(/^https?:\/\/(www\.)?/, "")}
                 </a>
               ) : (

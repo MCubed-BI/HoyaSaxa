@@ -77,7 +77,7 @@ Library: `src/lib/guhoyas-roster.ts` (`fetchGuhoyasRosters`, `mergeRostersIntoAl
 ## Pages
 
 - `/login` — shared coach password gate
-- `/directory` — public Hoya Directory (search + All / Athletes / Alumni / Coaches / Staff)
+- `/directory` — public Legacy Locker directory (search + All / Athletes / Alumni / Coaches / Staff)
 - `/athletes/[id]` — public athlete profile shell (Overview / Stats / Photos / Career / Q&A)
 - `/` — staff directory (cards on mobile, table on desktop)
 - `/alumni/[id]` — staff player card

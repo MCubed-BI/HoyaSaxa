@@ -7,7 +7,7 @@ export default async function HoyaLayout({ children }: { children: React.ReactNo
   const signedIn = hasAlumSessionCookie((name) => jar.get(name)?.value);
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="locker flex min-h-full flex-col">
       <HoyaDirectoryHeader signedIn={signedIn} />
       {children}
     </div>

@@ -41,6 +41,8 @@
   --color-card: var(--card);
   --color-navy: var(--navy);
   --color-navy-foreground: var(--navy-foreground);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -53,6 +55,8 @@
 :root {
   --navy: #041e42;
   --navy-foreground: #f4f5f7;
+  --gold: #c5a572;
+  --gold-foreground: #041e42;
   --background: #f3f4f6;
   --foreground: #1c2430;
   --card: #ffffff;
@@ -103,4 +107,36 @@
   .font-heading {
     font-family: var(--font-source-serif), ui-serif, Georgia, serif;
   }
+}
+
+/* Scoped to public Directory / athlete profiles. Coach CRM stays on the light tokens. */
+.locker {
+  --background: #020d22;
+  --foreground: #f3ecdf;
+  --card: #0b274c;
+  --card-foreground: #f3ecdf;
+  --popover: #0b274c;
+  --popover-foreground: #f3ecdf;
+  --primary: #c5a572;
+  --primary-foreground: #041e42;
+  --secondary: #12315c;
+  --secondary-foreground: #f3ecdf;
+  --muted: #12315c;
+  --muted-foreground: #c9c2b2;
+  --accent: #16325c;
+  --accent-foreground: #f3ecdf;
+  --border: rgb(197 165 114 / 0.32);
+  --input: rgb(197 165 114 / 0.4);
+  --ring: #c5a572;
+  color: var(--foreground);
+  background-color: #020d22;
+  background-image:
+    linear-gradient(180deg, rgb(4 30 66 / 0.35), rgb(2 13 34 / 0.92)),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 46px,
+      rgb(197 165 114 / 0.045) 46px,
+      rgb(197 165 114 / 0.045) 47px
+    );
 }
