@@ -8,7 +8,7 @@ export function AppHeader({
   current,
   shell = "staff",
 }: {
-  current?: "directory" | "reports" | "blast" | "sync" | "messages" | "giving";
+  current?: "directory" | "events" | "reports" | "blast" | "sync" | "messages" | "giving";
   shell?: "staff" | "alum";
 }) {
   const count = useOptionalSelectionCount();
@@ -31,6 +31,9 @@ export function AppHeader({
               <NavLink href="/" active={current === "directory"}>
                 Directory
               </NavLink>
+              <NavLink href="/events" active={current === "events"}>
+                Events
+              </NavLink>
               <NavLink href="/messages" active={current === "messages"}>
                 Messages
               </NavLink>
@@ -49,6 +52,9 @@ export function AppHeader({
             </>
           ) : (
             <>
+              <NavLink href="/events" active={current === "events"}>
+                Events
+              </NavLink>
               <NavLink href="/messages" active={current === "messages"}>
                 Messages
               </NavLink>

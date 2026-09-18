@@ -46,6 +46,11 @@ export function isValidSessionToken(token: string | undefined | null) {
   return safeEqual(signature, expected);
 }
 
+export function getSessionUsername(token: string | undefined | null) {
+  if (!token || !isValidSessionToken(token)) return null;
+  return token.split(".")[0] ?? null;
+}
+
 export function verifyCredentials(username: string, password: string) {
   const creds = getCoachCredentials();
   return safeEqual(username.trim(), creds.username) && safeEqual(password, creds.password);

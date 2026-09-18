@@ -122,6 +122,8 @@ Claim / register pages are owned by another lane and are not touched here.
 - `/home` — alumni Home (hero, quick actions, upcoming event, recent activity)
 - `/feed` — For You tabs (official Newsflash + alumni posts)
 - `/newsflash` — Lars Newsflash (board publishes, alumni read)
+- `/events` — Upcoming / Past / My Events (date, title, category, location, thumbnail)
+- `/events/new` — Create Event (coach and board only)
 - `/locker` — alumni session access (`hoya_alum_session`; not Register myself)
 - `/` — searchable staff directory (cards on mobile, table on desktop)
 - `/alumni/[id]` — full staff player card
@@ -141,6 +143,18 @@ const alum = isAlumLoggedIn(await cookies()); // cookie `hoya_alum_session`, rol
 Cookie `hoya_alum_session` is httpOnly, Secure in production, SameSite=Lax. Value is HMAC-signed JSON `{ v:1, role:"alum"|"board", alumniId, email, name, exp }`. Register myself always sets `role: "alum"`. Do not use `ga_session` / `isCoachLoggedIn` for alum — that cookie never unlocks Data Sync or owner blast. Optional: readable `ga_role=alum` hint, or `GET /api/session` `{ role, roles, alum, coach }`. Claiming a roster row never unlocks the directory, reports, blast, or sync pages.
 
 The app uses existing Neon tables `alumni_accounts`, `alumni_claims`, and `alumni_record_merges` when present, and creates them if they are missing.
+
+## Events
+
+`+ Create Event` and `POST /api/events` allow **coach** and **board** only.
+
+- Shared staff login (`COACH_USERNAME`, default `Hoyas`) is **coach** and can create.
+- Locker `hoya_alum_session` with role **board** (`HOYA_BOARD_USERNAMES`, default Lars) can create.
+- Locker **alum** and unauthenticated users cannot create. `/events/new` redirects to `/events?error=forbidden`.
+- My Events is the current viewer’s created rows plus **Add to My Events**.
+- Home’s upcoming-event card reads the next `events.starts_at` row when this table exists.
+
+This lane does not change Register myself / claim or the portal shell.
 
 ## Messages
 
