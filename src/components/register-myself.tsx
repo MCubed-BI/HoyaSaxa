@@ -36,15 +36,20 @@ export function RegisterMyself() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function lookup(event: React.FormEvent) {
+  async function lookup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const nextLastName = String(form.get("lastName") ?? lastName);
+    const nextClassYear = String(form.get("classYear") ?? classYear);
+    setLastName(nextLastName);
+    setClassYear(nextClassYear);
     setError(null);
     setPending(true);
     try {
       const response = await fetch("/api/alumni/lookup", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ lastName, classYear }),
+        body: JSON.stringify({ lastName: nextLastName, classYear: nextClassYear }),
       });
       const data = (await response.json()) as { error?: string; classYear?: string; matches?: Match[] };
       if (!response.ok) throw new Error(data.error ?? "Lookup failed");
@@ -98,8 +103,7 @@ export function RegisterMyself() {
           <Input
             id="lastName"
             name="lastName"
-            value={lastName}
-            onChange={(event) => setLastName(event.target.value)}
+            defaultValue={lastName}
             placeholder="Kasten"
             autoComplete="family-name"
             required
@@ -110,9 +114,9 @@ export function RegisterMyself() {
           <Input
             id="classYear"
             name="classYear"
-            value={classYear}
-            onChange={(event) => setClassYear(event.target.value)}
+            defaultValue={classYear}
             placeholder="’15 or 2015"
+            inputMode="numeric"
             required
           />
         </div>
