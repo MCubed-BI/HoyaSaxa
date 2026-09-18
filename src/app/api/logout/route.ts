@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
+import { ALUMNI_SESSION_COOKIES } from "@/lib/alumni-auth";
 import { SESSION_COOKIE } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const response = NextResponse.redirect(new URL("/login", request.url), { status: 303 });
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const hadStaff = cookieHeader.split(";").some((part) => part.trim().startsWith(`${SESSION_COOKIE}=`));
+  const response = NextResponse.redirect(new URL(hadStaff ? "/login" : "/locker", request.url), {
+    status: 303,
+  });
   response.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+  for (const name of ALUMNI_SESSION_COOKIES) {
+    response.cookies.set(name, "", { path: "/", maxAge: 0 });
+  }
   return response;
 }

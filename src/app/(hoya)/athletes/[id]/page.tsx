@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { displayName, jobLabel } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
-import { getLockerPersonById } from "@/lib/locker-data";
+import { getLockerPersonById } from "@/lib/locker-directory";
 import { athleteHref, parseAthleteTab } from "@/lib/locker-paths";
 import { ATHLETE_TABS } from "@/lib/locker-types";
 

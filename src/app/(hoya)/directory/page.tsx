@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { displayName } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
-import { searchLockerDirectory } from "@/lib/locker-data";
+import { searchLockerDirectory } from "@/lib/locker-directory";
 import { athleteHref, directoryHref, parseDirectoryPill, parseLockerPage } from "@/lib/locker-paths";
 import { DIRECTORY_PILLS } from "@/lib/locker-types";
 
