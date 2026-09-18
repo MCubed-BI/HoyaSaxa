@@ -48,7 +48,7 @@ describe("roles", () => {
     );
     assert.deepEqual(
       navItemsForRole("alum").map((item) => item.href),
-      ["/home", "/portal/directory", "/portal/events", "/portal/giving", "/messages"],
+      ["/home", "/directory", "/portal/events", "/portal/giving", "/messages"],
     );
     assert.equal(homePathForRole("alum"), "/portal");
     assert.equal(homePathForRole("board"), "/portal");
@@ -64,6 +64,8 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/alum"), true);
     assert.equal(isAlumAllowedPath("/portal"), true);
     assert.equal(isAlumAllowedPath("/portal/directory"), true);
+    assert.equal(isPublicPath("/directory"), true);
+    assert.equal(isPublicPath("/athletes/demo"), true);
     assert.equal(isAlumAllowedPath("/home"), true);
     assert.equal(isAlumAllowedPath("/feed"), true);
     assert.equal(isAlumAllowedPath("/messages"), true);

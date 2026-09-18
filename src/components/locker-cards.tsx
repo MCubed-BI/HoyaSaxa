@@ -17,7 +17,7 @@ export function formatLockerDate(value: string) {
 export function QuickActions({ canOpenStaffDirectory }: { canOpenStaffDirectory: boolean }) {
   const actions = [
     {
-      href: canOpenStaffDirectory ? "/" : "/portal/directory",
+      href: canOpenStaffDirectory ? "/" : "/directory",
       title: "Directory",
       body: canOpenStaffDirectory
         ? "Staff directory and athlete cards."

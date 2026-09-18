@@ -54,7 +54,7 @@ export function navItemsForRole(role: Role): NavItem[] {
 export function portalNavItems(): NavItem[] {
   return [
     { href: "/home", label: "Home", key: "home" },
-    { href: "/portal/directory", label: "Directory", key: "portal-directory" },
+    { href: "/directory", label: "Directory", key: "portal-directory" },
     { href: "/portal/events", label: "Events", key: "events" },
     { href: "/portal/giving", label: "Giving", key: "giving" },
     { href: "/messages", label: "Messages", key: "messages" },
@@ -65,7 +65,7 @@ export function portalMoreItems(role: Role): NavItem[] {
   const items: NavItem[] = [
     { href: "/feed", label: "For You", key: "feed" },
     { href: "/newsflash", label: "Newsflash", key: "newsflash" },
-    { href: "/portal/profile", label: "Profile", key: "profile" },
+    { href: "/directory", label: "Profile", key: "profile" },
     { href: "/find-my-alum", label: "Find My Alum", key: "find-my-alum" },
     { href: "/me", label: "My record", key: "me" },
   ];

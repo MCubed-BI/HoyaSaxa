@@ -154,8 +154,9 @@ Alum chrome uses existing CRM navy styles (function over polish). Primary nav is
 - `/feed` — For You / Teammates / Alumni / Following
 - `/newsflash` — Lars Newsflash (board publishes, alumni read)
 - `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
-- `/portal/directory` — search + All/Athletes/Alumni/Coaches/Staff (Coder 1)
-- `/portal/profile` — Overview/About/Sport/Career (Coder 1)
+- `/directory` — public Hoya Directory (search + All/Athletes/Alumni/Coaches/Staff)
+- `/athletes/[id]` — public athlete profile (Overview/Stats/Photos/Career/Q&A)
+- `/portal/directory` / `/portal/profile` — aliases to `/directory`
 - `/portal/events` — Upcoming/Past/My Events stub (Coder 2)
 - `/portal/giving` — $25/$50/$100/$250 pledge intents (Coder 3)
 - `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases to the shipped lanes

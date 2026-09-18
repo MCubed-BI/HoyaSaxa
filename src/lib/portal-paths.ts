@@ -3,6 +3,8 @@ const PUBLIC_PATHS = [
   "/register",
   "/alumni-login",
   "/home/login",
+  "/directory",
+  "/athletes",
   "/locker",
   "/api/login",
   "/api/locker/login",
