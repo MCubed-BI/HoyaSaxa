@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { filtersToSearchParams, hasActiveFilters, parseAlumniFilters } from "@/lib/filters";
 import { getAlumniFacets, getContactExportRows, getReportSummary } from "@/lib/queries";
-import { displayName } from "@/lib/format";
+import { Kpi, KpiGrid } from "@/components/kpi";
+import { displayName, formatNumber } from "@/lib/format";
 import { requireRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
@@ -52,20 +53,16 @@ export default async function ReportsPage({
               <CardTitle className="text-base">Group</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl bg-muted/80 px-4 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Alumni</p>
-                  <p className="font-heading text-3xl text-navy">{count.toLocaleString()}</p>
-                </div>
-                <div className="rounded-xl bg-muted/80 px-4 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">With email</p>
-                  <p className="font-heading text-3xl text-navy">{emailCount.toLocaleString()}</p>
-                </div>
-                <div className="rounded-xl bg-muted/80 px-4 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">With phone</p>
-                  <p className="font-heading text-3xl text-navy">{phoneCount.toLocaleString()}</p>
-                </div>
-              </div>
+              <KpiGrid>
+                <Kpi tone="primary" icon="directory" label="Alumni" value={formatNumber(count)} />
+                <Kpi tone="secondary" icon="messages" label="With email" value={formatNumber(emailCount)} />
+                <Kpi
+                  tone={phoneCount === 0 && count > 0 ? "alert" : "secondary"}
+                  icon="blast"
+                  label="With phone"
+                  value={formatNumber(phoneCount)}
+                />
+              </KpiGrid>
               <div className="flex flex-wrap gap-2">
                 <Button asChild>
                   <a href={`/blast${query ? `?${query}` : ""}`}>Text this group</a>
@@ -113,7 +110,7 @@ export default async function ReportsPage({
                 ))}
                 {count > previewRows.length ? (
                   <p className="pt-1 text-sm text-muted-foreground">
-                    Showing {previewRows.length} of {count.toLocaleString()}. Download the CSV for the full list.
+                    Showing {previewRows.length} of {formatNumber(count)}. Download the CSV for the full list.
                   </p>
                 ) : null}
               </CardContent>

@@ -1,4 +1,6 @@
-const EASTERN = "America/New_York";
+import { APP_TIMEZONE } from "@/lib/format";
+
+const EASTERN = APP_TIMEZONE;
 
 function tzOffsetMs(date: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {

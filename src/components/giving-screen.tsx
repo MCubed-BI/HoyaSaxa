@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Timestamp } from "@/components/timestamp";
+import { formatNumber } from "@/lib/format";
 import {
   IMPACT_AMOUNT_DOLLARS,
   formatPledgeDollars,
@@ -173,7 +175,7 @@ export function GivingScreen({
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <p className="text-muted-foreground">
-              {summary.totals.count} intent{summary.totals.count === 1 ? "" : "s"} ·{" "}
+              {formatNumber(summary.totals.count)} intent{summary.totals.count === 1 ? "" : "s"} ·{" "}
               {formatPledgeDollars(summary.totals.amount_cents)} recorded
             </p>
             {summary.leaders.length === 0 ? (
@@ -205,6 +207,12 @@ export function GivingScreen({
                 <span>{pledge.donor_label || "Anonymous"}</span>
                 <span>
                   {formatPledgeDollars(pledge.amount_cents)} · {pledge.status}
+                  {pledge.created_at ? (
+                    <>
+                      {" · "}
+                      <Timestamp value={pledge.created_at} />
+                    </>
+                  ) : null}
                 </span>
               </div>
             ))}

@@ -1,63 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import {
-  BarChart3,
-  CalendarDays,
-  GraduationCap,
-  Heart,
-  House,
-  MapPinned,
-  Megaphone,
-  MessageSquare,
-  Newspaper,
-  RefreshCw,
-  Rss,
-  UserRound,
-  Users,
-} from "lucide-react";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
+import { NavIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { type NavItem, type NavKey } from "@/lib/nav";
 import { cn } from "cn";
-
-function NavGlyph({ navKey, className }: { navKey: NavKey; className?: string }) {
-  switch (navKey) {
-    case "home":
-      return <House className={className} aria-hidden />;
-    case "directory":
-    case "portal-directory":
-      return <Users className={className} aria-hidden />;
-    case "events":
-      return <CalendarDays className={className} aria-hidden />;
-    case "giving":
-    case "fundraising":
-      return <Heart className={className} aria-hidden />;
-    case "messages":
-    case "message":
-      return <MessageSquare className={className} aria-hidden />;
-    case "find-my-alum":
-      return <MapPinned className={className} aria-hidden />;
-    case "newsflash":
-      return <Newspaper className={className} aria-hidden />;
-    case "reports":
-      return <BarChart3 className={className} aria-hidden />;
-    case "blast":
-      return <Megaphone className={className} aria-hidden />;
-    case "sync":
-      return <RefreshCw className={className} aria-hidden />;
-    case "alum":
-      return <GraduationCap className={className} aria-hidden />;
-    case "feed":
-      return <Rss className={className} aria-hidden />;
-    case "profile":
-    case "me":
-      return <UserRound className={className} aria-hidden />;
-    default:
-      return <Users className={className} aria-hidden />;
-  }
-}
 
 function shortLabel(item: NavItem) {
   if (item.key === "find-my-alum") return "Map";
@@ -158,7 +107,7 @@ export function ProductHeader({
                     active ? "text-navy" : "text-muted-foreground",
                   )}
                 >
-                  <NavGlyph navKey={item.key} className="size-4" />
+                  <NavIcon navKey={item.key} className="size-4" />
                   {shortLabel(item)}
                 </Link>
               );
@@ -190,7 +139,7 @@ function NavLink({
         active ? "bg-navy text-white shadow-[var(--shadow-xs)]" : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
-      <NavGlyph navKey={item.key} className="size-3.5" />
+      <NavIcon navKey={item.key} className="size-3.5" />
       <span>{compact ? shortLabel(item) : item.label}</span>
     </Link>
   );

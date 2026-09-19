@@ -7,13 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { listFundraisingCampaigns } from "@/lib/portal-queries";
 import { canManageFundraising } from "@/lib/roles";
+import { formatCurrency } from "@/lib/format";
 import { requireViewer } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
-
-function dollars(cents: number) {
-  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
 
 export default async function FundraisingPage() {
   const viewer = await requireViewer();
@@ -68,8 +65,8 @@ export default async function FundraisingPage() {
                   ) : null}
                   <p className="text-sm">
                     {campaign.pledge_count} pledge{campaign.pledge_count === 1 ? "" : "s"}
-                    {campaign.pledged_cents ? ` · ${dollars(campaign.pledged_cents)} recorded` : ""}
-                    {campaign.goal_cents ? ` · goal ${dollars(campaign.goal_cents)}` : ""}
+                    {campaign.pledged_cents ? ` · ${formatCurrency(campaign.pledged_cents)} recorded` : ""}
+                    {campaign.goal_cents ? ` · goal ${formatCurrency(campaign.goal_cents)}` : ""}
                   </p>
                   {campaign.donate_url ? (
                     <div className="space-y-1">

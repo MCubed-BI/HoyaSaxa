@@ -4,6 +4,7 @@ import { MessagesCompose } from "@/components/messages-compose";
 import { PageHeader, PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { Badge } from "@/components/ui/badge";
+import { Timestamp } from "@/components/timestamp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { getMessageChannel, listMessagePosts, markChannelRead } from "@/lib/messages";
@@ -96,7 +97,7 @@ export default async function MessageChannelPage({
               <CardContent className="space-y-2">
                 <p className="whitespace-pre-wrap text-sm">{post.body}</p>
                 <p className="text-xs text-muted-foreground">
-                  {post.author_label || "Staff"} · {new Date(post.created_at).toLocaleString()}
+                  {post.author_label || "Staff"} · <Timestamp value={post.created_at} />
                 </p>
               </CardContent>
             </Card>

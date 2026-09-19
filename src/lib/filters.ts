@@ -86,6 +86,64 @@ export function hasActiveFilters(filters: AlumniFilters) {
   );
 }
 
+export type FilterChip = {
+  id: string;
+  label: string;
+  href: string;
+};
+
+export function alumniFilterChips(filters: AlumniFilters, action = "/"): FilterChip[] {
+  const hrefFor = (next: AlumniFilters) => {
+    const qs = filtersToSearchParams(next).toString();
+    return qs ? `${action}?${qs}` : action;
+  };
+  const chips: FilterChip[] = [];
+  if (filters.q) {
+    chips.push({ id: "q", label: `Search: ${filters.q}`, href: hrefFor({ ...filters, q: "" }) });
+  }
+  for (const value of filters.states) {
+    chips.push({
+      id: `state-${value}`,
+      label: `State: ${value}`,
+      href: hrefFor({ ...filters, states: filters.states.filter((item) => item !== value) }),
+    });
+  }
+  for (const value of filters.cities) {
+    chips.push({
+      id: `city-${value}`,
+      label: `City: ${value}`,
+      href: hrefFor({ ...filters, cities: filters.cities.filter((item) => item !== value) }),
+    });
+  }
+  for (const value of filters.positions) {
+    chips.push({
+      id: `position-${value}`,
+      label: `Position: ${value}`,
+      href: hrefFor({ ...filters, positions: filters.positions.filter((item) => item !== value) }),
+    });
+  }
+  for (const value of filters.classYears) {
+    chips.push({
+      id: `class-${value}`,
+      label: `Class: ${value}`,
+      href: hrefFor({ ...filters, classYears: filters.classYears.filter((item) => item !== value) }),
+    });
+  }
+  for (const value of filters.seasonYears) {
+    chips.push({
+      id: `season-${value}`,
+      label: `Season: ${value}`,
+      href: hrefFor({ ...filters, seasonYears: filters.seasonYears.filter((item) => item !== value) }),
+    });
+  }
+  if (filters.hasEmail) chips.push({ id: "email", label: "Has email", href: hrefFor({ ...filters, hasEmail: false }) });
+  if (filters.hasPhone) chips.push({ id: "phone", label: "Has phone", href: hrefFor({ ...filters, hasPhone: false }) });
+  if (filters.hasLinkedin) {
+    chips.push({ id: "linkedin", label: "Has LinkedIn", href: hrefFor({ ...filters, hasLinkedin: false }) });
+  }
+  return chips;
+}
+
 export function filtersToSearchParams(filters: AlumniFilters, page?: number, ids?: string[]) {
   const params = new URLSearchParams();
   if (filters.q) params.set("q", filters.q);

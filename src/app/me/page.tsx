@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AlumniMePanel } from "@/components/alumni-me-panel";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { ProductHeader } from "@/components/product-header";
+import { EmptyState, ErrorState } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
 import { accountIdFromCookies, findSameLastNameCandidates, getAccountById, getClaimedRecords } from "@/lib/alumni-claim";
 import { isMissingDatabaseConfig } from "@/lib/db";
@@ -48,7 +49,20 @@ export default async function MePage() {
             title="My alumni record"
             description="Alumni can edit their own contact record or merge a duplicate roster row. This login does not open the coach directory."
           />
-          <AlumniMePanel email={account.email} records={records} mergeCandidates={mergeCandidates} />
+          {records.length === 0 ? (
+            <EmptyState
+              title="No claimed records yet"
+              body="Register yourself from the roster lookup to attach a player card to this login."
+              icon="profile"
+              action={
+                <Button asChild>
+                  <Link href="/register">Register myself</Link>
+                </Button>
+              }
+            />
+          ) : (
+            <AlumniMePanel email={account.email} records={records} mergeCandidates={mergeCandidates} />
+          )}
         </PageMain>
       </PageShell>
     );
@@ -56,7 +70,7 @@ export default async function MePage() {
     if (isMissingDatabaseConfig(error)) {
       return (
         <PageMain width="record">
-          <PageHeader title="Database is not configured" description="Set DATABASE_URL and reload." />
+          <ErrorState title="Database is not configured" body="Set DATABASE_URL and reload." />
         </PageMain>
       );
     }

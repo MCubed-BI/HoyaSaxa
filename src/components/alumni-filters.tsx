@@ -61,6 +61,7 @@ export function AlumniFiltersForm({
           value={local.q}
           onChange={(event) => setLocal((current) => ({ ...current, q: event.target.value }))}
           placeholder="Name, company, city, or email"
+          aria-label="Search alumni"
         />
       </div>
 

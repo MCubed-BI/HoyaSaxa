@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSelection } from "@/components/selection-provider";
 import { Button } from "@/components/ui/button";
+import { formatNumber } from "@/lib/format";
 
 export function DirectoryPickToggle({
   id,
@@ -32,7 +33,7 @@ export function AlumEmailBar({ href = "/portal/blast" }: { href?: string }) {
   return (
     <div className="sticky bottom-3 z-20 rounded-xl border border-gold/40 bg-navy px-4 py-3 text-white shadow-lg">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-medium">{count.toLocaleString()} selected for email</p>
+        <p className="text-sm font-medium">{formatNumber(count)} selected for email</p>
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
