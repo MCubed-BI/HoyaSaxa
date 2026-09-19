@@ -1,6 +1,6 @@
 import { HoyaDirectory } from "@/components/hoya-directory";
 import { PageHeader, PageMain } from "@/components/page-chrome";
-import { ErrorState } from "@/components/query-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { parseDirectoryPill, parseLockerPage } from "@/lib/locker-paths";
 import { searchLockerDirectory } from "@/lib/locker-directory";

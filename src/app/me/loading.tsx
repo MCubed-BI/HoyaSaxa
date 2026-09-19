@@ -1,4 +1,4 @@
-import { MeSkeleton } from "@/components/page-skeletons";
+import { MeSkeleton } from "@/components/ui/page-skeletons";
 
 export default function Loading() {
   return <MeSkeleton />;

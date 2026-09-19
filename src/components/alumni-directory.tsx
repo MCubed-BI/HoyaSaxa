@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSelection } from "@/components/selection-provider";
 import { DataTable, StickyTableHeader, Table, TableBody, TableHead, TableRow } from "@/components/data-table";
-import { EmptyState } from "@/components/query-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ResultPagination } from "@/components/result-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";

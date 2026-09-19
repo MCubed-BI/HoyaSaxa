@@ -5,7 +5,7 @@ import { HoyaAvatar } from "@/components/hoya-avatar";
 import { AppIcon } from "@/components/icons";
 import { DataTable, StickyTableHeader, Table, TableBody, TableHead, TableRow } from "@/components/data-table";
 import { pillClass } from "@/components/page-chrome";
-import { EmptyState } from "@/components/query-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ResultPagination } from "@/components/result-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

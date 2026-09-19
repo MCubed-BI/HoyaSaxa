@@ -4,7 +4,7 @@ import { QuickActions } from "@/components/locker-cards";
 import { LockerHomeDashboard } from "@/components/locker-home-dashboard";
 import { LockerHeader } from "@/components/locker-header";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
-import { HomeCardsSkeleton } from "@/components/page-skeletons";
+import { HomeCardsSkeleton } from "@/components/ui/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { requireLockerViewer } from "@/lib/locker-viewer";
 

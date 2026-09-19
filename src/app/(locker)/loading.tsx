@@ -1,4 +1,4 @@
-import { HomeSkeleton } from "@/components/page-skeletons";
+import { HomeSkeleton } from "@/components/ui/page-skeletons";
 
 export default function Loading() {
   return <HomeSkeleton />;
