@@ -32,6 +32,7 @@ export function navItemsForRole(role: Role): NavItem[] {
 
   const items: NavItem[] = [
     { href: "/", label: "Directory", key: "directory" },
+    { href: "/find-my-alum", label: "Find My Alum", key: "find-my-alum" },
     { href: "/events", label: "Events", key: "events" },
     { href: "/messages", label: "Messages", key: "messages" },
     { href: "/newsflash", label: "Newsflash", key: "newsflash" },

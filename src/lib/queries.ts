@@ -1,5 +1,6 @@
 import { getSql } from "@/lib/db";
 import { PAGE_SIZE, buildAlumniWhere, emptyFilters, type AlumniFilters } from "@/lib/filters";
+import type { AlumniLocationRow } from "@/lib/geocode";
 import type {
   AlumniDetail,
   AlumniEmail,
@@ -103,6 +104,31 @@ export async function searchAlumni(filters: AlumniFilters, page: number): Promis
     pageSize: PAGE_SIZE,
     facets,
   };
+}
+
+export async function getAlumniLocationRows(filters: AlumniFilters): Promise<AlumniLocationRow[]> {
+  const { whereSql, params } = buildAlumniWhere(filters);
+  return query<AlumniLocationRow[]>(
+    `
+    SELECT
+      a.id,
+      a.first_name,
+      a.last_name,
+      a.preferred_name,
+      a.full_name,
+      a.position,
+      a.class_year,
+      a.hometown_city,
+      a.hometown_state,
+      a.current_city,
+      a.current_state,
+      a.address_primary
+    FROM alumni a
+    ${whereSql}
+    ORDER BY lower(a.last_name), lower(coalesce(a.first_name, ''))
+    `,
+    params,
+  );
 }
 
 export async function getAlumniCount(filters: AlumniFilters) {

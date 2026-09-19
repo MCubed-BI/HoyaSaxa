@@ -88,3 +88,15 @@ export type ContactExportRow = {
   phones: string[];
   linkedin_url: string | null;
 };
+
+export type AlumniMapPoint = {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  locationLabel: string;
+  locationSource: "current" | "hometown" | "address";
+  geocodeMethod: "city" | "state" | "nominatim";
+  classYear: string | null;
+  position: string | null;
+};

@@ -50,6 +50,10 @@ describe("roles", () => {
       navItemsForRole("alum").map((item) => item.href),
       ["/home", "/directory", "/events", "/giving", "/messages"],
     );
+    assert.equal(
+      navItemsForRole("owner").some((item) => item.href === "/find-my-alum"),
+      true,
+    );
     assert.equal(homePathForRole("alum"), "/portal");
     assert.equal(homePathForRole("board"), "/portal");
     assert.equal(homePathForRole("owner"), "/");
@@ -70,6 +74,7 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/home"), true);
     assert.equal(isAlumAllowedPath("/feed"), true);
     assert.equal(isAlumAllowedPath("/messages"), true);
+    assert.equal(isAlumAllowedPath("/find-my-alum"), true);
     assert.equal(isAlumAllowedPath("/message"), true);
     assert.equal(isAlumAllowedPath("/api/portal/newsflash"), true);
     assert.equal(isAlumAllowedPath("/blast"), false);

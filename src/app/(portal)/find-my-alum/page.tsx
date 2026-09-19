@@ -1,20 +1,30 @@
-import { FindMyAlumMap } from "@/components/find-my-alum-map";
+import { AlumniFiltersForm } from "@/components/alumni-filters";
+import { FindMyAlumMapLoader } from "@/components/find-my-alum-map-loader";
 import { PortalShell } from "@/components/portal-shell";
 import { SiteHeader } from "@/components/site-header";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { listAlumniLocations } from "@/lib/portal-queries";
+import { parseAlumniFilters } from "@/lib/filters";
+import { getAlumniMapPoints } from "@/lib/map-points";
+import { getAlumniFacets } from "@/lib/queries";
+import { canUseOwnerTools } from "@/lib/roles";
 import { requireViewer } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 
-export default async function FindMyAlumPage() {
+export default async function FindMyAlumPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const viewer = await requireViewer();
+  const filters = parseAlumniFilters(await searchParams);
   let errorMessage: string | null = null;
-  let groups: Awaited<ReturnType<typeof listAlumniLocations>> = [];
+  let mapped: Awaited<ReturnType<typeof getAlumniMapPoints>> | null = null;
+  let facets: Awaited<ReturnType<typeof getAlumniFacets>> | null = null;
 
   try {
-    groups = await listAlumniLocations();
+    [mapped, facets] = await Promise.all([getAlumniMapPoints(filters), getAlumniFacets()]);
   } catch (error) {
     errorMessage = isMissingDatabaseConfig(error)
       ? "DATABASE_URL is not set. Add it to .env.local and reload."
@@ -29,15 +39,26 @@ export default async function FindMyAlumPage() {
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Directory</p>
         <h2 className="font-heading text-3xl text-navy">Find My Alum</h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Location groups from current city/state. If a Find My Alum map is already present on
-          another branch, keep that map and mount it in this slot — this page only extends it.
+          Map and heat of alumni locations from current city/state, then hometown, then a parsed US
+          address. Pins jitter slightly so people in the same city stay clickable.
         </p>
+        {mapped ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {mapped.mappedCount} mapped
+            {mapped.skippedCount ? ` · ${mapped.skippedCount} without a usable place` : ""}
+            {mapped.totalAlumni ? ` · ${mapped.totalAlumni} in this filter` : ""}
+          </p>
+        ) : null}
       </div>
+      {facets ? <AlumniFiltersForm filters={filters} facets={facets} action="/find-my-alum" /> : null}
       {errorMessage ? (
         <StatusCard title="Find My Alum unavailable" body={errorMessage} />
-      ) : (
-        <FindMyAlumMap groups={groups} />
-      )}
+      ) : mapped ? (
+        <FindMyAlumMapLoader
+          points={mapped.points}
+          profileBase={canUseOwnerTools(viewer.role) ? "/alumni" : "/directory"}
+        />
+      ) : null}
     </>
   );
 
