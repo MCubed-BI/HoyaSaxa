@@ -22,7 +22,7 @@ type Preview = {
   missingPhone: number;
   missingEmail: number;
   twilio: boolean;
-  emailProvider: "resend" | "sendgrid" | null;
+  emailProvider: "gmail" | "resend" | "sendgrid" | null;
   phoneRecipients: Recipient[];
   emailRecipients: Recipient[];
 };
@@ -156,7 +156,7 @@ export function BlastComposer({
           setSmsFallback({ sms: data.sms });
           setStatus(`Twilio is not configured. ${data.count} numbers are ready — open Messages or copy the blast.`);
         }
-      } else if (data.mode === "resend" || data.mode === "sendgrid") {
+      } else if (data.mode === "gmail" || data.mode === "resend" || data.mode === "sendgrid") {
         setStatus(`Sent ${data.sent} of ${data.count} emails${data.failed ? `, ${data.failed} failed` : ""}.`);
       } else {
         setEmailFallback({ mailto: data.mailto ?? null, gmail: data.gmail ?? null, emails: data.emails ?? [] });
@@ -293,9 +293,11 @@ export function BlastComposer({
                 ? preview.twilio
                   ? "Twilio is configured. Send will deliver texts from the app."
                   : "Twilio env is not set. Send prepares the blast and opens Messages / copy."
-                : preview.emailProvider
-                  ? `${preview.emailProvider === "resend" ? "Resend" : "SendGrid"} is configured. Send uses the same Gmail-ready path as staff (EMAIL_FROM / EMAIL_REPLY_TO).`
-                  : "EMAIL_FROM plus RESEND_API_KEY or SENDGRID_API_KEY are not set. Send prepares a Gmail or mailto draft."}
+                : preview.emailProvider === "gmail"
+                  ? "Gmail SMTP is configured (GMAIL_USER). Staff and alum send both use sendProviderEmail from that mailbox."
+                  : preview.emailProvider
+                    ? `${preview.emailProvider === "resend" ? "Resend" : "SendGrid"} is configured as a leftover fallback.`
+                    : "GMAIL_USER + GMAIL_APP_PASSWORD are not set. Send prepares a Gmail or mailto draft."}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">

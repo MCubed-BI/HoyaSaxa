@@ -34,7 +34,7 @@ export default async function BlastPage({
           <PageHeader
             eyebrow="Outreach"
             title="Blast"
-            description="One group — filters and/or checked alumni — then compose a text or an email in the app and send. Twilio and Resend/SendGrid deliver when configured; otherwise the app prepares Messages, mailto, or copy."
+            description="One group — filters and/or checked alumni — then compose a text or an email in the app and send. Twilio and Gmail SMTP deliver when configured; otherwise the app prepares Messages, mailto, or copy."
           />
           <AlumniFiltersForm filters={filters} facets={facets} action="/blast" submitLabel="Update group" />
           <BlastComposer filters={filters} initialChannel={channel} />

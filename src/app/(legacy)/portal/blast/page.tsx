@@ -25,11 +25,11 @@ export default async function PortalAlumBlastPage() {
             </p>
             <h2 className="font-heading text-3xl text-navy">Email classmates</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Compose email to alumni you selected on the directory. When{" "}
-              <code>EMAIL_FROM</code> plus Resend or SendGrid is set, send uses that same path as
-              staff (Gmail is fine for <code>EMAIL_REPLY_TO</code>). Without those env values, Prepare
-              opens Gmail or a mailto draft. Coach filter blast, Twilio text, and Data Sync stay
-              staff-only.
+              Compose email to alumni you selected on the directory. Send uses the same{" "}
+              <code>sendProviderEmail</code> Gmail SMTP path as staff when{" "}
+              <code>GMAIL_USER</code> and <code>GMAIL_APP_PASSWORD</code> are set (From is that
+              mailbox). Without those, Prepare opens a Gmail or mailto draft. Coach filter blast,
+              Twilio text, and Data Sync stay staff-only.
             </p>
           </div>
           <BlastComposer filters={emptyFilters()} initialChannel="email" mode="alum" />

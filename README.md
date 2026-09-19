@@ -66,7 +66,7 @@ Helpers: `readAlumSession(req)`, `alumSessionCookieName`, `AlumSession`, `requir
 | owner / coach (`ga_session`) | `/blast` | Unlimited filter groups and/or checked alumni; text (Twilio) or email |
 | alum / board (`hoya_alum_session` or claim session) | `/portal/blast` and directory picks on `/directory` | Email only, and only to alumni they selected. No filter-wide blast, no Twilio, no Data Sync |
 
-Alum send uses the same email path as staff when env is set: `EMAIL_FROM` plus `RESEND_API_KEY` or `SENDGRID_API_KEY`. `EMAIL_REPLY_TO` may be a Gmail address. Without those, Prepare opens a Gmail compose window or a `mailto:` draft. `POST /api/blast/send` rejects alum SMS, `includeFilters`, and empty pick lists. `/api/blast/ids` (add filtered group) stays staff-only.
+Alum send uses the same `sendProviderEmail` path as staff. Live delivery is Gmail SMTP (`GMAIL_USER` + `GMAIL_APP_PASSWORD` via nodemailer). From is that mailbox. Without those, Prepare opens a Gmail compose window or a `mailto:` draft. `POST /api/blast/send` rejects alum SMS, `includeFilters`, and empty pick lists. `/api/blast/ids` (add filtered group) stays staff-only.
 
 Local preview: `/login` as `Alum` or `Lars` with the coach password mints `hoya_alum_session` and opens `/portal`.
 
@@ -233,17 +233,15 @@ TWILIO_FROM_NUMBER=
 
 Without these, Prepare still copies numbers or opens Messages (`sms:`).
 
-### Email (Resend or SendGrid)
+### Email (Gmail SMTP)
 
 ```
-EMAIL_FROM=coach@yourdomain.com
-RESEND_API_KEY=
-# or
-SENDGRID_API_KEY=
+GMAIL_USER=coach@yourdomain.com
+GMAIL_APP_PASSWORD=
 ```
 
-Set `EMAIL_FROM` plus one API key to send from the app. Prefer Resend. Without them, Prepare copies subject/body/recipients or opens a `mailto:` draft (small groups).
+Staff `/blast` and alum `/portal/blast` both call `sendProviderEmail`. When `GMAIL_USER` and `GMAIL_APP_PASSWORD` are set, nodemailer sends through Gmail SMTP and From is that mailbox. Without them, Prepare copies subject/body/recipients or opens a Gmail / `mailto:` draft.
 
 ## Deploy
 
-Deploy to Vercel. Set `DATABASE_URL`, `COACH_USERNAME`, and `COACH_PASSWORD`. Optionally set `HOYA_OWNER_USERNAMES`, `HOYA_COACH_USERNAMES`, `HOYA_BOARD_USERNAMES`, `HOYA_ALUM_USERNAMES`, and `ALUMNI_SESSION_SECRET`. Add Twilio and/or Resend (or SendGrid) when you are ready to send from the app. Auth stays on for every environment — unauthenticated visitors never see alumni data.
+Deploy to Vercel. Set `DATABASE_URL`, `COACH_USERNAME`, and `COACH_PASSWORD`. Optionally set `HOYA_OWNER_USERNAMES`, `HOYA_COACH_USERNAMES`, `HOYA_BOARD_USERNAMES`, `HOYA_ALUM_USERNAMES`, and `ALUMNI_SESSION_SECRET`. Add Twilio and/or `GMAIL_USER` + `GMAIL_APP_PASSWORD` when you are ready to send from the app. Auth stays on for every environment — unauthenticated visitors never see alumni data.
