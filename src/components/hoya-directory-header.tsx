@@ -1,14 +1,16 @@
 import { ProductHeader } from "@/components/product-header";
-import { portalNavItems, portalSecondaryItems } from "@/lib/nav";
+import { portalNavItems, portalSecondaryItems, type NavItem } from "@/lib/nav";
 
 export function HoyaDirectoryHeader({
   signedIn,
   roleLabel,
   viewerLabel,
+  canEmailClassmates,
 }: {
   signedIn?: boolean;
   roleLabel?: string;
   viewerLabel?: string;
+  canEmailClassmates?: boolean;
 }) {
   if (!signedIn) {
     return (
@@ -20,15 +22,23 @@ export function HoyaDirectoryHeader({
     );
   }
 
+  const secondary: NavItem[] = [
+    ...portalSecondaryItems(),
+    ...(canEmailClassmates
+      ? [{ href: "/portal/blast", label: "Email classmates", key: "blast" as const }]
+      : []),
+  ];
+
   return (
     <ProductHeader
       homeHref="/home"
       items={portalNavItems()}
-      secondaryItems={portalSecondaryItems()}
+      secondaryItems={secondary}
       current="portal-directory"
       roleLabel={roleLabel ?? "Alumnus"}
       viewerLabel={viewerLabel}
       showSignOut
+      signOutFrom="/directory"
       mobileNav="tabs"
     />
   );

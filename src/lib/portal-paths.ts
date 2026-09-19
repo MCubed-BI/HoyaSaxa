@@ -3,17 +3,17 @@ const PUBLIC_PATHS = [
   "/register",
   "/alumni-login",
   "/home/login",
-  "/directory",
-  "/athletes",
   "/locker",
   "/api/login",
   "/api/locker/login",
+  "/api/locker/logout",
   "/api/messages/alum-session",
   "/api/alumni/lookup",
   "/api/alumni/register",
   "/api/alumni/login",
   "/api/alum/session",
   "/api/session",
+  "/api/logout",
   "/giving",
   "/api/giving",
 ];
@@ -41,6 +41,7 @@ const ALUM_ALLOWED_PREFIXES = [
   "/api/messages",
   "/api/events",
   "/api/giving",
+  "/api/blast",
   "/api/logout",
 ];
 
@@ -63,6 +64,14 @@ export function isDataSyncPath(pathname: string) {
 }
 
 export function loginPathFor(pathname: string) {
+  if (
+    pathname === "/directory" ||
+    pathname.startsWith("/directory/") ||
+    pathname === "/athletes" ||
+    pathname.startsWith("/athletes/")
+  ) {
+    return "/login";
+  }
   if (
     pathname === "/home" ||
     pathname.startsWith("/home/") ||

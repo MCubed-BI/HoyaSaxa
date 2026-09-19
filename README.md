@@ -42,7 +42,7 @@ Four roles: **owner**, **coach**, **alum**, and **board** (Lars).
 | `owner` | `COACH_USERNAME` (default `Hoyas`) and `HOYA_OWNER_USERNAMES` → `ga_session` | Full staff shell: directory, blast, sync, reports, coach messages, newsflash, fundraising |
 | `coach` | `HOYA_COACH_USERNAMES` → `ga_session` | Same owner tools (blast stays on) |
 | `board` | `HOYA_BOARD_USERNAMES` (default `Lars`) → `hoya_alum_session` | Legacy Locker + Newsflash write. Never unlocks Data Sync or coach blast. |
-| `alum` | `hoya_alum_session` from Register/Claim, or preview username `Alum` | Legacy Locker only |
+| `alum` | `hoya_alum_session` from Register/Claim, or preview username `Alum` | Legacy Locker + selected-directory email blast |
 
 ### Alum session contract
 
@@ -57,9 +57,16 @@ Football Program owns Register myself / claim on `cursor/hoya-register-claim-*`.
 
 Helpers: `readAlumSession(req)`, `alumSessionCookieName`, `AlumSession`, `requireAlumRole(...roles)`, `setAlumSessionCookies`, `GET /api/alum/session`.
 
-`ga_alumni_session` is still accepted as a fallback hook until claim switches over. Home/Newsflash preview login may write a locker-shaped token (`{ role, label, iat }` via `hoya-alum-session.ts`) on the same cookie name — portal proxy and viewers accept both. Alum cookies never unlock `/sync`, `/blast`, or `/reports`.
+`ga_alumni_session` is still accepted as a fallback hook until claim switches over. Home/Newsflash preview login may write a locker-shaped token (`{ role, label, iat }` via `hoya-alum-session.ts`) on the same cookie name — portal proxy and viewers accept both. Alum cookies never unlock `/sync`, staff `/blast`, Twilio, or `/reports`.
 
-**Email blast:** coach/owner blast is unchanged. Alum blast is hidden until claim auth is real.
+**Email blast**
+
+| Who | Where | What they can send |
+| --- | --- | --- |
+| owner / coach (`ga_session`) | `/blast` | Unlimited filter groups and/or checked alumni; text (Twilio) or email |
+| alum / board (`hoya_alum_session` or claim session) | `/portal/blast` and directory picks on `/directory` | Email only, and only to alumni they selected. No filter-wide blast, no Twilio, no Data Sync |
+
+Alum send uses the same `sendProviderEmail` path as staff. Live delivery is Gmail SMTP (`GMAIL_USER` + `GMAIL_APP_PASSWORD` via nodemailer). From is that mailbox. Without those, Prepare opens a Gmail compose window or a `mailto:` draft. `POST /api/blast/send` rejects alum SMS, `includeFilters`, and empty pick lists. `/api/blast/ids` (add filtered group) stays staff-only.
 
 Local preview: `/login` as `Alum` or `Lars` with the coach password mints `hoya_alum_session` and opens `/portal`.
 
@@ -139,7 +146,7 @@ Main already has the Sgarlata `alumni` schema. Locker adds (on first connected p
 - `newsflash_posts` — board notes; optional `event_at` drives the Home upcoming-event card
 - `locker_feed_posts` — official + alumni MVP feed rows
 
-If `DATABASE_URL` is missing, Home / For You / Newsflash still render demo content and Newsflash publishes stay in-process. With Neon connected, tables seed on first load. If an `events` table from the Events lane exists, Home prefers the next upcoming row; otherwise it uses a dated Newsflash or the demo card. Directory / Events / Giving quick actions only link those lanes.
+If `DATABASE_URL` is missing, Home / For You / Newsflash still render demo content and Newsflash publishes stay in-process. With Neon connected, tables seed on first load. Feed and Home activity dedupe Newsflash rows that were also copied into `locker_feed_posts` (same title + body), so seed posts appear once. If an `events` table from the Events lane exists, Home prefers the next upcoming row; otherwise it uses a dated Newsflash or the demo card. Directory / Events / Giving quick actions only link those lanes.
 
 Claim / register pages are owned by another lane and are not touched here.
 
@@ -158,7 +165,7 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/events` — Upcoming / Past / My Events (date, title, category, location, thumbnail)
 - `/events/new` — Create Event (coach and board only)
 - `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
-- `/directory` — public Hoya Directory (search + All/Athletes/Alumni/Coaches/Staff)
+- `/directory` — Hoya Directory (search + All/Athletes/Alumni/Coaches/Staff). Requires `ga_session`, `hoya_alum_session`, or the claim session. Anonymous visitors are sent to `/login`. Emails stay hidden on these cards.
 - `/athletes/[id]` — public athlete profile (Overview/Stats/Photos/Career/Q&A)
 - `/portal/directory` / `/portal/profile` — aliases to `/directory`
 - `/portal/events` / `/portal/giving` — aliases to `/events` and `/giving`
@@ -181,7 +188,9 @@ import { isAlumLoggedIn, getAlumSession } from "@/lib/alum-session";
 const alum = isAlumLoggedIn(await cookies()); // cookie `hoya_alum_session`, role `"alum"`
 ```
 
-Cookie `hoya_alum_session` is httpOnly, Secure in production, SameSite=Lax. Value is HMAC-signed JSON `{ v:1, role:"alum"|"board", alumniId, email, name, exp }`. Register myself always sets `role: "alum"`. Do not use `ga_session` / `isCoachLoggedIn` for alum — that cookie never unlocks Data Sync or owner blast. Optional: readable `ga_role=alum` hint, or `GET /api/session` `{ role, roles, alum, coach }`. Claiming a roster row never unlocks the directory, reports, blast, or sync pages.
+Cookie `hoya_alum_session` is httpOnly, Secure in production, SameSite=Lax. Value is HMAC-signed JSON `{ v:1, role:"alum"|"board", alumniId, email, name, exp }`. Register myself always sets `role: "alum"`. Do not use `ga_session` / `isCoachLoggedIn` for alum — that cookie never unlocks Data Sync or owner blast. Optional: readable `ga_role=alum` hint, or `GET /api/session` `{ role, roles, alum, coach }`. Claiming a roster row never unlocks reports, staff `/blast`, or sync pages. `/directory` is available to a valid staff, alum, or claim session.
+
+Sign out from Home, For You, or Newsflash posts to `/api/logout` with `from=/newsflash` (or `/home` / `/feed`). That always clears `hoya_alum_session`, `ga_alumni_session`, `ga_session`, and `ga_role` using the same cookie flags they were set with, then returns to `/home/login` — it does not bounce to coach `/login` while leaving the alum session.
 
 The app uses existing Neon tables `alumni_accounts`, `alumni_claims`, and `alumni_record_merges` when present, and creates them if they are missing.
 
@@ -224,17 +233,15 @@ TWILIO_FROM_NUMBER=
 
 Without these, Prepare still copies numbers or opens Messages (`sms:`).
 
-### Email (Resend or SendGrid)
+### Email (Gmail SMTP)
 
 ```
-EMAIL_FROM=coach@yourdomain.com
-RESEND_API_KEY=
-# or
-SENDGRID_API_KEY=
+GMAIL_USER=coach@yourdomain.com
+GMAIL_APP_PASSWORD=
 ```
 
-Set `EMAIL_FROM` plus one API key to send from the app. Prefer Resend. Without them, Prepare copies subject/body/recipients or opens a `mailto:` draft (small groups).
+Staff `/blast` and alum `/portal/blast` both call `sendProviderEmail`. When `GMAIL_USER` and `GMAIL_APP_PASSWORD` are set, nodemailer sends through Gmail SMTP and From is that mailbox. Without them, Prepare copies subject/body/recipients or opens a Gmail / `mailto:` draft.
 
 ## Deploy
 
-Deploy to Vercel. Set `DATABASE_URL`, `COACH_USERNAME`, and `COACH_PASSWORD`. Optionally set `HOYA_OWNER_USERNAMES`, `HOYA_COACH_USERNAMES`, `HOYA_BOARD_USERNAMES`, `HOYA_ALUM_USERNAMES`, and `ALUMNI_SESSION_SECRET`. Add Twilio and/or Resend (or SendGrid) when you are ready to send from the app. Auth stays on for every environment — unauthenticated visitors never see alumni data.
+Deploy to Vercel. Set `DATABASE_URL`, `COACH_USERNAME`, and `COACH_PASSWORD`. Optionally set `HOYA_OWNER_USERNAMES`, `HOYA_COACH_USERNAMES`, `HOYA_BOARD_USERNAMES`, `HOYA_ALUM_USERNAMES`, and `ALUMNI_SESSION_SECRET`. Add Twilio and/or `GMAIL_USER` + `GMAIL_APP_PASSWORD` when you are ready to send from the app. Auth stays on for every environment — unauthenticated visitors never see alumni data.

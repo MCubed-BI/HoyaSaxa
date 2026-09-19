@@ -69,8 +69,8 @@ export async function getLockerViewer(): Promise<LockerViewer | null> {
   return null;
 }
 
-export async function requireLockerViewer() {
+export async function requireLockerViewer(loginPath = "/home/login") {
   const viewer = await getLockerViewer();
-  if (!viewer) redirect("/home/login");
+  if (!viewer) redirect(loginPath);
   return viewer;
 }

@@ -10,6 +10,8 @@ import { useSelection } from "@/components/selection-provider";
 import { hasActiveFilters, type AlumniFilters } from "@/lib/filters";
 import { displayPhone } from "@/lib/phone";
 
+export type BlastComposerMode = "staff" | "alum";
+
 export type BlastChannel = "sms" | "email";
 
 type Recipient = { id: string; name: string; phone: string | null; email: string | null };
@@ -20,7 +22,7 @@ type Preview = {
   missingPhone: number;
   missingEmail: number;
   twilio: boolean;
-  emailProvider: "resend" | "sendgrid" | null;
+  emailProvider: "gmail" | "resend" | "sendgrid" | null;
   phoneRecipients: Recipient[];
   emailRecipients: Recipient[];
 };
@@ -28,13 +30,16 @@ type Preview = {
 export function BlastComposer({
   filters,
   initialChannel = "sms",
+  mode = "staff",
 }: {
   filters: AlumniFilters;
   initialChannel?: BlastChannel;
+  mode?: BlastComposerMode;
 }) {
   const { ids, clear } = useSelection();
+  const alumMode = mode === "alum";
   const filtered = hasActiveFilters(filters);
-  const [channel, setChannel] = useState<BlastChannel>(initialChannel);
+  const [channel, setChannel] = useState<BlastChannel>(alumMode ? "email" : initialChannel);
   const [includeFilters, setIncludeFilters] = useState(filtered);
   const [includeIds, setIncludeIds] = useState(ids.length > 0);
   const [subject, setSubject] = useState("");
@@ -46,11 +51,15 @@ export function BlastComposer({
   const [smsFallback, setSmsFallback] = useState<{
     sms: string | { ios: string; android: string; first: string } | null;
   } | null>(null);
-  const [emailFallback, setEmailFallback] = useState<{ mailto: string | null; emails: string[] } | null>(null);
+  const [emailFallback, setEmailFallback] = useState<{
+    mailto: string | null;
+    gmail: string | null;
+    emails: string[];
+  } | null>(null);
 
   useEffect(() => {
-    setChannel(initialChannel);
-  }, [initialChannel]);
+    setChannel(alumMode ? "email" : initialChannel);
+  }, [alumMode, initialChannel]);
 
   useEffect(() => {
     if (filtered) setIncludeFilters(true);
@@ -62,12 +71,13 @@ export function BlastComposer({
 
   const payload = useMemo(
     () => ({
-      filters,
+      filters: alumMode ? { ...filters, q: "" } : filters,
       ids,
-      includeFilters,
-      includeIds,
+      includeFilters: alumMode ? false : includeFilters,
+      includeIds: alumMode ? true : includeIds,
+      channel: alumMode ? "email" : channel,
     }),
-    [filters, ids, includeFilters, includeIds],
+    [alumMode, channel, filters, ids, includeFilters, includeIds],
   );
 
   async function loadPreview() {
@@ -146,10 +156,10 @@ export function BlastComposer({
           setSmsFallback({ sms: data.sms });
           setStatus(`Twilio is not configured. ${data.count} numbers are ready — open Messages or copy the blast.`);
         }
-      } else if (data.mode === "resend" || data.mode === "sendgrid") {
+      } else if (data.mode === "gmail" || data.mode === "resend" || data.mode === "sendgrid") {
         setStatus(`Sent ${data.sent} of ${data.count} emails${data.failed ? `, ${data.failed} failed` : ""}.`);
       } else {
-        setEmailFallback({ mailto: data.mailto ?? null, emails: data.emails ?? [] });
+        setEmailFallback({ mailto: data.mailto ?? null, gmail: data.gmail ?? null, emails: data.emails ?? [] });
         setStatus(
           `Email provider is not configured. ${data.count} addresses are ready — open a draft or copy the blast.`,
         );
@@ -172,17 +182,27 @@ export function BlastComposer({
             <input
               type="checkbox"
               className="mt-0.5 size-4 accent-navy"
-              checked={includeIds}
+              checked={alumMode ? true : includeIds}
               onChange={(event) => setIncludeIds(event.target.checked)}
-              disabled={ids.length === 0}
+              disabled={alumMode || ids.length === 0}
             />
             <span>
-              Manual picks · {ids.length.toLocaleString()} alumni
+              {alumMode ? "Directory picks" : "Manual picks"} · {ids.length.toLocaleString()} alumni
               {ids.length === 0 ? (
-                <span className="block text-muted-foreground">Check names on the directory to add people.</span>
+                <span className="block text-muted-foreground">
+                  {alumMode
+                    ? "Check names on /directory, then return here to compose."
+                    : "Check names on the directory to add people."}
+                </span>
               ) : null}
             </span>
           </label>
+          {alumMode ? (
+            <p className="text-sm text-muted-foreground">
+              Alumni email is limited to people you selected. Filter-wide coach blast, Twilio text, and
+              Data Sync stay with staff.
+            </p>
+          ) : (
           <label className="flex items-start gap-2 text-sm">
             <input
               type="checkbox"
@@ -201,6 +221,7 @@ export function BlastComposer({
               )}
             </span>
           </label>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-lg bg-muted px-4 py-3">
@@ -219,6 +240,7 @@ export function BlastComposer({
         </CardContent>
       </Card>
 
+      {alumMode ? null : (
       <div className="flex gap-2">
         <Button type="button" variant={channel === "sms" ? "default" : "outline"} onClick={() => setChannel("sms")}>
           Text
@@ -227,6 +249,7 @@ export function BlastComposer({
           Email
         </Button>
       </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -270,9 +293,11 @@ export function BlastComposer({
                 ? preview.twilio
                   ? "Twilio is configured. Send will deliver texts from the app."
                   : "Twilio env is not set. Send prepares the blast and opens Messages / copy."
-                : preview.emailProvider
-                  ? `${preview.emailProvider === "resend" ? "Resend" : "SendGrid"} is configured. Send will deliver email from the app.`
-                  : "RESEND_API_KEY or SENDGRID_API_KEY plus EMAIL_FROM are not set. Send prepares a draft / copy."}
+                : preview.emailProvider === "gmail"
+                  ? "Gmail SMTP is configured (GMAIL_USER). Staff and alum send both use sendProviderEmail from that mailbox."
+                  : preview.emailProvider
+                    ? `${preview.emailProvider === "resend" ? "Resend" : "SendGrid"} is configured as a leftover fallback.`
+                    : "GMAIL_USER + GMAIL_APP_PASSWORD are not set. Send prepares a Gmail or mailto draft."}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -352,8 +377,15 @@ export function BlastComposer({
           ) : null}
           {channel === "email" && emailFallback ? (
             <div className="flex flex-wrap gap-2">
-              {emailFallback.mailto ? (
+              {emailFallback.gmail ? (
                 <Button asChild>
+                  <a href={emailFallback.gmail} target="_blank" rel="noreferrer">
+                    Open in Gmail
+                  </a>
+                </Button>
+              ) : null}
+              {emailFallback.mailto ? (
+                <Button asChild variant={emailFallback.gmail ? "outline" : "default"}>
                   <a href={emailFallback.mailto}>Open email draft</a>
                 </Button>
               ) : (

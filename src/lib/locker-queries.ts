@@ -7,6 +7,9 @@ import {
   DEMO_FEED,
   DEMO_NEWSFLASH,
   DEMO_UPCOMING_EVENT,
+  contentKey,
+  dedupeActivityItems,
+  dedupeFeedPosts,
   newsflashToFeedPost,
   type ActivityItem,
   type FeedPost,
@@ -219,7 +222,13 @@ async function listDirectoryActivity(): Promise<ActivityItem[]> {
   }
 }
 
+function uniqueFeedRows(newsflash: NewsflashPost[], feed: FeedPost[]) {
+  const newsflashKeys = new Set(newsflash.map((post) => contentKey(post.title, post.body)));
+  return feed.filter((post) => !newsflashKeys.has(contentKey(post.title, post.body)));
+}
+
 function activityFromContent(newsflash: NewsflashPost[], feed: FeedPost[]): ActivityItem[] {
+  const uniqueFeed = uniqueFeedRows(newsflash, feed);
   const items: ActivityItem[] = [
     ...newsflash.map((post) => ({
       id: `newsflash-${post.id}`,
@@ -228,7 +237,7 @@ function activityFromContent(newsflash: NewsflashPost[], feed: FeedPost[]): Acti
       when: post.created_at,
       kind: "newsflash" as const,
     })),
-    ...feed.map((post) => ({
+    ...uniqueFeed.map((post) => ({
       id: post.id,
       title: post.title || post.body.slice(0, 72),
       body: `${post.author_role === "official" ? "Official" : "Alumni"} · ${post.author_label}`,
@@ -236,35 +245,41 @@ function activityFromContent(newsflash: NewsflashPost[], feed: FeedPost[]): Acti
       kind: "feed" as const,
     })),
   ];
-  return items.sort((a, b) => Date.parse(b.when) - Date.parse(a.when)).slice(0, 6);
+  return dedupeActivityItems(items.sort((a, b) => Date.parse(b.when) - Date.parse(a.when))).slice(0, 6);
+}
+
+function composeLockerLists(newsflash: NewsflashPost[], feedRows: FeedPost[]) {
+  const uniqueFeed = uniqueFeedRows(newsflash, feedRows);
+  const feed = dedupeFeedPosts([...newsflash.map(newsflashToFeedPost), ...uniqueFeed]).sort(
+    (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+  );
+  return { feed, activity: activityFromContent(newsflash, uniqueFeed) };
 }
 
 function fallbackHome(reason: string): LockerHomeData {
   const newsflash = DEMO_NEWSFLASH;
-  const feed = [...newsflash.map(newsflashToFeedPost), ...DEMO_FEED];
+  const { feed, activity } = composeLockerLists(newsflash, DEMO_FEED);
   return {
     usingFallback: true,
     fallbackReason: reason,
     newsflash,
     feed,
     upcomingEvent: upcomingFromNewsflash(newsflash) ?? DEMO_UPCOMING_EVENT,
-    activity: activityFromContent(newsflash, DEMO_FEED),
+    activity,
   };
 }
 
 function memoryHome(reason: string): LockerHomeData {
   const store = readFallback();
   const newsflash = store.newsflash;
-  const feed = [...newsflash.map(newsflashToFeedPost), ...store.feed].sort(
-    (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
-  );
+  const { feed, activity } = composeLockerLists(newsflash, store.feed);
   return {
     usingFallback: true,
     fallbackReason: reason,
     newsflash,
     feed,
     upcomingEvent: upcomingFromNewsflash(newsflash) ?? DEMO_UPCOMING_EVENT,
-    activity: activityFromContent(newsflash, store.feed),
+    activity,
   };
 }
 
@@ -282,13 +297,11 @@ export async function loadLockerHome(): Promise<LockerHomeData> {
       loadEventsLaneEvent(),
       listDirectoryActivity(),
     ]);
-    const feed = [...newsflash.map(newsflashToFeedPost), ...feedRows].sort(
-      (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
-    );
+    const { feed, activity: contentActivity } = composeLockerLists(newsflash, feedRows);
     const upcomingEvent = eventsEvent ?? upcomingFromNewsflash(newsflash) ?? DEMO_UPCOMING_EVENT;
-    const activity = [...activityFromContent(newsflash, feedRows), ...directory]
-      .sort((a, b) => Date.parse(b.when) - Date.parse(a.when))
-      .slice(0, 6);
+    const activity = dedupeActivityItems(
+      [...contentActivity, ...directory].sort((a, b) => Date.parse(b.when) - Date.parse(a.when)),
+    ).slice(0, 6);
     return {
       usingFallback: false,
       fallbackReason: null,

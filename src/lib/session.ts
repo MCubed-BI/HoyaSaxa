@@ -85,13 +85,25 @@ export function setAlumSessionCookies(
   response.cookies.set(SESSION_ROLE_COOKIE, ALUM_ROLE, roleHintCookieOptions());
 }
 
+export function expiredAuthCookieOptions(httpOnly = true) {
+  return {
+    httpOnly,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+    expires: new Date(0),
+  };
+}
+
 export function clearAlumSessionCookies(response: CookieSetter, remainingCoach: boolean) {
-  response.cookies.set(ALUM_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
-  response.cookies.set(LEGACY_ALUMNI_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+  const expired = expiredAuthCookieOptions();
+  response.cookies.set(ALUM_SESSION_COOKIE, "", expired);
+  response.cookies.set(LEGACY_ALUMNI_SESSION_COOKIE, "", expired);
   if (remainingCoach) {
     response.cookies.set(SESSION_ROLE_COOKIE, COACH_ROLE, roleHintCookieOptions());
   } else {
-    response.cookies.set(SESSION_ROLE_COOKIE, "", { path: "/", maxAge: 0 });
+    response.cookies.set(SESSION_ROLE_COOKIE, "", expiredAuthCookieOptions(false));
   }
 }
 
@@ -100,10 +112,10 @@ export function setCoachRoleHint(response: CookieSetter) {
 }
 
 export function clearCoachSessionCookies(response: CookieSetter, remainingAlum: boolean) {
-  response.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+  response.cookies.set(SESSION_COOKIE, "", expiredAuthCookieOptions());
   if (remainingAlum) {
     response.cookies.set(SESSION_ROLE_COOKIE, ALUM_ROLE, roleHintCookieOptions());
   } else {
-    response.cookies.set(SESSION_ROLE_COOKIE, "", { path: "/", maxAge: 0 });
+    response.cookies.set(SESSION_ROLE_COOKIE, "", expiredAuthCookieOptions(false));
   }
 }

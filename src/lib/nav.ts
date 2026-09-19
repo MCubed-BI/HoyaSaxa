@@ -79,6 +79,9 @@ export function portalMoreItems(role: Role): NavItem[] {
     { href: "/find-my-alum", label: "Find My Alum", key: "find-my-alum" },
     { href: "/me", label: "My record", key: "me" },
   ];
+  if (role === "alum" || role === "board") {
+    items.push({ href: "/portal/blast", label: "Email classmates", key: "blast" });
+  }
   if (role === "owner" || role === "coach") {
     items.unshift({ href: "/", label: "Staff tools", key: "directory" });
   }

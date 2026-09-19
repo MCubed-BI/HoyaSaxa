@@ -20,6 +20,7 @@ const PUBLIC_PATHS = [
   "/login",
   "/locker",
   "/api/login",
+  "/api/logout",
   "/api/messages/alum-session",
 ];
 

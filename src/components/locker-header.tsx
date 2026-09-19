@@ -2,6 +2,17 @@ import { ProductHeader } from "@/components/product-header";
 import { portalNavItems, portalSecondaryItems, type NavKey } from "@/lib/nav";
 import type { LockerViewer } from "@/lib/locker-viewer";
 
+function fromForNav(current?: NavKey) {
+  if (current === "newsflash") return "/newsflash";
+  if (current === "feed") return "/feed";
+  if (current === "portal-directory" || current === "profile") return "/directory";
+  if (current === "blast") return "/portal/blast";
+  if (current === "events") return "/events";
+  if (current === "giving") return "/giving";
+  if (current === "messages") return "/messages";
+  return "/home";
+}
+
 export function LockerHeader({
   current,
   viewer,
@@ -21,6 +32,7 @@ export function LockerHeader({
       roleLabel={viewer?.roleLabel}
       viewerLabel={viewer?.label}
       showSignOut={Boolean(viewer)}
+      signOutFrom={fromForNav(current)}
       mobileNav="tabs"
     />
   );

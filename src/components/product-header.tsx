@@ -75,6 +75,7 @@ export function ProductHeader({
   secondaryItems = [],
   showSignOut = false,
   signOutAction = "/api/logout",
+  signOutFrom,
   mobileNav = "scroll",
   trailing,
 }: {
@@ -86,6 +87,7 @@ export function ProductHeader({
   secondaryItems?: NavItem[];
   showSignOut?: boolean;
   signOutAction?: string;
+  signOutFrom?: string;
   mobileNav?: "none" | "scroll" | "tabs";
   trailing?: ReactNode;
 }) {
@@ -121,6 +123,7 @@ export function ProductHeader({
               {trailing}
               {showSignOut ? (
                 <form action={signOutAction} method="post">
+                  {signOutFrom ? <input type="hidden" name="from" value={signOutFrom} /> : null}
                   <Button type="submit" variant="ghost" className="h-8 px-2.5 text-muted-foreground hover:text-foreground">
                     Sign out
                   </Button>

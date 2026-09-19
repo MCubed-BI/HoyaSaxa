@@ -14,7 +14,8 @@
  *
  * Register myself / alumni login always set role `"alum"` (never `"board"`).
  * `board` writes Newsflash only. Coach/owner post Sgarlata notes via ga_session.
- * This cookie never unlocks Data Sync, owner blast, or other staff gates.
+ * This cookie never unlocks Data Sync, owner /blast, Twilio, or other staff gates.
+ * Selected-directory email lives at /portal/blast and is scoped in /api/blast/*.
  * Locker-preview tokens ({ role, label, iat }) are a separate signer — see hoya-alum-session.ts.
  */
 import { createHmac, timingSafeEqual } from "crypto";

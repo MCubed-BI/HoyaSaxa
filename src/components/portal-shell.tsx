@@ -26,6 +26,7 @@ export function PortalShell({
         roleLabel={roleLabel(viewer.role)}
         viewerLabel={viewer.label}
         showSignOut
+        signOutFrom={current === "blast" ? "/portal/blast" : "/portal"}
         mobileNav="tabs"
       />
       <PageMain className="pb-24 md:pb-8">{children}</PageMain>

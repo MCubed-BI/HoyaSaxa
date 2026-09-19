@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
+import { alumEmailBlastRejection, getBlastActor, normalizeBlastIds } from "@/lib/blast-auth";
 import { ensureBlastTables } from "@/lib/blast-schema";
 import { getSql } from "@/lib/db";
-import { EMAIL_SEND_LIMIT, buildMailtoLink, emailProvider, sendProviderEmail } from "@/lib/email";
+import {
+  ALUM_EMAIL_SEND_LIMIT,
+  EMAIL_SEND_LIMIT,
+  buildGmailComposeLink,
+  buildMailtoLink,
+  emailProvider,
+  sendProviderEmail,
+} from "@/lib/email";
 import { coerceAlumniFilters } from "@/lib/filters";
 import { buildSmsDeepLink, toE164 } from "@/lib/phone";
 import { getBlastRecipients } from "@/lib/queries";
@@ -15,6 +23,10 @@ function isEmail(value: string | null) {
 
 export async function POST(request: Request) {
   try {
+    const actor = await getBlastActor();
+    if (!actor) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = (await request.json()) as {
       channel?: "sms" | "email";
       message?: string;
@@ -24,6 +36,12 @@ export async function POST(request: Request) {
       includeFilters?: boolean;
       includeIds?: boolean;
     };
+    if (actor.kind === "alum") {
+      const rejection = alumEmailBlastRejection(body);
+      if (rejection) {
+        return NextResponse.json({ error: rejection }, { status: 403 });
+      }
+    }
     const channel = body.channel === "email" ? "email" : "sms";
     const message = body.message?.trim() ?? "";
     const subject = body.subject?.trim() ?? "";
@@ -40,18 +58,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Message is too long." }, { status: 400 });
     }
 
+    const ids = normalizeBlastIds(body.ids);
     const filters = coerceAlumniFilters(body.filters);
     const rows = await getBlastRecipients({
       filters,
-      ids: Array.isArray(body.ids) ? body.ids : [],
-      includeFilters: Boolean(body.includeFilters),
-      includeIds: Boolean(body.includeIds),
+      ids,
+      includeFilters: actor.kind === "alum" ? false : Boolean(body.includeFilters),
+      includeIds: actor.kind === "alum" ? true : Boolean(body.includeIds),
     });
 
     await ensureBlastTables();
     return channel === "email"
-      ? sendEmailBlast({ rows, subject, message, filters, ids: body.ids ?? [] })
-      : sendTextBlast({ rows, message, filters, ids: body.ids ?? [] });
+      ? sendEmailBlast({
+          rows,
+          subject,
+          message,
+          filters,
+          ids,
+          recipientLimit: actor.kind === "alum" ? ALUM_EMAIL_SEND_LIMIT : EMAIL_SEND_LIMIT,
+        })
+      : sendTextBlast({ rows, message, filters, ids });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Blast failed";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -161,12 +187,14 @@ async function sendEmailBlast({
   message,
   filters,
   ids,
+  recipientLimit,
 }: {
   rows: Awaited<ReturnType<typeof getBlastRecipients>>;
   subject: string;
   message: string;
   filters: unknown;
   ids: string[];
+  recipientLimit: number;
 }) {
   const unique = new Map<string, (typeof rows)[number]>();
   for (const row of rows) {
@@ -179,9 +207,9 @@ async function sendEmailBlast({
   if (recipients.length === 0) {
     return NextResponse.json({ error: "No email addresses in this group." }, { status: 400 });
   }
-  if (recipients.length > EMAIL_SEND_LIMIT) {
+  if (recipients.length > recipientLimit) {
     return NextResponse.json(
-      { error: `This group has ${recipients.length} emails. Split it under ${EMAIL_SEND_LIMIT} before sending.` },
+      { error: `This group has ${recipients.length} emails. Split it under ${recipientLimit} before sending.` },
       { status: 400 },
     );
   }
@@ -221,6 +249,7 @@ async function sendEmailBlast({
       subject,
       message,
       mailto: buildMailtoLink(emails, subject, message),
+      gmail: buildGmailComposeLink(emails, subject, message),
     });
   }
 

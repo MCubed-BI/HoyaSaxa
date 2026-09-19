@@ -5,6 +5,16 @@ import { useOptionalSelectionCount } from "@/components/selection-provider";
 import { navItemsForRole, portalSecondaryItems, type NavKey } from "@/lib/nav";
 import { roleLabel, type Role } from "@/lib/roles";
 
+function fromForNav(current?: NavKey, role?: Role) {
+  if (current === "blast") return role === "alum" || role === "board" ? "/portal/blast" : "/blast";
+  if (current === "newsflash") return "/newsflash";
+  if (current === "feed") return "/feed";
+  if (current === "home") return "/home";
+  if (current === "portal-directory" || current === "profile") return "/directory";
+  if (current === "messages") return "/messages";
+  return role === "alum" || role === "board" ? "/portal" : "/";
+}
+
 export function AppHeader({
   current,
   role,
@@ -33,6 +43,7 @@ export function AppHeader({
       roleLabel={roleLabel(resolvedRole)}
       viewerLabel={viewerLabel}
       showSignOut
+      signOutFrom={fromForNav(current, resolvedRole)}
       mobileNav={isAlumShell ? "tabs" : "scroll"}
     />
   );
