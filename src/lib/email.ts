@@ -4,6 +4,7 @@ function parsePositiveInt(value: string | undefined, fallback: number) {
 }
 
 export const EMAIL_SEND_LIMIT = parsePositiveInt(process.env.EMAIL_SEND_LIMIT, 200);
+export const ALUM_EMAIL_SEND_LIMIT = parsePositiveInt(process.env.ALUM_EMAIL_SEND_LIMIT, 40);
 
 export const RESEND_ENV_VARS = ["RESEND_API_KEY", "EMAIL_FROM"] as const;
 
@@ -36,6 +37,18 @@ export function buildMailtoLink(emails: string[], subject: string, body: string)
   if (body) params.set("body", body);
   const query = params.toString();
   return query ? `mailto:${to}?${query}` : `mailto:${to}`;
+}
+
+/** Same compose payload as mailto, opened in Gmail when a provider is not configured. */
+export function buildGmailComposeLink(emails: string[], subject: string, body: string) {
+  const params = new URLSearchParams();
+  params.set("view", "cm");
+  params.set("fs", "1");
+  const to = emails.filter(Boolean).slice(0, ALUM_EMAIL_SEND_LIMIT).join(",");
+  if (to) params.set("to", to);
+  if (subject) params.set("su", subject);
+  if (body) params.set("body", body);
+  return `https://mail.google.com/mail/?${params.toString()}`;
 }
 
 export type EmailSendResult = {

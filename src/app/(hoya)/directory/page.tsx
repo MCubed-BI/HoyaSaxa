@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AlumEmailBar, DirectoryPickToggle } from "@/components/directory-picks";
 import { HoyaAvatar } from "@/components/hoya-avatar";
 import { PageHeader, PageMain, pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,9 @@ import { displayName } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
 import { searchLockerDirectory } from "@/lib/locker-directory";
 import { athleteHref, directoryHref, parseDirectoryPill, parseLockerPage } from "@/lib/locker-paths";
+import { isLockerStubId } from "@/lib/locker-stubs";
 import { DIRECTORY_PILLS } from "@/lib/locker-types";
+import { requireLockerViewer } from "@/lib/locker-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +30,7 @@ export default async function DirectoryPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await requireLockerViewer("/login");
   const params = await searchParams;
   const q = firstParam(params.q);
   const role = parseDirectoryPill(firstParam(params.role));
@@ -39,7 +43,7 @@ export default async function DirectoryPage({
       <PageHeader
         eyebrow="Hoya Directory"
         title="The roster"
-        description="Search by name, class, or city. Cards show photo, class, sport, and city."
+        description="Search by name, class, or city. Cards show photo, class, sport, and city. Emails stay hidden here — select classmates and use Email selected to compose."
       />
 
       <form action="/directory" method="get" className="flex flex-col gap-3 sm:flex-row">
@@ -88,24 +92,31 @@ export default async function DirectoryPage({
             const city = publicCity(person);
             return (
               <li key={person.id}>
-                <Link href={athleteHref(person.id)} className="block">
-                  <Card className="h-full transition-shadow hover:shadow-[var(--shadow-elevated)]">
-                    <CardContent className="flex gap-3 py-4">
-                      <HoyaAvatar person={person} />
-                      <div className="min-w-0 space-y-1">
-                        <p className="truncate font-medium text-navy">{displayName(toNameFields(person))}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {[person.classLabel, person.sport, city].filter(Boolean).join(" · ") ||
-                            person.sport}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          <Badge variant="secondary">{kindLabel(person.kind)}</Badge>
-                          {person.position ? <Badge variant="outline">{person.position}</Badge> : null}
+                <div className="flex gap-2">
+                  <DirectoryPickToggle
+                    id={person.id}
+                    name={displayName(toNameFields(person))}
+                    disabled={isLockerStubId(person.id)}
+                  />
+                  <Link href={athleteHref(person.id)} className="min-w-0 flex-1">
+                    <Card className="h-full transition-shadow hover:shadow-[var(--shadow-elevated)]">
+                      <CardContent className="flex gap-3 py-4">
+                        <HoyaAvatar person={person} />
+                        <div className="min-w-0 space-y-1">
+                          <p className="truncate font-medium text-navy">{displayName(toNameFields(person))}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {[person.classLabel, person.sport, city].filter(Boolean).join(" · ") ||
+                              person.sport}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge variant="secondary">{kindLabel(person.kind)}</Badge>
+                            {person.position ? <Badge variant="outline">{person.position}</Badge> : null}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </div>
               </li>
             );
           })}
@@ -130,6 +141,8 @@ export default async function DirectoryPage({
           )}
         </div>
       ) : null}
+
+      <AlumEmailBar />
     </PageMain>
   );
 }

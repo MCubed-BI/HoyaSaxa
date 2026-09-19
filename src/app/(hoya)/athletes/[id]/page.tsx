@@ -9,6 +9,7 @@ import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
 import { getLockerPersonById } from "@/lib/locker-directory";
 import { athleteHref, parseAthleteTab } from "@/lib/locker-paths";
 import { ATHLETE_TABS } from "@/lib/locker-types";
+import { requireLockerViewer } from "@/lib/locker-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export default async function AthleteProfilePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await requireLockerViewer("/login");
   const { id } = await params;
   const query = await searchParams;
   const person = await getLockerPersonById(id);

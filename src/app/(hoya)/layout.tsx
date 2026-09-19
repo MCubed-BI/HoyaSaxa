@@ -1,4 +1,5 @@
 import { HoyaDirectoryHeader } from "@/components/hoya-directory-header";
+import { SelectionProvider } from "@/components/selection-provider";
 import { getLockerViewer } from "@/lib/locker-viewer";
 
 export default async function HoyaLayout({ children }: { children: React.ReactNode }) {
@@ -11,8 +12,9 @@ export default async function HoyaLayout({ children }: { children: React.ReactNo
         signedIn={signedIn}
         roleLabel={locker?.roleLabel}
         viewerLabel={locker?.label}
+        canEmailClassmates={locker?.role !== "coach"}
       />
-      {children}
+      <SelectionProvider>{children}</SelectionProvider>
     </div>
   );
 }

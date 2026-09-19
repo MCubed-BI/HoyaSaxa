@@ -93,6 +93,34 @@ export const DEMO_FEED: FeedPost[] = [
   },
 ];
 
+export function contentKey(title: string | null | undefined, body: string) {
+  return `${(title ?? "").trim().toLowerCase()}\n${body.trim().toLowerCase()}`;
+}
+
+export function dedupeFeedPosts(posts: FeedPost[]) {
+  const seen = new Set<string>();
+  const out: FeedPost[] = [];
+  for (const post of posts) {
+    const keys = [post.id, contentKey(post.title, post.body)];
+    if (keys.some((key) => seen.has(key))) continue;
+    for (const key of keys) seen.add(key);
+    out.push(post);
+  }
+  return out;
+}
+
+export function dedupeActivityItems(items: ActivityItem[]) {
+  const seen = new Set<string>();
+  const out: ActivityItem[] = [];
+  for (const item of items) {
+    const keys = [item.id, contentKey(item.title, item.body)];
+    if (keys.some((key) => seen.has(key))) continue;
+    for (const key of keys) seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
 export function newsflashToFeedPost(post: NewsflashPost): FeedPost {
   return {
     id: `newsflash-${post.id}`,

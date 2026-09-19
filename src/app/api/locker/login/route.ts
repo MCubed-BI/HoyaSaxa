@@ -6,6 +6,7 @@ import {
   verifyLockerCredentials,
 } from "@/lib/hoya-alum-session";
 import { isLockerPath } from "@/lib/locker-paths";
+import { clearCoachSessionCookies } from "@/lib/session";
 
 function safeNextPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/home";
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
   }
 
   const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
+  clearCoachSessionCookies(response, true);
   response.cookies.set(
     HOYA_ALUM_SESSION_COOKIE,
     createHoyaAlumSessionToken(verified.role, verified.label),

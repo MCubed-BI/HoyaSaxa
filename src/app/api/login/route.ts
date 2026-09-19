@@ -12,7 +12,7 @@ import {
   verifyCredentials,
 } from "@/lib/auth";
 import { homePathForRole, resolveRoleFromEnv } from "@/lib/roles";
-import { setCoachRoleHint } from "@/lib/session";
+import { clearCoachSessionCookies, setCoachRoleHint } from "@/lib/session";
 
 function safeNextPath(value: string | null, roleHome: string) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return roleHome;
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
   const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
 
   if (role === "alum" || role === "board") {
+    clearCoachSessionCookies(response, true);
     response.cookies.set(
       ALUM_SESSION_COOKIE,
       createAlumSessionToken({

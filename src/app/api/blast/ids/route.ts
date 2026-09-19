@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getBlastActor } from "@/lib/blast-auth";
 import { coerceAlumniFilters, emptyFilters } from "@/lib/filters";
 import { getAlumniIds } from "@/lib/queries";
 
@@ -6,6 +7,16 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const actor = await getBlastActor();
+    if (!actor) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (actor.kind === "alum") {
+      return NextResponse.json(
+        { error: "Adding a filtered directory group is a staff blast tool." },
+        { status: 403 },
+      );
+    }
     const body = (await request.json()) as {
       filters?: Record<string, unknown>;
       ids?: string[];

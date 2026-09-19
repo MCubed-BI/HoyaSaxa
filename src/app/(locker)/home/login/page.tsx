@@ -1,12 +1,10 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
-import { HOYA_ALUM_SESSION_COOKIE, isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
+import { getLockerViewer } from "@/lib/locker-viewer";
 
 function safeNextPath(value: string | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/home";
@@ -20,11 +18,8 @@ export default async function LockerLoginPage({
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const params = await searchParams;
-  const jar = await cookies();
-  if (
-    isValidHoyaAlumSession(jar.get(HOYA_ALUM_SESSION_COOKIE)?.value) ||
-    isValidSessionToken(jar.get(SESSION_COOKIE)?.value)
-  ) {
+  const viewer = await getLockerViewer();
+  if (viewer) {
     redirect(safeNextPath(params.next));
   }
 

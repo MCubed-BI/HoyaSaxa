@@ -60,6 +60,11 @@ export function canUseBlast(role: Role) {
   return canUseOwnerTools(role);
 }
 
+/** Selected-directory email only. Never unlocks Twilio, filter-wide blast, or Data Sync. */
+export function canUseAlumEmailBlast(role: Role) {
+  return role === "alum" || role === "board";
+}
+
 export function canPostCoachMessage(role: Role) {
   return canUseOwnerTools(role);
 }

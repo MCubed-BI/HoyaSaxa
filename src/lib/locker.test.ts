@@ -100,9 +100,9 @@ describe("locker session cookie", () => {
 });
 
 describe("locker public paths", () => {
-  it("opens directory and athlete profiles without staff unlock", () => {
-    assert.equal(isLockerPublicPath("/directory"), true);
-    assert.equal(isLockerPublicPath("/athletes/abc"), true);
+  it("keeps directory and athlete profiles behind a session", () => {
+    assert.equal(isLockerPublicPath("/directory"), false);
+    assert.equal(isLockerPublicPath("/athletes/abc"), false);
     assert.equal(isLockerPublicPath("/locker"), true);
     assert.equal(isLockerPublicPath("/"), false);
     assert.equal(isLockerPublicPath("/api/export"), false);

@@ -1,20 +1,37 @@
 import { NextResponse } from "next/server";
-import { ALUMNI_SESSION_COOKIES } from "@/lib/alumni-auth";
-import { ALUM_SESSION_COOKIE } from "@/lib/alum-session";
-import { SESSION_COOKIE } from "@/lib/auth";
-import { clearAlumSessionCookies, clearCoachSessionCookies } from "@/lib/session";
+import {
+  clearAllAuthCookies,
+  hasAlumSessionCookieHeader,
+  hasStaffSessionCookie,
+  logoutRedirectPath,
+  refererPathFromHeader,
+  safeLogoutFromPath,
+} from "@/lib/logout";
+
+export const dynamic = "force-dynamic";
+
+async function signOut(request: Request) {
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const url = new URL(request.url);
+  const formFrom =
+    request.method === "POST"
+      ? safeLogoutFromPath(String((await request.clone().formData().catch(() => new FormData())).get("from") ?? ""))
+      : null;
+  const next = logoutRedirectPath({
+    from: formFrom ?? safeLogoutFromPath(url.searchParams.get("from")),
+    refererPath: refererPathFromHeader(request.headers.get("referer"), request.url),
+    hadStaffCookie: hasStaffSessionCookie(cookieHeader),
+    hadAlumCookie: hasAlumSessionCookieHeader(cookieHeader),
+  });
+  const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
+  clearAllAuthCookies(response);
+  return response;
+}
 
 export async function POST(request: Request) {
-  const cookieHeader = request.headers.get("cookie") ?? "";
-  const hadStaff = cookieHeader.split(";").some((part) => part.trim().startsWith(`${SESSION_COOKIE}=`));
-  const response = NextResponse.redirect(new URL(hadStaff ? "/login" : "/alumni-login", request.url), {
-    status: 303,
-  });
-  clearCoachSessionCookies(response, false);
-  clearAlumSessionCookies(response, false);
-  response.cookies.set(ALUM_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
-  for (const name of ALUMNI_SESSION_COOKIES) {
-    response.cookies.set(name, "", { path: "/", maxAge: 0 });
-  }
-  return response;
+  return signOut(request);
+}
+
+export async function GET(request: Request) {
+  return signOut(request);
 }

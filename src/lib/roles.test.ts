@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { navItemsForRole } from "./nav";
+import { navItemsForRole, portalMoreItems } from "./nav";
 import { isAlumAllowedPath, isPublicPath, loginPathFor } from "./portal-paths";
 import { toPublicAlumniCard } from "./portal-queries";
 import {
+  canUseAlumEmailBlast,
   canUseBlast,
   homePathForRole,
   resolveRoleFromEnv,
@@ -37,14 +38,20 @@ describe("roles", () => {
     assert.equal(resolveRoleFromEnv("Alum", "Hoyas"), "alum");
   });
 
-  it("hides blast for alum and board", () => {
+  it("hides staff blast for alum and board and offers selected email instead", () => {
     assert.equal(canUseBlast("owner"), true);
     assert.equal(canUseBlast("coach"), true);
     assert.equal(canUseBlast("board"), false);
     assert.equal(canUseBlast("alum"), false);
+    assert.equal(canUseAlumEmailBlast("alum"), true);
+    assert.equal(canUseAlumEmailBlast("board"), true);
     assert.equal(
       navItemsForRole("alum").some((item) => item.key === "blast"),
       false,
+    );
+    assert.equal(
+      portalMoreItems("alum").some((item) => item.href === "/portal/blast"),
+      true,
     );
     assert.deepEqual(
       navItemsForRole("alum").map((item) => item.href),
@@ -69,8 +76,11 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/alum"), true);
     assert.equal(isAlumAllowedPath("/portal"), true);
     assert.equal(isAlumAllowedPath("/portal/directory"), true);
-    assert.equal(isPublicPath("/directory"), true);
-    assert.equal(isPublicPath("/athletes/demo"), true);
+    assert.equal(isAlumAllowedPath("/directory"), true);
+    assert.equal(isPublicPath("/directory"), false);
+    assert.equal(isPublicPath("/athletes/demo"), false);
+    assert.equal(isAlumAllowedPath("/api/blast"), true);
+    assert.equal(loginPathFor("/directory"), "/login");
     assert.equal(isAlumAllowedPath("/home"), true);
     assert.equal(isAlumAllowedPath("/feed"), true);
     assert.equal(isAlumAllowedPath("/messages"), true);
@@ -79,6 +89,7 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/api/portal/newsflash"), true);
     assert.equal(isAlumAllowedPath("/blast"), false);
     assert.equal(isPublicPath("/home/login"), true);
+    assert.equal(isPublicPath("/api/logout"), true);
     assert.equal(loginPathFor("/portal"), "/alumni-login");
     assert.equal(loginPathFor("/home"), "/home/login");
     assert.equal(loginPathFor("/messages"), "/locker");

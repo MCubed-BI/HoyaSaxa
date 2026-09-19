@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { alumEmailBlastRejection, getBlastActor, normalizeBlastIds } from "@/lib/blast-auth";
 import { emailProvider } from "@/lib/email";
 import { coerceAlumniFilters } from "@/lib/filters";
 import { toE164 } from "@/lib/phone";
@@ -13,18 +14,29 @@ function isEmail(value: string | null) {
 
 export async function POST(request: Request) {
   try {
+    const actor = await getBlastActor();
+    if (!actor) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = (await request.json()) as {
+      channel?: string;
       filters?: unknown;
       ids?: string[];
       includeFilters?: boolean;
       includeIds?: boolean;
     };
+    if (actor.kind === "alum") {
+      const rejection = alumEmailBlastRejection({ ...body, channel: "email" }, { preview: true });
+      if (rejection) {
+        return NextResponse.json({ error: rejection }, { status: 403 });
+      }
+    }
     const filters = coerceAlumniFilters(body.filters);
     const rows = await getBlastRecipients({
       filters,
-      ids: Array.isArray(body.ids) ? body.ids : [],
-      includeFilters: Boolean(body.includeFilters),
-      includeIds: Boolean(body.includeIds),
+      ids: normalizeBlastIds(body.ids),
+      includeFilters: actor.kind === "alum" ? false : Boolean(body.includeFilters),
+      includeIds: actor.kind === "alum" ? true : Boolean(body.includeIds),
     });
 
     const phoneRecipients = rows.filter((row) => toE164(row.phone ?? ""));

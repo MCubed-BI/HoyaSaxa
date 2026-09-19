@@ -9,7 +9,16 @@ import {
   readHoyaAlumSession,
   verifyLockerCredentials,
 } from "./hoya-alum-session";
-import { filterFeedPosts, isFeedTab, newsflashToFeedPost, type FeedPost } from "./locker-data";
+import {
+  contentKey,
+  dedupeActivityItems,
+  dedupeFeedPosts,
+  filterFeedPosts,
+  isFeedTab,
+  newsflashToFeedPost,
+  type ActivityItem,
+  type FeedPost,
+} from "./locker-data";
 import { isLockerPath, isPublicPath, loginPathFor } from "./locker-paths";
 
 const originalEnv = { ...process.env };
@@ -58,8 +67,8 @@ describe("locker paths", () => {
   it("keeps locker login public and locker surfaces allowlisted", () => {
     assert.equal(isPublicPath("/home/login"), true);
     assert.equal(isPublicPath("/api/locker/login"), true);
-    assert.equal(isPublicPath("/directory"), true);
-    assert.equal(isPublicPath("/athletes/abc"), true);
+    assert.equal(isPublicPath("/directory"), false);
+    assert.equal(isPublicPath("/athletes/abc"), false);
     assert.equal(isPublicPath("/home"), false);
     assert.equal(isLockerPath("/home"), true);
     assert.equal(isLockerPath("/feed"), true);
@@ -101,5 +110,31 @@ describe("for you feed", () => {
     assert.equal(filterFeedPosts(posts, "alumni").every((post) => post.author_role === "alum"), true);
     assert.deepEqual(filterFeedPosts(posts, "teammates"), []);
     assert.deepEqual(filterFeedPosts(posts, "following"), []);
+  });
+
+  it("dedupes seed newsflash copies in feed and activity", () => {
+    const newsflash = newsflashToFeedPost({
+      id: "demo-newsflash-homecoming",
+      title: "Homecoming weekend at Cooper Field",
+      body: "Lars: board hosts a Legacy Locker gathering after the homecoming kick. Details land here first — bring a classmate.",
+      event_at: "2026-10-17T16:00:00.000Z",
+      author_label: "Lars",
+      created_at: "2026-09-18T12:00:00.000Z",
+    });
+    const copy: FeedPost = {
+      ...newsflash,
+      id: "seed-copy",
+      source: "feed",
+    };
+    const unique = dedupeFeedPosts([newsflash, copy, posts[1]!]);
+    assert.equal(unique.length, 2);
+    assert.equal(unique[0]?.id, newsflash.id);
+
+    const activity: ActivityItem[] = [
+      { id: "newsflash-1", title: newsflash.title!, body: newsflash.body, when: newsflash.created_at, kind: "newsflash" },
+      { id: "feed-copy", title: newsflash.title!, body: newsflash.body, when: newsflash.created_at, kind: "feed" },
+    ];
+    assert.equal(dedupeActivityItems(activity).length, 1);
+    assert.equal(contentKey(newsflash.title, newsflash.body), contentKey(copy.title, copy.body));
   });
 });

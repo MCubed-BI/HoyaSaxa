@@ -1,4 +1,4 @@
-export const LOCKER_PUBLIC_PATHS = ["/directory", "/athletes", "/locker"] as const;
+export const LOCKER_PUBLIC_PATHS = ["/locker"] as const;
 
 const PUBLIC_PATHS = ["/login", "/api/login", "/home/login", "/api/locker/login"];
 
