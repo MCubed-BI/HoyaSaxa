@@ -41,7 +41,7 @@ export default async function MessagesPage({
         <ErrorState title="Messages unavailable" body={errorMessage} />
       ) : (
         <>
-          <LoadedStamp />
+          <LoadedStamp value={new Date().toISOString()} />
           <MessagesInbox channels={channels} filter={filter} />
         </>
       )}

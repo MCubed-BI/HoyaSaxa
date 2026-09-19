@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { EventsChrome } from "@/components/events-chrome";
 import { EventsList } from "@/components/events-list";
-import { PageMain } from "@/components/page-chrome";
+import { PageHeader, PageMain } from "@/components/page-chrome";
 import { EventsListSkeleton } from "@/components/page-skeletons";
 import { ErrorState } from "@/components/query-state";
 import { getEventActor } from "@/lib/event-actor";
@@ -75,16 +75,23 @@ async function EventsBody({
     );
   } catch (error) {
     return (
-      <ErrorState
-        title="Events unavailable"
-        body={
-          isMissingDatabaseConfig(error)
-            ? "DATABASE_URL is not set. Add it to .env.local, then restart the app."
-            : error instanceof Error
-              ? error.message
-              : "The events list could not be loaded."
-        }
-      />
+      <div className="space-y-5">
+        <PageHeader
+          eyebrow="Program"
+          title="Events"
+          description="Upcoming, past, and events you created or added."
+        />
+        <ErrorState
+          title="Events unavailable"
+          body={
+            isMissingDatabaseConfig(error)
+              ? "DATABASE_URL is not set. Add it to .env.local, then restart the app."
+              : error instanceof Error
+                ? error.message
+                : "The events list could not be loaded."
+          }
+        />
+      </div>
     );
   }
 }

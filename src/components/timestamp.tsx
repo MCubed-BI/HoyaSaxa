@@ -35,13 +35,12 @@ export function LoadedStamp({
   value,
   className,
 }: {
-  value?: Date | string | number | null;
+  value: Date | string | number;
   className?: string;
 }) {
-  const stamp = value ?? new Date().toISOString();
   return (
     <p className={cn("text-xs text-muted-foreground", className)}>
-      Loaded <Timestamp value={stamp} />
+      Loaded <Timestamp value={value} />
     </p>
   );
 }

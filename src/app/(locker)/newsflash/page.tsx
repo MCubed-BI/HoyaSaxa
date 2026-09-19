@@ -42,7 +42,7 @@ export default async function NewsflashPage() {
           </Notice>
         )}
 
-        <LoadedStamp />
+        <LoadedStamp value={new Date().toISOString()} />
         {data.usingFallback ? <Notice>{data.fallbackReason}</Notice> : null}
 
         {data.newsflash.length === 0 ? (

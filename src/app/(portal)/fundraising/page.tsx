@@ -39,7 +39,7 @@ export default async function FundraisingPage() {
           description="MVP campaigns and pledge intents in Neon. Stripe checkout is later and optional. Mailto and external links are labeled placeholders."
         />
 
-        <LoadedStamp />
+        <LoadedStamp value={new Date().toISOString()} />
         {canManageFundraising(viewer.role) ? (
           <Card>
             <CardHeader>

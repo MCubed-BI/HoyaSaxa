@@ -55,7 +55,7 @@ export default async function ForYouFeedPage({
           ))}
         </div>
 
-        <LoadedStamp />
+        <LoadedStamp value={new Date().toISOString()} />
         {data.usingFallback ? <Notice>{data.fallbackReason}</Notice> : null}
 
         {posts.length === 0 ? (

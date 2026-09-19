@@ -81,7 +81,7 @@ async function FindMyAlumBody({
     <>
       <AlumniFilterChips filters={filters} action="/find-my-alum" />
       {facets ? <AlumniFiltersForm filters={filters} facets={facets} action="/find-my-alum" /> : null}
-      <LoadedStamp />
+      <LoadedStamp value={new Date().toISOString()} />
       {errorMessage ? (
         <ErrorState title="Find My Alum unavailable" body={errorMessage} />
       ) : mapped ? (

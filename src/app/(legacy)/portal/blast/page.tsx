@@ -26,7 +26,7 @@ export default async function PortalAlumBlastPage() {
             title="Email classmates"
             description="Compose email to alumni you selected on the directory. Send uses the same Gmail SMTP path as staff when configured. Without those, Prepare opens a Gmail or mailto draft. Coach filter blast, Twilio text, and Data Sync stay staff-only."
           />
-          <LoadedStamp />
+          <LoadedStamp value={new Date().toISOString()} />
           <BlastComposer filters={emptyFilters()} initialChannel="email" mode="alum" />
         </PageMain>
       </PageShell>

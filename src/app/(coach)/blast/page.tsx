@@ -40,7 +40,7 @@ export default async function BlastPage({
           />
           <AlumniFilterChips filters={filters} action="/blast" extra={{ channel }} />
           <AlumniFiltersForm filters={filters} facets={facets} action="/blast" submitLabel="Update group" />
-          <LoadedStamp />
+          <LoadedStamp value={new Date().toISOString()} />
           <BlastComposer filters={filters} initialChannel={channel} />
         </PageMain>
       </PageShell>

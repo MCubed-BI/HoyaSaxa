@@ -52,7 +52,7 @@ export default async function ReportsPage({
             action="/reports"
             submitLabel="Build group"
           />
-          <LoadedStamp />
+          <LoadedStamp value={new Date().toISOString()} />
 
           <Card>
             <CardHeader>
