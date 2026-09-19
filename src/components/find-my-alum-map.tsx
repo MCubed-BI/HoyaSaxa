@@ -113,8 +113,8 @@ export function FindMyAlumMap({
       <div className="h-[min(70vh,720px)] overflow-hidden rounded-xl border">
         <MapContainer className="h-full w-full" center={[39.5, -98.35]} zoom={4} scrollWheelZoom>
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <FitBounds points={points} />
           <HeatLayer points={points} enabled={showHeat} />
