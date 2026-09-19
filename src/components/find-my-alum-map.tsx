@@ -10,6 +10,10 @@ import type { AlumniMapPoint } from "@/lib/types";
 
 type ViewMode = "heat" | "markers" | "both";
 
+function inConus(point: AlumniMapPoint) {
+  return point.lat >= 24 && point.lat <= 50 && point.lng >= -125 && point.lng <= -66;
+}
+
 function FitBounds({ points }: { points: AlumniMapPoint[] }) {
   const map = useMap();
   useEffect(() => {
@@ -17,8 +21,11 @@ function FitBounds({ points }: { points: AlumniMapPoint[] }) {
       map.setView([39.5, -98.35], 4);
       return;
     }
-    const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng] as [number, number]));
-    map.fitBounds(bounds.pad(0.15), { maxZoom: 10 });
+    // Hawaii / Alaska / junk coords should not hide the lower-48 density the old map showed.
+    const conus = points.filter(inConus);
+    const fit = conus.length >= Math.max(1, points.length * 0.8) ? conus : points;
+    const bounds = L.latLngBounds(fit.map((p) => [p.lat, p.lng] as [number, number]));
+    map.fitBounds(bounds.pad(0.12), { maxZoom: 10 });
   }, [map, points]);
   return null;
 }
