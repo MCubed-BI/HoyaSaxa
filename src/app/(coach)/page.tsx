@@ -1,11 +1,13 @@
 import { AlumniDirectory } from "@/components/alumni-directory";
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { BlastBar } from "@/components/blast-bar";
+import { FilterChip, FilterChipRow } from "@/components/filter-toolbar";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { SiteHeader } from "@/components/site-header";
-import { StatusCard } from "@/components/status-card";
+import { alumniFilterChips, hasActiveFilters, parseAlumniFilters, parsePage } from "@/lib/filters";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { hasActiveFilters, parseAlumniFilters, parsePage } from "@/lib/filters";
 import { searchAlumni } from "@/lib/queries";
 import { canUseBlast } from "@/lib/roles";
 import { requireRole } from "@/lib/viewer";
@@ -21,6 +23,7 @@ export default async function DirectoryPage({
   const params = await searchParams;
   const filters = parseAlumniFilters(params);
   const page = parsePage(params);
+  const chips = alumniFilterChips(filters);
 
   let result: Awaited<ReturnType<typeof searchAlumni>> | null = null;
   let errorMessage: string | null = null;
@@ -47,11 +50,23 @@ export default async function DirectoryPage({
 
         {result ? (
           <>
-            <AlumniFiltersForm filters={filters} facets={result.facets} />
+            <div className="sticky top-20 z-20 space-y-3">
+              {chips.length > 0 ? (
+                <FilterChipRow clearHref="/">
+                  {chips.map((chip) => (
+                    <FilterChip key={chip.id} href={chip.href}>
+                      {chip.label}
+                    </FilterChip>
+                  ))}
+                </FilterChipRow>
+              ) : null}
+              <AlumniFiltersForm filters={filters} facets={result.facets} />
+            </div>
             {result.total === 0 && !hasActiveFilters(filters) ? (
-              <StatusCard
+              <EmptyState
                 title="No alumni loaded yet"
                 body="The directory is empty. Set DATABASE_URL and run npm run import -- --file path/to/georgetown-alumni.xlsx."
+                icon="directory"
               />
             ) : (
               <>
@@ -73,7 +88,7 @@ export default async function DirectoryPage({
             )}
           </>
         ) : (
-          <StatusCard title="Directory unavailable" body={errorMessage ?? "Unknown error"} />
+          <ErrorState title="Directory unavailable" body={errorMessage ?? "Unknown error"} />
         )}
       </PageMain>
     </PageShell>

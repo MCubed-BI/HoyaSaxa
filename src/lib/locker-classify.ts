@@ -1,4 +1,4 @@
-import { displayName, locationLabel } from "@/lib/format";
+import { classYearLabel, cleanDisplay, displayName, locationLabel, positionLabel } from "@/lib/format";
 import type { DirectoryPill, LockerKind, LockerPerson, LockerSource } from "@/lib/locker-types";
 
 const ACADEMIC_CLASS =
@@ -46,14 +46,10 @@ export function classLabel(input: {
   latestRosterClass?: string | null;
   latestRosterYear?: number | null;
 }) {
-  const classYear = input.classYear?.trim();
-  if (classYear) {
-    if (/^\d{4}$/.test(classYear)) return `Class of ${classYear}`;
-    return classYear;
-  }
-  const rosterClass = input.latestRosterClass?.trim();
+  const fromYear = classYearLabel(input.classYear);
+  if (fromYear) return fromYear;
+  const rosterClass = classYearLabel(input.latestRosterClass) ?? cleanDisplay(input.latestRosterClass);
   if (rosterClass) return rosterClass;
-  if (input.latestRosterYear) return String(input.latestRosterYear);
   return null;
 }
 
@@ -152,8 +148,9 @@ export function composeAbout(person: {
         : person.kind === "athlete"
           ? "athlete"
           : "alumnus";
-  const position = person.position ? ` · ${person.position}` : "";
-  return `${name} — ${person.sport} ${role}${position}.`;
+  const position = positionLabel(person.position);
+  const positionText = position ? ` · ${position}` : "";
+  return `${name} — ${person.sport} ${role}${positionText}.`;
 }
 
 export function paginateItems<T>(items: T[], page: number, pageSize: number) {

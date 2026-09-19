@@ -5,7 +5,16 @@ import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { displayName, formatPhone, initials, jobLabel, locationLabel } from "@/lib/format";
+import {
+  classYearLabel,
+  displayName,
+  displayPersonName,
+  formatPhone,
+  initials,
+  jobLabel,
+  locationLabel,
+  positionLabel,
+} from "@/lib/format";
 import { getAlumniById } from "@/lib/queries";
 import { requireRole } from "@/lib/viewer";
 
@@ -63,15 +72,19 @@ export default async function AlumniDetailPage({
                 <div>
                   <h2 className="font-heading text-3xl text-navy">{displayName(person)}</h2>
                   <p className="text-sm text-muted-foreground">
-                    {[person.position, person.class_year ? `Class of ${person.class_year}` : null, person.seasons]
+                    {[positionLabel(person.position), classYearLabel(person.class_year), person.seasons]
                       .filter(Boolean)
                       .join(" · ") || "Georgetown football"}
                   </p>
                 </div>
                 {person.headline ? <p className="max-w-2xl text-sm">{person.headline}</p> : null}
                 <div className="flex flex-wrap gap-1.5">
-                  {person.position ? <Badge variant="secondary">{person.position}</Badge> : null}
-                  {person.class_year ? <Badge variant="secondary">Class {person.class_year}</Badge> : null}
+                  {positionLabel(person.position) ? (
+                    <Badge variant="secondary">{positionLabel(person.position)}</Badge>
+                  ) : null}
+                  {classYearLabel(person.class_year) ? (
+                    <Badge variant="secondary">{classYearLabel(person.class_year)}</Badge>
+                  ) : null}
                   {person.industry ? <Badge variant="outline">{person.industry}</Badge> : null}
                 </div>
               </div>
@@ -84,11 +97,11 @@ export default async function AlumniDetailPage({
                 <CardTitle className="text-base">Player</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Field label="Preferred name" value={person.preferred_name} />
-                <Field label="Full name" value={person.full_name} />
-                <Field label="Position" value={person.position} />
+                <Field label="Preferred name" value={displayPersonName(person.preferred_name)} />
+                <Field label="Full name" value={displayPersonName(person.full_name)} />
+                <Field label="Position" value={positionLabel(person.position)} />
                 <Field label="Seasons" value={person.seasons} />
-                <Field label="Class year" value={person.class_year} />
+                <Field label="Class year" value={classYearLabel(person.class_year)} />
                 <Field
                   label="Hometown"
                   value={locationLabel(person.hometown_city, person.hometown_state)}
@@ -182,7 +195,7 @@ export default async function AlumniDetailPage({
                   {person.roster_years.map((row) => (
                     <Badge key={row.id} variant="secondary" className="font-normal">
                       {row.year}
-                      {row.position ? ` · ${row.position}` : ""}
+                      {positionLabel(row.position) ? ` · ${positionLabel(row.position)}` : ""}
                       {row.class ? ` · ${row.class}` : ""}
                     </Badge>
                   ))}

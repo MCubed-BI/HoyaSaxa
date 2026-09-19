@@ -70,7 +70,8 @@ export function Notice({
   tone?: "muted" | "danger" | "success";
 }) {
   return (
-    <p
+    <div
+      role={tone === "danger" ? "alert" : "status"}
       className={cn(
         "rounded-xl border px-4 py-3 text-sm",
         tone === "danger" && "border-destructive/20 bg-destructive/5 text-destructive",
@@ -79,7 +80,7 @@ export function Notice({
       )}
     >
       {children}
-    </p>
+    </div>
   );
 }
 

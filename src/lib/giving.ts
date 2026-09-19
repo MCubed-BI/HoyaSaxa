@@ -57,15 +57,7 @@ export function normalizeDonorLabel(value: unknown): string | null {
   return label || null;
 }
 
-export function formatPledgeDollars(cents: number) {
-  const dollars = cents / 100;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
-    maximumFractionDigits: cents % 100 === 0 ? 0 : 2,
-  }).format(dollars);
-}
+export { formatCurrency as formatPledgeDollars } from "@/lib/format";
 
 async function query<T>(text: string, params: unknown[] = []) {
   const sql = getSql();

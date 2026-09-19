@@ -7,7 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { displayName } from "@/lib/format";
+import { Kpi, KpiGrid } from "@/components/kpi";
+import { Notice } from "@/components/page-chrome";
+import { Timestamp } from "@/components/timestamp";
+import { displayName, formatCount } from "@/lib/format";
 import type { AlumniDetail, AlumniListItem } from "@/lib/types";
 
 type MergeCandidate = AlumniListItem & { claimed: boolean; claimed_by_me: boolean };
@@ -101,11 +104,37 @@ export function AlumniMePanel({
 
   return (
     <div className="space-y-5">
+      <KpiGrid>
+        <Kpi
+          tone="primary"
+          icon="profile"
+          label="Signed in as"
+          value={<span className="block truncate text-xl sm:text-2xl">{email}</span>}
+          hint={
+            active.updated_at ? (
+              <>
+                Last saved <Timestamp value={active.updated_at} />
+              </>
+            ) : null
+          }
+        />
+        <Kpi
+          tone="secondary"
+          icon="directory"
+          label="Claimed records"
+          value={formatCount(records.length, "card")}
+          hint={active.class_year ? `Editing class of ${active.class_year}` : "Roster class stays on the player card"}
+        />
+        <Kpi
+          tone={mergeCandidates.length > 0 ? "alert" : "secondary"}
+          icon={mergeCandidates.length > 0 ? "alert" : "empty"}
+          label="Possible duplicates"
+          value={formatCount(mergeCandidates.length, "row")}
+          hint={mergeCandidates.length > 0 ? "Same last name — claim or merge below" : "No other unclaimed rows"}
+        />
+      </KpiGrid>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Signed in as</p>
-          <p className="text-sm">{email}</p>
-        </div>
         {records.length > 1 ? (
           <label className="text-sm">
             Editing
@@ -124,8 +153,8 @@ export function AlumniMePanel({
         ) : null}
       </div>
 
-      {message ? <p className="text-sm text-navy">{message}</p> : null}
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {message ? <Notice tone="success">{message}</Notice> : null}
+      {error ? <Notice tone="danger">{error}</Notice> : null}
 
       <Card>
         <CardHeader>

@@ -71,6 +71,7 @@ describe("class labels and pagination", () => {
   it("formats class of year and academic labels", () => {
     assert.equal(classLabel({ classYear: "2015" }), "Class of 2015");
     assert.equal(classLabel({ latestRosterClass: "Jr." }), "Jr.");
+    assert.equal(classLabel({ classYear: null, latestRosterYear: 2014 }), null);
   });
 
   it("pages merged lists", () => {

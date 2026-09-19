@@ -1,17 +1,9 @@
-import Link from "next/link";
-import { AlumEmailBar, DirectoryPickToggle } from "@/components/directory-picks";
-import { HoyaAvatar } from "@/components/hoya-avatar";
-import { PageHeader, PageMain, pillClass } from "@/components/page-chrome";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { displayName } from "@/lib/format";
-import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
+import { HoyaDirectory } from "@/components/hoya-directory";
+import { PageHeader, PageMain } from "@/components/page-chrome";
+import { ErrorState } from "@/components/ui/error-state";
+import { isMissingDatabaseConfig } from "@/lib/db";
+import { parseDirectoryPill, parseLockerPage } from "@/lib/locker-paths";
 import { searchLockerDirectory } from "@/lib/locker-directory";
-import { athleteHref, directoryHref, parseDirectoryPill, parseLockerPage } from "@/lib/locker-paths";
-import { isLockerStubId } from "@/lib/locker-stubs";
-import { DIRECTORY_PILLS } from "@/lib/locker-types";
 import { requireLockerViewer } from "@/lib/locker-viewer";
 
 export const dynamic = "force-dynamic";
@@ -35,114 +27,42 @@ export default async function DirectoryPage({
   const q = firstParam(params.q);
   const role = parseDirectoryPill(firstParam(params.role));
   const page = parseLockerPage(firstParam(params.page));
-  const result = await searchLockerDirectory({ q, role, page });
-  const pageCount = Math.max(1, Math.ceil(result.total / result.pageSize));
 
-  return (
-    <PageMain width="record">
-      <PageHeader
-        eyebrow="Hoya Directory"
-        title="The roster"
-        description="Search by name, class, or city. Cards show photo, class, sport, and city. Emails stay hidden here — select classmates and use Email selected to compose."
-      />
-
-      <form action="/directory" method="get" className="flex flex-col gap-3 sm:flex-row">
-        {role !== "all" ? <input type="hidden" name="role" value={role} /> : null}
-        <Input
-          name="q"
-          defaultValue={q}
-          placeholder="Search name, class, city"
-          aria-label="Search directory"
+  try {
+    const result = await searchLockerDirectory({ q, role, page });
+    return (
+      <PageMain width="record">
+        <PageHeader
+          eyebrow="Hoya Directory"
+          title="The roster"
+          description="Search by name, class, or city. Cards on phone, a sticky table on desktop. Emails stay hidden here — select classmates and use Email selected to compose."
         />
-        <Button type="submit">Search</Button>
-      </form>
-
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Directory filters">
-        {DIRECTORY_PILLS.map((pill) => {
-          const active = pill.id === role;
-          return (
-            <Link
-              key={pill.id}
-              href={directoryHref({ q, role: pill.id })}
-              role="tab"
-              aria-selected={active}
-              className={pillClass(active)}
-            >
-              {pill.label}
-            </Link>
-          );
-        })}
-      </div>
-
-      <p className="text-sm text-muted-foreground">
-        {result.total.toLocaleString()} {role === "all" ? "people" : role}
-        {result.usingSample ? " · sample cards (roster unavailable)" : null}
-        {pageCount > 1 ? ` · page ${result.page} of ${pageCount}` : null}
-      </p>
-
-      {result.rows.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No matches. Try another name or clear the filter.
-          </CardContent>
-        </Card>
-      ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {result.rows.map((person) => {
-            const city = publicCity(person);
-            return (
-              <li key={person.id}>
-                <div className="flex gap-2">
-                  <DirectoryPickToggle
-                    id={person.id}
-                    name={displayName(toNameFields(person))}
-                    disabled={isLockerStubId(person.id)}
-                  />
-                  <Link href={athleteHref(person.id)} className="min-w-0 flex-1">
-                    <Card className="h-full transition-shadow hover:shadow-[var(--shadow-elevated)]">
-                      <CardContent className="flex gap-3 py-4">
-                        <HoyaAvatar person={person} />
-                        <div className="min-w-0 space-y-1">
-                          <p className="truncate font-medium text-navy">{displayName(toNameFields(person))}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {[person.classLabel, person.sport, city].filter(Boolean).join(" · ") ||
-                              person.sport}
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            <Badge variant="secondary">{kindLabel(person.kind)}</Badge>
-                            {person.position ? <Badge variant="outline">{person.position}</Badge> : null}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {pageCount > 1 ? (
-        <div className="flex items-center justify-between text-sm">
-          {result.page > 1 ? (
-            <Link href={directoryHref({ q, role, page: result.page - 1 })} className="font-medium text-navy hover:underline">
-              Previous
-            </Link>
-          ) : (
-            <span className="text-muted-foreground">Previous</span>
-          )}
-          {result.page < pageCount ? (
-            <Link href={directoryHref({ q, role, page: result.page + 1 })} className="font-medium text-navy hover:underline">
-              Next
-            </Link>
-          ) : (
-            <span className="text-muted-foreground">Next</span>
-          )}
-        </div>
-      ) : null}
-
-      <AlumEmailBar />
-    </PageMain>
-  );
+        <HoyaDirectory
+          q={q}
+          role={role}
+          rows={result.rows}
+          total={result.total}
+          page={result.page}
+          pageSize={result.pageSize}
+          usingSample={result.usingSample}
+        />
+      </PageMain>
+    );
+  } catch (error) {
+    return (
+      <PageMain width="record">
+        <PageHeader eyebrow="Hoya Directory" title="The roster" />
+        <ErrorState
+          title="Directory unavailable"
+          body={
+            isMissingDatabaseConfig(error)
+              ? "DATABASE_URL is not set. Add it to .env.local and reload."
+              : error instanceof Error
+                ? error.message
+                : "The directory could not be loaded."
+          }
+        />
+      </PageMain>
+    );
+  }
 }

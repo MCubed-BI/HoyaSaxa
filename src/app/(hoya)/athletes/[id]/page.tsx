@@ -4,7 +4,7 @@ import { HoyaAvatar } from "@/components/hoya-avatar";
 import { PageMain, pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { displayName, jobLabel } from "@/lib/format";
+import { displayName, jobLabel, positionLabel } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
 import { getLockerPersonById } from "@/lib/locker-directory";
 import { athleteHref, parseAthleteTab } from "@/lib/locker-paths";
@@ -56,7 +56,9 @@ export default async function AthleteProfilePage({
               {[kindLabel(person.kind), person.classLabel, person.sport, city].filter(Boolean).join(" · ")}
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {person.position ? <Badge variant="secondary">{person.position}</Badge> : null}
+              {positionLabel(person.position) ? (
+                <Badge variant="secondary">{positionLabel(person.position)}</Badge>
+              ) : null}
               {person.sport ? <Badge variant="outline">{person.sport}</Badge> : null}
             </div>
           </div>
@@ -90,7 +92,7 @@ export default async function AthleteProfilePage({
             </div>
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Sport</p>
-              <p className="mt-1">{[person.sport, person.position].filter(Boolean).join(" · ")}</p>
+              <p className="mt-1">{[person.sport, positionLabel(person.position)].filter(Boolean).join(" · ")}</p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Location</p>
@@ -123,7 +125,7 @@ export default async function AthleteProfilePage({
                 {person.rosterYears.map((row) => (
                   <li key={`${row.year}-${row.position}-${row.class}`}>
                     {row.year}
-                    {row.position ? ` · ${row.position}` : ""}
+                    {positionLabel(row.position) ? ` · ${positionLabel(row.position)}` : ""}
                     {row.class ? ` · ${row.class}` : ""}
                   </li>
                 ))}

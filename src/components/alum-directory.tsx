@@ -2,7 +2,15 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { filtersToSearchParams, type AlumniFilters } from "@/lib/filters";
-import { displayName, initials, jobLabel, locationLabel } from "@/lib/format";
+import {
+  classYearLabel,
+  displayName,
+  initials,
+  jobLabel,
+  locationLabel,
+  positionLabel,
+  residenceLabel,
+} from "@/lib/format";
 import type { AlumniListItem } from "@/lib/types";
 
 export function AlumDirectory({
@@ -60,14 +68,12 @@ export function AlumDirectory({
                   {displayName(person)}
                 </Link>
                 <p className="text-sm text-muted-foreground">
-                  {[person.position, person.class_year || person.seasons].filter(Boolean).join(" · ") ||
-                    "Roster details pending"}
+                  {[positionLabel(person.position), classYearLabel(person.class_year) || person.seasons]
+                    .filter(Boolean)
+                    .join(" · ") || "Roster details pending"}
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
-                  {jobLabel(person.company_name, person.job_title) ||
-                    locationLabel(person.current_city, person.current_state) ||
-                    locationLabel(person.hometown_city, person.hometown_state) ||
-                    "Location unknown"}
+                  {jobLabel(person.company_name, person.job_title) || residenceLabel(person) || "Location unknown"}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {locationLabel(person.current_city, person.current_state) ? (

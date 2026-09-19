@@ -2,11 +2,24 @@
 
 import Link from "next/link";
 import { useSelection } from "@/components/selection-provider";
+import { DataTable, StickyTableHeader, Table, TableBody, TableHead, TableRow } from "@/components/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ResultPagination } from "@/components/result-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableCell } from "@/components/ui/table";
 import { filtersToSearchParams, type AlumniFilters } from "@/lib/filters";
-import { displayName, initials, jobLabel, locationLabel } from "@/lib/format";
+import {
+  classYearLabel,
+  displayName,
+  formatCount,
+  initials,
+  jobLabel,
+  locationLabel,
+  positionLabel,
+  residenceLabel,
+  resultRange,
+} from "@/lib/format";
 import type { AlumniListItem } from "@/lib/types";
 
 function ContactPills({ person }: { person: AlumniListItem }) {
@@ -46,31 +59,28 @@ export function AlumniDirectory({
 }) {
   const { isSelected, toggle } = useSelection();
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const prev = page > 1 ? `/?${filtersToSearchParams(filters, page - 1).toString()}` : null;
-  const next = page < pageCount ? `/?${filtersToSearchParams(filters, page + 1).toString()}` : null;
+  const hrefFor = (next: number) => {
+    const qs = filtersToSearchParams(filters, next).toString();
+    return qs ? `/?${qs}` : "/";
+  };
+  const range = resultRange(page, pageSize, total);
   const pageSelected = rows.every((person) => isSelected(person.id));
 
   if (total === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <p className="font-heading text-xl text-navy">No alumni match these filters</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Try a broader search, or clear filters to see the full directory.
-          </p>
-        </CardContent>
-      </Card>
+      <EmptyState
+        title="No alumni match these filters"
+        body="Try a broader search, or clear filters to see the full directory."
+        icon="directory"
+      />
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          {total.toLocaleString()} alumni
-          {pageCount > 1 ? ` · page ${page} of ${pageCount}` : null}
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        {range.label} · {formatCount(total, "alumnus", "alumni")}
+      </p>
 
       <div className="grid gap-3 md:hidden">
         {rows.map((person) => (
@@ -90,13 +100,13 @@ export function AlumniDirectory({
                 <div className="min-w-0 space-y-1">
                   <p className="truncate font-medium text-navy">{displayName(person)}</p>
                   <p className="text-sm text-muted-foreground">
-                    {[person.position, person.class_year || person.seasons].filter(Boolean).join(" · ") ||
-                      "Roster details pending"}
+                    {[positionLabel(person.position), classYearLabel(person.class_year) || person.seasons]
+                      .filter(Boolean)
+                      .join(" · ") || "Roster details pending"}
                   </p>
                   <p className="truncate text-sm text-muted-foreground">
                     {jobLabel(person.company_name, person.job_title) ||
-                      locationLabel(person.current_city, person.current_state) ||
-                      locationLabel(person.hometown_city, person.hometown_state) ||
+                      residenceLabel(person) ||
                       "Location unknown"}
                   </p>
                   <ContactPills person={person} />
@@ -107,11 +117,11 @@ export function AlumniDirectory({
         ))}
       </div>
 
-      <Card className="hidden overflow-hidden md:block">
-        <Table>
-          <TableHeader>
+      <DataTable className="hidden md:block" caption="Staff directory">
+        <Table container={false}>
+          <StickyTableHeader>
             <TableRow>
-              <TableHead className="w-10">
+              <TableHead className="sticky left-0 z-[1] w-10 bg-card">
                 <input
                   type="checkbox"
                   checked={pageSelected && rows.length > 0}
@@ -126,18 +136,18 @@ export function AlumniDirectory({
                   className="size-4 rounded border-input accent-navy"
                 />
               </TableHead>
-              <TableHead>Name</TableHead>
+              <TableHead className="sticky left-10 z-[1] min-w-44 bg-card">Name</TableHead>
               <TableHead>Position / seasons</TableHead>
               <TableHead>Hometown</TableHead>
               <TableHead>Current</TableHead>
               <TableHead>Work</TableHead>
               <TableHead>Contact</TableHead>
             </TableRow>
-          </TableHeader>
+          </StickyTableHeader>
           <TableBody>
             {rows.map((person) => (
               <TableRow key={person.id} className={isSelected(person.id) ? "bg-muted/60" : undefined}>
-                <TableCell>
+                <TableCell className="sticky left-0 z-[1] bg-card">
                   <input
                     type="checkbox"
                     checked={isSelected(person.id)}
@@ -146,21 +156,21 @@ export function AlumniDirectory({
                     className="size-4 rounded border-input accent-navy"
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="sticky left-10 z-[1] bg-card">
                   <Link href={`/alumni/${person.id}`} className="font-medium text-navy hover:underline">
                     {displayName(person)}
                   </Link>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {[person.position, person.class_year ? `Class ${person.class_year}` : person.seasons]
+                  {[positionLabel(person.position), classYearLabel(person.class_year) || person.seasons]
                     .filter(Boolean)
-                    .join(" · ") || "—"}
+                    .join(" · ")}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {locationLabel(person.hometown_city, person.hometown_state) || "—"}
+                  {locationLabel(person.hometown_city, person.hometown_state)}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {locationLabel(person.current_city, person.current_state) || "—"}
+                  {locationLabel(person.current_city, person.current_state)}
                 </TableCell>
                 <TableCell className="max-w-56 truncate text-muted-foreground">
                   {jobLabel(person.company_name, person.job_title) || "—"}
@@ -172,26 +182,9 @@ export function AlumniDirectory({
             ))}
           </TableBody>
         </Table>
-      </Card>
+      </DataTable>
 
-      {pageCount > 1 ? (
-        <div className="flex items-center justify-between text-sm">
-          {prev ? (
-            <Link href={prev} className="text-navy hover:underline">
-              Previous
-            </Link>
-          ) : (
-            <span className="text-muted-foreground">Previous</span>
-          )}
-          {next ? (
-            <Link href={next} className="text-navy hover:underline">
-              Next
-            </Link>
-          ) : (
-            <span className="text-muted-foreground">Next</span>
-          )}
-        </div>
-      ) : null}
+      <ResultPagination page={page} pageCount={pageCount} hrefFor={hrefFor} />
     </div>
   );
 }
