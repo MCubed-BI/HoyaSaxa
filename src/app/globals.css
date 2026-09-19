@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-heading: "Source Serif 4", "Source Serif 4 Fallback", ui-serif, Georgia, serif;
+  --font-heading: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -53,46 +53,46 @@
 }
 
 :root {
-  /* Georgetown-adjacent: official navy, restrained gray, white. Gold is a hairline accent only. */
+  /* Locked system: deep navy / charcoal / white. Gold is a brand hairline only. */
   --navy: #041e42;
-  --navy-foreground: #f6f7f9;
+  --navy-foreground: #f4f4f5;
   --gold: #b9975b;
   --gold-foreground: #041e42;
-  --background: #f4f6f8;
-  --foreground: #152033;
+  --background: #f2f3f4;
+  --foreground: #1a1d21;
   --card: #ffffff;
-  --card-foreground: #152033;
+  --card-foreground: #1a1d21;
   --popover: #ffffff;
-  --popover-foreground: #152033;
+  --popover-foreground: #1a1d21;
   --primary: #041e42;
-  --primary-foreground: #f7f8fa;
-  --secondary: #e8ecf1;
+  --primary-foreground: #f7f7f8;
+  --secondary: #e8eaed;
   --secondary-foreground: #041e42;
-  --muted: #eef1f5;
-  --muted-foreground: #5b6574;
-  --accent: #e4e9ef;
+  --muted: #eceeef;
+  --muted-foreground: #5c6168;
+  --accent: #e4e6e9;
   --accent-foreground: #041e42;
   --destructive: oklch(0.55 0.2 25);
-  --border: #dce2ea;
-  --input: #d5dce6;
+  --border: #d9dce0;
+  --input: #d4d7db;
   --ring: #041e42;
   --chart-1: #041e42;
-  --chart-2: #5b6574;
-  --chart-3: #8b95a3;
+  --chart-2: #5c6168;
+  --chart-3: #8b9096;
   --chart-4: #b9975b;
-  --chart-5: #1f2a3d;
+  --chart-5: #2a2e33;
   --radius: 0.625rem;
   --sidebar: #041e42;
-  --sidebar-foreground: #f6f7f9;
-  --sidebar-primary: #f6f7f9;
+  --sidebar-foreground: #f4f4f5;
+  --sidebar-primary: #f4f4f5;
   --sidebar-primary-foreground: #041e42;
   --sidebar-accent: #16325c;
-  --sidebar-accent-foreground: #f6f7f9;
+  --sidebar-accent-foreground: #f4f4f5;
   --sidebar-border: #16325c;
   --sidebar-ring: #b9975b;
-  --shadow-xs: 0 1px 2px rgb(15 23 42 / 0.04);
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 10px 28px rgb(15 23 42 / 0.045);
-  --shadow-elevated: 0 1px 2px rgb(15 23 42 / 0.05), 0 18px 40px rgb(15 23 42 / 0.08);
+  --shadow-xs: 0 1px 2px rgb(26 29 33 / 0.05);
+  --shadow-card: 0 1px 2px rgb(26 29 33 / 0.04), 0 8px 24px rgb(26 29 33 / 0.04);
+  --shadow-elevated: 0 1px 2px rgb(26 29 33 / 0.05), 0 16px 36px rgb(26 29 33 / 0.07);
 }
 
 @layer base {
@@ -110,7 +110,8 @@
   h3,
   .font-heading {
     font-family: var(--font-heading);
-    letter-spacing: -0.02em;
+    font-weight: 600;
+    letter-spacing: -0.03em;
   }
   :focus-visible {
     outline: 2px solid color-mix(in srgb, var(--ring) 70%, white);
@@ -122,12 +123,5 @@
   .surface-card {
     background-color: var(--card);
     box-shadow: var(--shadow-card);
-  }
-
-  .auth-canvas {
-    background-color: var(--background);
-    background-image:
-      radial-gradient(1200px 520px at 50% -120px, rgb(4 30 66 / 0.08), transparent 70%),
-      linear-gradient(180deg, #eef2f6 0%, var(--background) 42%);
   }
 }

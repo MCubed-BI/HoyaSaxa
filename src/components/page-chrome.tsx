@@ -51,9 +51,9 @@ export function PageHeader({
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0 space-y-1.5">
         {eyebrow ? (
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">{eyebrow}</p>
         ) : null}
-        <h2 className="font-heading text-[1.85rem] leading-none text-navy sm:text-3xl">{title}</h2>
+        <h2 className="font-heading text-[1.75rem] leading-tight text-navy sm:text-[1.9rem]">{title}</h2>
         {description ? <div className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</div> : null}
         {children}
       </div>

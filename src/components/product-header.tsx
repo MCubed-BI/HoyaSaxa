@@ -95,8 +95,10 @@ export function ProductHeader({
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b bg-card/90 shadow-[var(--shadow-xs)] backdrop-blur-md">
-        <div className="h-0.5 w-full bg-navy" />
+      <header className="sticky top-0 z-30 border-b bg-card shadow-[var(--shadow-xs)]">
+        <div className="h-0.5 w-full bg-navy">
+          <div className="h-full w-16 bg-gold" />
+        </div>
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <div className="flex items-center gap-3 py-2.5">
             <BrandMark href={homeHref} compact />
@@ -137,7 +139,7 @@ export function ProductHeader({
       </header>
       {mobileNav === "tabs" ? (
         <nav
-          className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-card)] backdrop-blur-md md:hidden"
+          className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-card)] md:hidden"
           aria-label="Primary"
         >
           <div className="mx-auto grid max-w-6xl grid-cols-5">
