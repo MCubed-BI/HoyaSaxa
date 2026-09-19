@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  classYearLabel,
   displayName,
   formatCount,
+  locationLabel,
+  positionLabel,
+  residenceLabel,
   formatCurrency,
   formatDate,
   formatDateTime,
@@ -23,6 +27,63 @@ test("keeps nickname plus last name", () => {
     }),
     "Rob Sgarlata",
   );
+});
+
+test("title-cases ALL CAPS names and survives missing first or last", () => {
+  assert.equal(
+    displayName({
+      preferred_name: null,
+      first_name: "JOHN",
+      last_name: "SMITH",
+      full_name: "JOHN SMITH",
+    }),
+    "John Smith",
+  );
+  assert.equal(
+    displayName({
+      preferred_name: null,
+      first_name: null,
+      last_name: "Kasten",
+      full_name: null,
+    }),
+    "Kasten",
+  );
+  assert.equal(
+    displayName({
+      preferred_name: null,
+      first_name: "Pat",
+      last_name: "",
+      full_name: null,
+    }),
+    "Pat",
+  );
+});
+
+test("parses packed current_state and hides empty city/state", () => {
+  assert.equal(locationLabel(null, "Washington, District of Columbia, United States"), "Washington, DC");
+  assert.equal(locationLabel(null, "Arlington, VA"), "Arlington, VA");
+  assert.equal(locationLabel(null, "TX"), "TX");
+  assert.equal(locationLabel("Dallas", "Texas"), "Dallas, TX");
+  assert.equal(locationLabel("Washington", null), "Washington");
+  assert.equal(locationLabel(null, null), null);
+  assert.equal(locationLabel("", "n/a"), null);
+  assert.equal(residenceLabel({ current_city: null, current_state: null, hometown_city: "Boston", hometown_state: "MA" }), "Boston, MA");
+});
+
+test("omits empty positions and only title-cases long forms", () => {
+  assert.equal(positionLabel(null), null);
+  assert.equal(positionLabel("n/a"), null);
+  assert.equal(positionLabel("qb"), "QB");
+  assert.equal(positionLabel("WIDE RECEIVER"), "Wide Receiver");
+  assert.equal(positionLabel("Wide Receiver"), "Wide Receiver");
+  assert.equal(positionLabel("OL/DL"), "OL / DL");
+});
+
+test("hides empty class years and formats real ones", () => {
+  assert.equal(classYearLabel(null), null);
+  assert.equal(classYearLabel(""), null);
+  assert.equal(classYearLabel("2015"), "Class of 2015");
+  assert.equal(classYearLabel("Jr."), "Jr.");
 });
 
 test("parseDate rejects empty and invalid values", () => {

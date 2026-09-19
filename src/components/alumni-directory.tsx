@@ -9,7 +9,17 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableCell } from "@/components/ui/table";
 import { filtersToSearchParams, type AlumniFilters } from "@/lib/filters";
-import { displayName, formatCount, initials, jobLabel, locationLabel, resultRange } from "@/lib/format";
+import {
+  classYearLabel,
+  displayName,
+  formatCount,
+  initials,
+  jobLabel,
+  locationLabel,
+  positionLabel,
+  residenceLabel,
+  resultRange,
+} from "@/lib/format";
 import type { AlumniListItem } from "@/lib/types";
 
 function ContactPills({ person }: { person: AlumniListItem }) {
@@ -90,13 +100,13 @@ export function AlumniDirectory({
                 <div className="min-w-0 space-y-1">
                   <p className="truncate font-medium text-navy">{displayName(person)}</p>
                   <p className="text-sm text-muted-foreground">
-                    {[person.position, person.class_year || person.seasons].filter(Boolean).join(" · ") ||
-                      "Roster details pending"}
+                    {[positionLabel(person.position), classYearLabel(person.class_year) || person.seasons]
+                      .filter(Boolean)
+                      .join(" · ") || "Roster details pending"}
                   </p>
                   <p className="truncate text-sm text-muted-foreground">
                     {jobLabel(person.company_name, person.job_title) ||
-                      locationLabel(person.current_city, person.current_state) ||
-                      locationLabel(person.hometown_city, person.hometown_state) ||
+                      residenceLabel(person) ||
                       "Location unknown"}
                   </p>
                   <ContactPills person={person} />
@@ -152,15 +162,15 @@ export function AlumniDirectory({
                   </Link>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {[person.position, person.class_year ? `Class ${person.class_year}` : person.seasons]
+                  {[positionLabel(person.position), classYearLabel(person.class_year) || person.seasons]
                     .filter(Boolean)
-                    .join(" · ") || "—"}
+                    .join(" · ")}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {locationLabel(person.hometown_city, person.hometown_state) || "—"}
+                  {locationLabel(person.hometown_city, person.hometown_state)}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {locationLabel(person.current_city, person.current_state) || "—"}
+                  {locationLabel(person.current_city, person.current_state)}
                 </TableCell>
                 <TableCell className="max-w-56 truncate text-muted-foreground">
                   {jobLabel(person.company_name, person.job_title) || "—"}

@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { getDatabaseUrl, getSql } from "@/lib/db";
+import { classYearLabel, positionLabel } from "@/lib/format";
 import {
   DEMO_FEED,
   DEMO_NEWSFLASH,
@@ -208,7 +209,7 @@ async function listDirectoryActivity(): Promise<ActivityItem[]> {
     );
     return rows.map((row) => {
       const name = row.preferred_name || [row.first_name, row.last_name].filter(Boolean).join(" ");
-      const detail = [row.position, row.class_year].filter(Boolean).join(" · ");
+      const detail = [positionLabel(row.position), classYearLabel(row.class_year)].filter(Boolean).join(" · ");
       return {
         id: `alumni-${row.id}`,
         title: name || "Alumni update",

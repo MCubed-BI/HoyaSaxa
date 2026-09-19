@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { TableCell } from "@/components/ui/table";
-import { displayName, formatCount, resultRange } from "@/lib/format";
+import { displayName, formatCount, positionLabel, resultRange } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
 import { athleteHref, directoryHref } from "@/lib/locker-paths";
 import { isLockerStubId } from "@/lib/locker-stubs";
@@ -110,6 +110,7 @@ export function HoyaDirectory({
           <ul className="grid gap-3 md:hidden">
             {rows.map((person) => {
               const city = publicCity(person);
+              const position = positionLabel(person.position);
               return (
                 <li key={person.id}>
                   <div className="flex gap-2">
@@ -129,7 +130,7 @@ export function HoyaDirectory({
                             </p>
                             <div className="flex flex-wrap gap-1.5">
                               <Badge variant="secondary">{kindLabel(person.kind)}</Badge>
-                              {person.position ? <Badge variant="outline">{person.position}</Badge> : null}
+                              {position ? <Badge variant="outline">{position}</Badge> : null}
                             </div>
                           </div>
                         </CardContent>
@@ -156,6 +157,7 @@ export function HoyaDirectory({
               <TableBody>
                 {rows.map((person) => {
                   const city = publicCity(person);
+                  const position = positionLabel(person.position);
                   return (
                     <TableRow key={person.id}>
                       <TableCell className="sticky left-0 z-[1] bg-card">
@@ -172,13 +174,13 @@ export function HoyaDirectory({
                         </Link>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {[person.classLabel, person.sport].filter(Boolean).join(" · ") || "—"}
+                        {[person.classLabel, person.sport].filter(Boolean).join(" · ")}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{city || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{city}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{kindLabel(person.kind)}</Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{person.position || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{position}</TableCell>
                     </TableRow>
                   );
                 })}

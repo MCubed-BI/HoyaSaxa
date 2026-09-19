@@ -1,6 +1,101 @@
+import { parseClassYearInput } from "@/lib/alumni-class-year";
 import type { AlumniListItem } from "@/lib/types";
 
 const HONORIFIC = /^(mr|mrs|ms|miss|dr|prof|rev|sir|hon)\.?$/i;
+const EMPTY_CELL = /^(#(?:ref!|n\/a|value!|name\?)|n\/a|null|undefined|-|—|\.)$/i;
+const ACADEMIC_CLASS =
+  /^(?:r[-\s]?)?(fr|so|jr|sr|gr|freshman|sophomore|junior|senior|graduate)\.?$/i;
+const COUNTRY_TOKENS = new Set(["us", "usa", "u.s", "u.s.a", "united states", "united states of america", "america"]);
+
+const STATE_ABBR: Record<string, string> = {
+  alabama: "AL",
+  alaska: "AK",
+  arizona: "AZ",
+  arkansas: "AR",
+  california: "CA",
+  colorado: "CO",
+  connecticut: "CT",
+  delaware: "DE",
+  "district of columbia": "DC",
+  "washington dc": "DC",
+  "washington d.c.": "DC",
+  "d.c.": "DC",
+  dc: "DC",
+  florida: "FL",
+  georgia: "GA",
+  hawaii: "HI",
+  idaho: "ID",
+  illinois: "IL",
+  indiana: "IN",
+  iowa: "IA",
+  kansas: "KS",
+  kentucky: "KY",
+  louisiana: "LA",
+  maine: "ME",
+  maryland: "MD",
+  massachusetts: "MA",
+  michigan: "MI",
+  minnesota: "MN",
+  mississippi: "MS",
+  missouri: "MO",
+  montana: "MT",
+  nebraska: "NE",
+  nevada: "NV",
+  "new hampshire": "NH",
+  "new jersey": "NJ",
+  "new mexico": "NM",
+  "new york": "NY",
+  "north carolina": "NC",
+  "north dakota": "ND",
+  ohio: "OH",
+  oklahoma: "OK",
+  oregon: "OR",
+  pennsylvania: "PA",
+  "rhode island": "RI",
+  "south carolina": "SC",
+  "south dakota": "SD",
+  tennessee: "TN",
+  texas: "TX",
+  utah: "UT",
+  vermont: "VT",
+  virginia: "VA",
+  washington: "WA",
+  "west virginia": "WV",
+  wisconsin: "WI",
+  wyoming: "WY",
+  "puerto rico": "PR",
+};
+
+const US_STATE_CODES = new Set(Object.values(STATE_ABBR));
+
+export function cleanDisplay(value?: string | null) {
+  const text = value?.replace(/\s+/g, " ").trim() ?? "";
+  if (!text || EMPTY_CELL.test(text)) return null;
+  return text;
+}
+
+function lettersOf(value: string) {
+  return value.replace(/[^A-Za-z]/g, "");
+}
+
+function needsDisplayCase(value: string) {
+  const letters = lettersOf(value);
+  if (!letters) return false;
+  return letters === letters.toUpperCase() || letters === letters.toLowerCase();
+}
+
+function titleCaseWords(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/(^|[\s/'()-])([a-z])/g, (_, edge: string, letter: string) => edge + letter.toUpperCase())
+    .replace(/\bMc([a-z])/g, (_, letter: string) => `Mc${letter.toUpperCase()}`);
+}
+
+export function displayPersonName(value?: string | null) {
+  const text = cleanDisplay(value);
+  if (!text) return null;
+  return needsDisplayCase(text) ? titleCaseWords(text) : text;
+}
 
 function stripHonorifics(name: string) {
   return name
@@ -11,23 +106,144 @@ function stripHonorifics(name: string) {
 }
 
 export function displayName(person: Pick<AlumniListItem, "preferred_name" | "first_name" | "last_name" | "full_name">) {
-  const last = person.last_name?.trim() || "";
-  const preferred = person.preferred_name ? stripHonorifics(person.preferred_name.trim()) : "";
-  const looksLikeNickname =
-    Boolean(preferred && last) && !preferred.toLowerCase().includes(last.toLowerCase());
+  const last = displayPersonName(person.last_name);
+  const first = displayPersonName(person.first_name);
+  const preferredRaw = displayPersonName(person.preferred_name);
+  const preferred = preferredRaw ? stripHonorifics(preferredRaw) : "";
+  const full = displayPersonName(person.full_name);
+  if (preferred && last && !preferred.toLowerCase().includes(last.toLowerCase())) {
+    return `${preferred} ${last}`;
+  }
+  if (full) return full;
+  return [first, last].filter(Boolean).join(" ") || preferred || "Unknown";
+}
 
-  if (looksLikeNickname) return `${preferred} ${last}`;
-  if (person.full_name?.trim()) return person.full_name.trim();
-  return [person.first_name, last].filter(Boolean).join(" ") || preferred || "Unknown";
+function stateCode(value?: string | null) {
+  const text = cleanDisplay(value);
+  if (!text) return null;
+  const compact = text.replace(/\./g, "").trim();
+  const upper = compact.toUpperCase();
+  if (compact.length === 2 && US_STATE_CODES.has(upper)) return upper;
+  return STATE_ABBR[compact.toLowerCase()] ?? null;
+}
+
+function parsePackedPlace(value: string): { city: string | null; state: string | null } {
+  const parts = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  while (parts.length && COUNTRY_TOKENS.has(parts[parts.length - 1]!.replace(/\./g, "").toLowerCase())) {
+    parts.pop();
+  }
+  if (parts.length === 0) return { city: null, state: null };
+  if (parts.length === 1) {
+    const only = parts[0]!;
+    const code = stateCode(only);
+    return code ? { city: null, state: code } : { city: displayPersonName(only), state: null };
+  }
+  const last = parts[parts.length - 1]!;
+  const code = stateCode(last);
+  if (code) {
+    const city = displayPersonName(parts.slice(0, -1).join(", "));
+    return { city, state: code };
+  }
+  return { city: displayPersonName(parts[0]!), state: null };
 }
 
 export function locationLabel(city?: string | null, state?: string | null) {
-  return [city, state].filter(Boolean).join(", ") || null;
+  const cityClean = cleanDisplay(city);
+  const stateClean = cleanDisplay(state);
+  let parsedCity: string | null = null;
+  let parsedState: string | null = null;
+
+  if (cityClean?.includes(",")) {
+    const packed = parsePackedPlace(cityClean);
+    parsedCity = packed.city;
+    parsedState = packed.state;
+  } else if (cityClean) {
+    const asState = cityClean.length <= 3 ? stateCode(cityClean) : null;
+    parsedCity = asState && !stateClean ? null : displayPersonName(cityClean);
+    if (asState && !stateClean) parsedState = asState;
+  }
+
+  if (stateClean?.includes(",")) {
+    const packed = parsePackedPlace(stateClean);
+    parsedCity = parsedCity ?? packed.city;
+    parsedState = parsedState ?? packed.state;
+  } else if (stateClean) {
+    parsedState = parsedState ?? stateCode(stateClean);
+    if (!parsedState && !parsedCity) {
+      const packed = parsePackedPlace(stateClean);
+      parsedCity = packed.city;
+      parsedState = packed.state;
+    }
+  }
+
+  if (parsedCity && parsedState && parsedCity.toUpperCase() === parsedState) {
+    parsedCity = null;
+  }
+
+  return [parsedCity, parsedState].filter(Boolean).join(", ") || null;
+}
+
+export function residenceLabel(person: {
+  current_city?: string | null;
+  current_state?: string | null;
+  hometown_city?: string | null;
+  hometown_state?: string | null;
+}) {
+  return (
+    locationLabel(person.current_city, person.current_state) ||
+    locationLabel(person.hometown_city, person.hometown_state)
+  );
+}
+
+export function positionLabel(value?: string | null) {
+  const text = cleanDisplay(value);
+  if (!text) return null;
+  return text
+    .split(/\s*[/|,]\s*/)
+    .map((part) => {
+      const trimmed = part.trim();
+      if (!trimmed) return null;
+      const compact = lettersOf(trimmed);
+      if (compact && compact.length <= 4 && !/\s/.test(trimmed)) {
+        return trimmed.replace(/[A-Za-z]+/g, (chunk) => chunk.toUpperCase());
+      }
+      return needsDisplayCase(trimmed) ? titleCaseWords(trimmed) : trimmed;
+    })
+    .filter(Boolean)
+    .join(" / ");
+}
+
+export function classYearLabel(value?: string | null) {
+  const text = cleanDisplay(value);
+  if (!text) return null;
+  if (ACADEMIC_CLASS.test(text)) {
+    const token = text.replace(/\./g, "").trim().toLowerCase();
+    const short: Record<string, string> = {
+      fr: "Fr.",
+      freshman: "Fr.",
+      so: "So.",
+      sophomore: "So.",
+      jr: "Jr.",
+      junior: "Jr.",
+      sr: "Sr.",
+      senior: "Sr.",
+      gr: "Gr.",
+      graduate: "Gr.",
+    };
+    return short[token] ?? text;
+  }
+  const year = parseClassYearInput(text);
+  return year ? `Class of ${year}` : null;
 }
 
 export function jobLabel(company?: string | null, title?: string | null) {
-  if (company && title) return `${title}, ${company}`;
-  return title || company || null;
+  const companyText = cleanDisplay(company);
+  const titleText = cleanDisplay(title);
+  if (companyText && titleText) return `${titleText}, ${companyText}`;
+  return titleText || companyText || null;
 }
 
 export function initials(person: Pick<AlumniListItem, "preferred_name" | "first_name" | "last_name" | "full_name">) {

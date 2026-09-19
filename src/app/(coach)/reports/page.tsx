@@ -9,7 +9,7 @@ import { isMissingDatabaseConfig } from "@/lib/db";
 import { filtersToSearchParams, hasActiveFilters, parseAlumniFilters } from "@/lib/filters";
 import { getAlumniFacets, getContactExportRows, getReportSummary } from "@/lib/queries";
 import { Kpi, KpiGrid } from "@/components/kpi";
-import { displayName, formatNumber } from "@/lib/format";
+import { classYearLabel, displayName, formatNumber, positionLabel } from "@/lib/format";
 import { requireRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
@@ -99,7 +99,9 @@ export default async function ReportsPage({
                         full_name: row.name,
                       })}</p>
                       <p className="truncate text-sm text-muted-foreground">
-                        {[row.position, row.class_year, row.company_name].filter(Boolean).join(" · ") || "—"}
+                        {[positionLabel(row.position), classYearLabel(row.class_year), row.company_name]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
                       </p>
                     </div>
                     <p className="shrink-0 text-xs text-muted-foreground">
