@@ -1,5 +1,6 @@
 import { AppHeader } from "@/components/app-header";
 import { GivingScreen } from "@/components/giving-screen";
+import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { emptyGivingSummary, listGivingSummary } from "@/lib/giving";
@@ -30,16 +31,14 @@ export default async function GivingPage({
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <PageShell>
       <AppHeader current="giving" />
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Fundraising</p>
-          <h2 className="font-heading text-3xl text-navy">Give</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Choose an impact amount and record an unpaid pledge intent. Stripe is not required for this MVP.
-          </p>
-        </div>
+      <PageMain width="narrow">
+        <PageHeader
+          eyebrow="Fundraising"
+          title="Give"
+          description="Choose an impact amount and record an unpaid pledge intent. Stripe is not required for this MVP."
+        />
         {errorMessage ? (
           <StatusCard title="Giving unavailable" body={errorMessage} />
         ) : (
@@ -49,7 +48,7 @@ export default async function GivingPage({
             amountError={params.error === "amount"}
           />
         )}
-      </main>
-    </div>
+      </PageMain>
+    </PageShell>
   );
 }

@@ -1,6 +1,7 @@
 import { SiteHeader } from "@/components/site-header";
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { CopyContacts } from "@/components/copy-contacts";
+import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,18 +31,14 @@ export default async function ReportsPage({
     const phoneCount = summary.phones;
 
     return (
-      <div className="flex min-h-full flex-col">
+      <PageShell>
         <SiteHeader current="reports" />
-        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Outreach
-            </p>
-            <h2 className="font-heading text-3xl text-navy">Reports</h2>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Multi-select a group, then download a CSV or continue to an in-app text or email blast.
-            </p>
-          </div>
+        <PageMain>
+          <PageHeader
+            eyebrow="Outreach"
+            title="Reports"
+            description="Multi-select a group, then download a CSV or continue to an in-app text or email blast."
+          />
 
           <AlumniFiltersForm
             filters={filters}
@@ -56,16 +53,16 @@ export default async function ReportsPage({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-lg bg-muted px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Alumni</p>
+                <div className="rounded-xl bg-muted/80 px-4 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Alumni</p>
                   <p className="font-heading text-3xl text-navy">{count.toLocaleString()}</p>
                 </div>
-                <div className="rounded-lg bg-muted px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">With email</p>
+                <div className="rounded-xl bg-muted/80 px-4 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">With email</p>
                   <p className="font-heading text-3xl text-navy">{emailCount.toLocaleString()}</p>
                 </div>
-                <div className="rounded-lg bg-muted px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">With phone</p>
+                <div className="rounded-xl bg-muted/80 px-4 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">With phone</p>
                   <p className="font-heading text-3xl text-navy">{phoneCount.toLocaleString()}</p>
                 </div>
               </div>
@@ -122,14 +119,14 @@ export default async function ReportsPage({
               </CardContent>
             </Card>
           ) : null}
-        </main>
-      </div>
+        </PageMain>
+      </PageShell>
     );
   } catch (error) {
     return (
-      <div className="flex min-h-full flex-col">
+      <PageShell>
         <SiteHeader current="reports" />
-        <main className="mx-auto w-full max-w-6xl px-4 py-6">
+        <PageMain>
           <StatusCard
             title="Reports unavailable"
             body={
@@ -140,8 +137,8 @@ export default async function ReportsPage({
                   : "Could not load this group."
             }
           />
-        </main>
-      </div>
+        </PageMain>
+      </PageShell>
     );
   }
 }

@@ -1,4 +1,5 @@
 import { FundraisingCampaignForm, FundraisingPledgeForm } from "@/components/portal-forms";
+import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { StatusCard } from "@/components/status-card";
 import { Button } from "@/components/ui/button";
@@ -30,17 +31,14 @@ export default async function FundraisingPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <PageShell>
       <SiteHeader current="fundraising" />
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Give</p>
-          <h2 className="font-heading text-3xl text-navy">Fundraising</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            MVP campaigns and pledge intents in Neon. Stripe checkout is later and optional. Mailto
-            and external links are labeled placeholders.
-          </p>
-        </div>
+      <PageMain width="narrow">
+        <PageHeader
+          eyebrow="Give"
+          title="Fundraising"
+          description="MVP campaigns and pledge intents in Neon. Stripe checkout is later and optional. Mailto and external links are labeled placeholders."
+        />
 
         {canManageFundraising(viewer.role) ? (
           <Card>
@@ -93,7 +91,7 @@ export default async function FundraisingPage() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </PageMain>
+    </PageShell>
   );
 }

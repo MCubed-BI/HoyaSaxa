@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,57 +27,63 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <div className="bg-navy px-6 py-8 text-white">
-          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/60">
-            Georgetown Football
-          </p>
-          <h1 className="mt-1 font-heading text-3xl">Georgetown Alum</h1>
-          <p className="mt-2 text-sm text-white/70">Staff gate for owner and coach</p>
+    <AuthShell title="Sign in" subtitle="Staff gate for owner and coach.">
+      <form action="/api/login" method="post" className="space-y-4">
+        <input type="hidden" name="next" value={safeNextPath(params.next)} />
+        <div className="space-y-1.5">
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            name="username"
+            autoComplete="username"
+            required
+            defaultValue="Hoyas"
+            className="h-10"
+          />
         </div>
-        <form action="/api/login" method="post" className="space-y-4 px-6 py-6">
-          <input type="hidden" name="next" value={safeNextPath(params.next)} />
-          <div className="space-y-1.5">
-            <Label htmlFor="username">Username</Label>
-            <Input id="username" name="username" autoComplete="username" required defaultValue="Hoyas" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" autoComplete="current-password" required />
-          </div>
-          {params.error ? (
-            <p className="text-sm text-destructive">That username or password is not recognized.</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Shared staff password. <span className="font-medium">Hoyas</span> is owner.{" "}
-              <span className="font-medium">Lars</span> and <span className="font-medium">Alum</span> mint{" "}
-              <code>hoya_alum_session</code> and open Legacy Locker.
-            </p>
-          )}
-          <Button type="submit" className="w-full">
-            Sign in
-          </Button>
-          <div className="flex flex-col items-center gap-1 pt-1 text-sm">
-            <Link href="/register" className="text-navy underline-offset-4 hover:underline">
-              Register myself
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            className="h-10"
+          />
+        </div>
+        {params.error ? (
+          <p className="text-sm text-destructive">That username or password is not recognized.</p>
+        ) : (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Shared staff password. <span className="font-medium text-foreground">Hoyas</span> is owner.{" "}
+            <span className="font-medium text-foreground">Lars</span> and{" "}
+            <span className="font-medium text-foreground">Alum</span> mint{" "}
+            <code>hoya_alum_session</code> and open the alumni portal.
+          </p>
+        )}
+        <Button type="submit" className="h-10 w-full">
+          Sign in
+        </Button>
+        <div className="flex flex-col items-center gap-1 pt-1 text-sm">
+          <Link href="/register" className="text-navy underline-offset-4 hover:underline">
+            Register myself
+          </Link>
+          <Link href="/alumni-login" className="text-muted-foreground underline-offset-4 hover:underline">
+            Alumni login
+          </Link>
+          <p className="pt-1 text-center text-muted-foreground">
+            Portal preview:{" "}
+            <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
+              Home
             </Link>
-            <Link href="/alumni-login" className="text-muted-foreground underline-offset-4 hover:underline">
-              Alumni login
+            {" · "}
+            <Link href="/locker" className="text-navy underline-offset-4 hover:underline">
+              Messages
             </Link>
-            <p className="pt-1 text-center text-muted-foreground">
-              Locker preview:{" "}
-              <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
-                Home
-              </Link>
-              {" · "}
-              <Link href="/locker" className="text-navy underline-offset-4 hover:underline">
-                Messages
-              </Link>
-            </p>
-          </div>
-        </form>
-      </div>
-    </main>
+          </p>
+        </div>
+      </form>
+    </AuthShell>
   );
 }

@@ -1,6 +1,7 @@
 import { AlumniDirectory } from "@/components/alumni-directory";
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { BlastBar } from "@/components/blast-bar";
+import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
@@ -35,19 +36,14 @@ export default async function DirectoryPage({
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <PageShell>
       <SiteHeader current="directory" />
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Staff directory
-          </p>
-          <h2 className="font-heading text-3xl text-navy">Alumni</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Multi-select filters, then check alumni to build a blast list for text or email. Open a
-            player card for the full contact record.
-          </p>
-        </div>
+      <PageMain>
+        <PageHeader
+          eyebrow="Staff directory"
+          title="Alumni"
+          description="Multi-select filters, then check alumni to build a blast list for text or email. Open a player card for the full contact record."
+        />
 
         {result ? (
           <>
@@ -79,7 +75,7 @@ export default async function DirectoryPage({
         ) : (
           <StatusCard title="Directory unavailable" body={errorMessage ?? "Unknown error"} />
         )}
-      </main>
-    </div>
+      </PageMain>
+    </PageShell>
   );
 }

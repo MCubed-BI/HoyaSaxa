@@ -82,7 +82,7 @@ export function FindMyAlumMap({
 
   if (points.length === 0) {
     return (
-      <div className="flex h-[min(70vh,720px)] items-center justify-center rounded-xl border bg-muted/40 text-sm text-muted-foreground">
+      <div className="flex h-[min(70vh,720px)] items-center justify-center rounded-xl border bg-card text-sm text-muted-foreground shadow-[var(--shadow-card)]">
         No mapped locations yet. Current city/state, hometown, or a US address is needed.
       </div>
     );
@@ -110,7 +110,7 @@ export function FindMyAlumMap({
         ))}
         <span className="text-sm text-muted-foreground">{points.length} mapped</span>
       </div>
-      <div className="h-[min(70vh,720px)] overflow-hidden rounded-xl border">
+      <div className="h-[min(70vh,720px)] overflow-hidden rounded-xl border shadow-[var(--shadow-card)]">
         <MapContainer className="h-full w-full" center={[39.5, -98.35]} zoom={4} scrollWheelZoom>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -124,7 +124,7 @@ export function FindMyAlumMap({
                   key={point.id}
                   center={[point.lat, point.lng]}
                   radius={6}
-                  pathOptions={{ color: "#041e42", fillColor: "#c5a572", fillOpacity: 0.85, weight: 1 }}
+                  pathOptions={{ color: "#041e42", fillColor: "#041e42", fillOpacity: 0.72, weight: 1 }}
                 >
                   <Popup>
                     <div className="space-y-1 text-sm">

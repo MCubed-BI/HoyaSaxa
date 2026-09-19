@@ -1,13 +1,16 @@
 import Link from "next/link";
+import { PageMain } from "@/components/page-chrome";
+import { StatusCard } from "@/components/status-card";
 
 export default function AthleteNotFound() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-16 text-center">
-      <h1 className="font-heading text-2xl text-white">Profile not found</h1>
-      <p className="mt-2 text-sm text-muted-foreground">That directory card is not in the roster.</p>
-      <Link href="/directory" className="mt-4 inline-block text-sm text-gold hover:underline">
-        Back to directory
-      </Link>
-    </main>
+    <PageMain width="narrow">
+      <StatusCard title="Profile not found" body="That directory card is not in the roster." />
+      <p className="text-center">
+        <Link href="/directory" className="text-sm font-medium text-navy hover:underline">
+          Back to directory
+        </Link>
+      </p>
+    </PageMain>
   );
 }

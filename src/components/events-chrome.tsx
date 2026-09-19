@@ -1,5 +1,6 @@
 import { AppHeader } from "@/components/app-header";
 import { LockerHeader } from "@/components/locker-header";
+import { PageShell } from "@/components/page-chrome";
 import type { LockerViewer } from "@/lib/locker-viewer";
 
 export function EventsChrome({
@@ -17,9 +18,9 @@ export function EventsChrome({
     );
 
   return (
-    <div className="flex min-h-full flex-col">
+    <PageShell>
       {header}
       {children}
-    </div>
+    </PageShell>
   );
 }

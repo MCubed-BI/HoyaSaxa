@@ -43,7 +43,7 @@ export function BlastBar({
   const blastHref = `/blast${query ? `?${query}` : ""}`;
 
   return (
-    <div className="sticky bottom-3 z-20 rounded-xl border bg-navy px-4 py-3 text-white shadow-lg">
+    <div className="sticky bottom-3 z-20 rounded-2xl border border-navy/20 bg-navy px-4 py-3.5 text-white shadow-[var(--shadow-elevated)]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm">
           <p className="font-medium">

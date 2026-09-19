@@ -1,5 +1,6 @@
 import { EventsChrome } from "@/components/events-chrome";
 import { EventsList } from "@/components/events-list";
+import { PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { getEventActor } from "@/lib/event-actor";
 import { listEvents } from "@/lib/event-queries";
@@ -21,9 +22,9 @@ export default async function EventsPage({
   if (!actor) {
     return (
       <EventsChrome locker={locker}>
-        <main className="mx-auto w-full max-w-6xl px-4 py-6">
+        <PageMain>
           <StatusCard title="Sign in required" body="Sign in to view events." />
-        </main>
+        </PageMain>
       </EventsChrome>
     );
   }
@@ -32,7 +33,7 @@ export default async function EventsPage({
     const result = await listEvents(tab, actor);
     return (
       <EventsChrome locker={locker}>
-        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
+        <PageMain>
           <EventsList
             actor={actor}
             tab={result.tab}
@@ -43,13 +44,13 @@ export default async function EventsPage({
             created={params.created === "1"}
             forbidden={params.error === "forbidden"}
           />
-        </main>
+        </PageMain>
       </EventsChrome>
     );
   } catch (error) {
     return (
       <EventsChrome locker={locker}>
-        <main className="mx-auto w-full max-w-6xl px-4 py-6">
+        <PageMain>
           <StatusCard
             title="Events unavailable"
             body={
@@ -60,7 +61,7 @@ export default async function EventsPage({
                   : "The events list could not be loaded."
             }
           />
-        </main>
+        </PageMain>
       </EventsChrome>
     );
   }

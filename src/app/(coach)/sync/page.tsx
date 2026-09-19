@@ -1,5 +1,6 @@
 import { SiteHeader } from "@/components/site-header";
 import { DataSyncPanel } from "@/components/data-sync-panel";
+import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { listDataSyncBatches, type DataSyncBatch } from "@/lib/data-sync";
 import { ensureDataSyncTable } from "@/lib/data-sync-schema";
@@ -25,25 +26,20 @@ export default async function SyncPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <PageShell>
       <SiteHeader current="sync" />
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Admin
-          </p>
-          <h2 className="font-heading text-3xl text-navy">Data Sync</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Upload a workbook, preview who will be updated or added, then apply the staged batch
-            to the live Neon alumni tables. Existing records are merged, not replaced.
-          </p>
-        </div>
+      <PageMain>
+        <PageHeader
+          eyebrow="Admin"
+          title="Data Sync"
+          description="Upload a workbook, preview who will be updated or added, then apply the staged batch to the live Neon alumni tables. Existing records are merged, not replaced."
+        />
         {errorMessage ? (
           <StatusCard title="Data Sync unavailable" body={errorMessage} />
         ) : (
           <DataSyncPanel initialBatches={batches} />
         )}
-      </main>
-    </div>
+      </PageMain>
+    </PageShell>
   );
 }

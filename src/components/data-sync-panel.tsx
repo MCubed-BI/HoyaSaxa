@@ -25,7 +25,7 @@ function statusLabel(status: DataSyncBatch["status"]) {
 
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-lg bg-muted px-4 py-3">
+    <div className="rounded-xl bg-muted/80 px-4 py-3">
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="font-heading text-2xl text-navy sm:text-3xl">{value}</p>
     </div>
