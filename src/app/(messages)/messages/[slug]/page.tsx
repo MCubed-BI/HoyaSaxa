@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MessagesCompose } from "@/components/messages-compose";
 import { PageHeader, PageMain } from "@/components/page-chrome";
-import { StatusCard } from "@/components/status-card";
+import { EmptyState, ErrorState } from "@/components/query-state";
 import { Badge } from "@/components/ui/badge";
 import { Timestamp } from "@/components/timestamp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +43,7 @@ export default async function MessageChannelPage({
   if (errorMessage) {
     return (
       <PageMain width="narrow" className="pb-24 md:pb-8">
-        <StatusCard title="Channel unavailable" body={errorMessage} />
+        <ErrorState title="Channel unavailable" body={errorMessage} />
       </PageMain>
     );
   }
@@ -86,7 +86,7 @@ export default async function MessageChannelPage({
       )}
 
       {posts.length === 0 ? (
-        <StatusCard title="No posts yet" body="When staff publish, the note will show here." />
+        <EmptyState title="No posts yet" body="When staff publish, the note will show here." icon="messages" />
       ) : (
         <div className="space-y-3">
           {posts.map((post) => (

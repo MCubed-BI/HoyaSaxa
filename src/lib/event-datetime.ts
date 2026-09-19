@@ -1,4 +1,4 @@
-import { APP_TIMEZONE } from "@/lib/format";
+import { APP_TIMEZONE, formatDate, formatDateTime, parseDate } from "@/lib/format";
 
 const EASTERN = APP_TIMEZONE;
 
@@ -58,15 +58,15 @@ export function parseEventDateTime(value: string) {
 }
 
 export function formatEventWhen(value: Date | string) {
-  const date = typeof value === "string" ? new Date(value) : value;
+  const date = parseDate(value);
+  if (!date) {
+    return { weekday: "", day: "", year: "", time: "", label: "Date TBA" };
+  }
+  const label = formatDateTime(date) ?? "Date TBA";
+  const day = formatDate(date) ?? "";
   const weekday = new Intl.DateTimeFormat("en-US", {
     timeZone: EASTERN,
     weekday: "short",
-  }).format(date);
-  const day = new Intl.DateTimeFormat("en-US", {
-    timeZone: EASTERN,
-    month: "short",
-    day: "numeric",
   }).format(date);
   const year = new Intl.DateTimeFormat("en-US", {
     timeZone: EASTERN,
@@ -77,5 +77,5 @@ export function formatEventWhen(value: Date | string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
-  return { weekday, day, year, time, label: `${weekday}, ${day} ${year} · ${time} ET` };
+  return { weekday, day, year, time, label };
 }

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { FeedPostCard } from "@/components/locker-cards";
 import { LockerHeader } from "@/components/locker-header";
 import { Notice, PageHeader, PageMain, PageShell, pillClass } from "@/components/page-chrome";
-import { StatusCard } from "@/components/status-card";
+import { EmptyState } from "@/components/query-state";
+import { LoadedStamp } from "@/components/timestamp";
 import {
   FEED_TABS,
   feedTabLabel,
@@ -54,10 +55,11 @@ export default async function ForYouFeedPage({
           ))}
         </div>
 
+        <LoadedStamp />
         {data.usingFallback ? <Notice>{data.fallbackReason}</Notice> : null}
 
         {posts.length === 0 ? (
-          <StatusCard title={feedTabLabel(tab)} body={feedTabStub(tab)} />
+          <EmptyState title={feedTabLabel(tab)} body={feedTabStub(tab)} icon="feed" />
         ) : (
           <div className="space-y-3">
             {posts.map((post) => (

@@ -1,15 +1,19 @@
 import Link from "next/link";
+import { EmptyState } from "@/components/query-state";
+import { ResultPagination } from "@/components/result-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { filtersToSearchParams, type AlumniFilters } from "@/lib/filters";
 import {
   classYearLabel,
   displayName,
+  formatCount,
   initials,
   jobLabel,
   locationLabel,
   positionLabel,
   residenceLabel,
+  resultRange,
 } from "@/lib/format";
 import type { AlumniListItem } from "@/lib/types";
 
@@ -31,27 +35,26 @@ export function AlumDirectory({
   profileHref?: string;
 }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const prev = page > 1 ? `${basePath}?${filtersToSearchParams(filters, page - 1).toString()}` : null;
-  const next = page < pageCount ? `${basePath}?${filtersToSearchParams(filters, page + 1).toString()}` : null;
+  const range = resultRange(page, pageSize, total);
+  const hrefFor = (next: number) => {
+    const qs = filtersToSearchParams(filters, next).toString();
+    return qs ? `${basePath}?${qs}` : basePath;
+  };
 
   if (total === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <p className="font-heading text-xl text-navy">No alumni match this lookup</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Try a name, class year, or city. Contact details stay hidden on alumnus cards.
-          </p>
-        </CardContent>
-      </Card>
+      <EmptyState
+        title="No alumni match this lookup"
+        body="Try a name, class year, or city. Contact details stay hidden on alumnus cards."
+        icon="directory"
+      />
     );
   }
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        {total.toLocaleString()} alumni
-        {pageCount > 1 ? ` · page ${page} of ${pageCount}` : null}
+        {range.label} · {formatCount(total, "alumnus", "alumni")}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         {rows.map((person) => (
@@ -92,24 +95,7 @@ export function AlumDirectory({
           </Card>
         ))}
       </div>
-      {pageCount > 1 ? (
-        <div className="flex items-center justify-between text-sm">
-          {prev ? (
-            <Link href={prev} className="text-navy hover:underline">
-              Previous
-            </Link>
-          ) : (
-            <span className="text-muted-foreground">Previous</span>
-          )}
-          {next ? (
-            <Link href={next} className="text-navy hover:underline">
-              Next
-            </Link>
-          ) : (
-            <span className="text-muted-foreground">Next</span>
-          )}
-        </div>
-      ) : null}
+      <ResultPagination page={page} pageCount={pageCount} hrefFor={hrefFor} />
     </div>
   );
 }

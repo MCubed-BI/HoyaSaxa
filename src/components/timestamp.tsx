@@ -30,3 +30,18 @@ export function Timestamp({
     </time>
   );
 }
+
+export function LoadedStamp({
+  value,
+  className,
+}: {
+  value?: Date | string | number | null;
+  className?: string;
+}) {
+  const stamp = value ?? new Date().toISOString();
+  return (
+    <p className={cn("text-xs text-muted-foreground", className)}>
+      Loaded <Timestamp value={stamp} />
+    </p>
+  );
+}

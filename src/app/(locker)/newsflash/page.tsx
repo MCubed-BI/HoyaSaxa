@@ -2,7 +2,8 @@ import { FeedPostCard } from "@/components/locker-cards";
 import { LockerHeader } from "@/components/locker-header";
 import { NewsflashForm } from "@/components/newsflash-form";
 import { Notice, PageHeader, PageMain, PageShell } from "@/components/page-chrome";
-import { StatusCard } from "@/components/status-card";
+import { EmptyState } from "@/components/query-state";
+import { LoadedStamp } from "@/components/timestamp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { newsflashToFeedPost } from "@/lib/locker-data";
 import { loadLockerHome } from "@/lib/locker-queries";
@@ -41,12 +42,14 @@ export default async function NewsflashPage() {
           </Notice>
         )}
 
+        <LoadedStamp />
         {data.usingFallback ? <Notice>{data.fallbackReason}</Notice> : null}
 
         {data.newsflash.length === 0 ? (
-          <StatusCard
+          <EmptyState
             title="No posts yet"
             body="When the board publishes, alumni will see it here."
+            icon="newsflash"
           />
         ) : (
           <div className="space-y-3">

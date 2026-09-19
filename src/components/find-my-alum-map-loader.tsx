@@ -1,17 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { MapCanvasSkeleton } from "@/components/page-skeletons";
 import type { AlumniMapPoint } from "@/lib/types";
 
 const FindMyAlumMap = dynamic(
   () => import("@/components/find-my-alum-map").then((m) => m.FindMyAlumMap),
   {
     ssr: false,
-    loading: () => (
-      <div className="flex h-[min(70vh,720px)] items-center justify-center rounded-xl border bg-muted/40 text-sm text-muted-foreground">
-        Loading map…
-      </div>
-    ),
+    loading: () => <MapCanvasSkeleton />,
   },
 );
 

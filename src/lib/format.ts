@@ -290,6 +290,12 @@ export function formatDate(value: Date | string | number | null | undefined) {
   return dateParts(date, { month: "short", day: "numeric", year: "numeric" });
 }
 
+export function formatMonthYear(value: Date | string | number | null | undefined) {
+  const date = parseDate(value);
+  if (!date) return null;
+  return dateParts(date, { month: "short", year: "numeric" });
+}
+
 export function formatDateTime(value: Date | string | number | null | undefined) {
   const date = parseDate(value);
   if (!date) return null;
@@ -324,12 +330,18 @@ export function formatNumber(value: number | null | undefined) {
 
 export function formatCurrency(cents: number) {
   const dollars = cents / 100;
-  return new Intl.NumberFormat(APP_LOCALE, {
+  const formatted = new Intl.NumberFormat(APP_LOCALE, {
     style: "currency",
     currency: "USD",
+    currencySign: "standard",
     minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
     maximumFractionDigits: cents % 100 === 0 ? 0 : 2,
-  }).format(dollars);
+  }).format(Math.abs(dollars));
+  return dollars < 0 ? `-${formatted}` : formatted;
+}
+
+export function formatCurrencyDollars(dollars: number) {
+  return formatCurrency(Math.round(dollars * 100));
 }
 
 export function formatCount(value: number, singular: string, plural = `${singular}s`) {

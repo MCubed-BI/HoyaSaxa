@@ -8,8 +8,10 @@ import {
   positionLabel,
   residenceLabel,
   formatCurrency,
+  formatCurrencyDollars,
   formatDate,
   formatDateTime,
+  formatMonthYear,
   formatNumber,
   formatRelativeTime,
   pageWindow,
@@ -96,7 +98,9 @@ test("parseDate rejects empty and invalid values", () => {
 test("formats Eastern dates and datetimes", () => {
   assert.equal(formatDate("2026-10-04T22:00:00.000Z"), "Oct 4, 2026");
   assert.equal(formatDateTime("2026-10-04T22:00:00.000Z"), "Sun, Oct 4, 2026 · 6:00 PM ET");
+  assert.equal(formatMonthYear("2026-01-15T18:00:00.000Z"), "Jan 2026");
   assert.equal(formatDate("nope"), null);
+  assert.equal(formatMonthYear("nope"), null);
 });
 
 test("formats relative time from a fixed now", () => {
@@ -115,6 +119,10 @@ test("formats numbers, counts, and currency from cents", () => {
   assert.equal(formatCurrency(2500), "$25");
   assert.equal(formatCurrency(2575), "$25.75");
   assert.equal(formatCurrency(0), "$0");
+  assert.equal(formatCurrency(-2575), "-$25.75");
+  assert.equal(formatCurrency(-2500), "-$25");
+  assert.equal(formatCurrencyDollars(25), "$25");
+  assert.equal(formatCurrencyDollars(-12.5), "-$12.50");
 });
 
 test("result ranges and page windows", () => {

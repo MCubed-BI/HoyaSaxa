@@ -1,7 +1,7 @@
 import { AppHeader } from "@/components/app-header";
 import { GivingScreen } from "@/components/giving-screen";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
-import { StatusCard } from "@/components/status-card";
+import { ErrorState } from "@/components/query-state";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { emptyGivingSummary, listGivingSummary } from "@/lib/giving";
 
@@ -40,12 +40,13 @@ export default async function GivingPage({
           description="Choose an impact amount and record an unpaid pledge intent. Stripe is not required for this MVP."
         />
         {errorMessage ? (
-          <StatusCard title="Giving unavailable" body={errorMessage} />
+          <ErrorState title="Giving unavailable" body={errorMessage} />
         ) : (
           <GivingScreen
             initial={summary}
             recorded={params.recorded === "1"}
             amountError={params.error === "amount"}
+            loadedAt={new Date().toISOString()}
           />
         )}
       </PageMain>

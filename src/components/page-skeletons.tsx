@@ -93,3 +93,165 @@ export function HomeCardsSkeleton() {
     </div>
   );
 }
+
+function PageIntroSkeleton({ label }: { label: string }) {
+  return (
+    <div className="space-y-2">
+      <Skeleton className="h-3 w-20" />
+      <Skeleton className="h-9 w-56 max-w-full" />
+      <Skeleton className="h-4 w-full max-w-xl" />
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+export function EventsSkeleton() {
+  return (
+    <PageShell>
+      <HeaderSkeleton href="/events" />
+      <PageMain>
+        <PageIntroSkeleton label="Loading events…" />
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-8 w-24 rounded-full" />
+          <Skeleton className="h-8 w-16 rounded-full" />
+          <Skeleton className="h-8 w-24 rounded-full" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+      </PageMain>
+    </PageShell>
+  );
+}
+
+export function GivingSkeleton() {
+  return (
+    <PageShell>
+      <HeaderSkeleton href="/giving" />
+      <PageMain width="narrow">
+        <PageIntroSkeleton label="Loading giving…" />
+        <div className="grid gap-3 sm:grid-cols-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-72 rounded-xl" />
+      </PageMain>
+    </PageShell>
+  );
+}
+
+export function MessagesSkeleton() {
+  return (
+    <PageShell>
+      <HeaderSkeleton href="/messages" />
+      <PageMain width="narrow" className="pb-24 md:pb-8">
+        <PageIntroSkeleton label="Loading messages…" />
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-8 w-14 rounded-full" />
+          <Skeleton className="h-8 w-20 rounded-full" />
+          <Skeleton className="h-8 w-20 rounded-full" />
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Skeleton key={i} className="h-16 rounded-xl" />
+          ))}
+        </div>
+      </PageMain>
+    </PageShell>
+  );
+}
+
+export function MapSkeleton() {
+  return (
+    <PageShell>
+      <HeaderSkeleton href="/find-my-alum" />
+      <PageMain>
+        <PageIntroSkeleton label="Loading Find My Alum…" />
+        <Skeleton className="h-28 rounded-xl" />
+        <Skeleton className="h-[min(70vh,720px)] rounded-xl" />
+      </PageMain>
+    </PageShell>
+  );
+}
+
+export function BlastSkeleton() {
+  return (
+    <PageShell>
+      <HeaderSkeleton href="/blast" />
+      <PageMain>
+        <PageIntroSkeleton label="Loading blast…" />
+        <Skeleton className="h-36 rounded-xl" />
+        <div className="grid gap-3 sm:grid-cols-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-64 rounded-xl" />
+      </PageMain>
+    </PageShell>
+  );
+}
+
+export function FeedSkeleton() {
+  return (
+    <PageShell>
+      <HeaderSkeleton href="/feed" />
+      <PageMain width="narrow" className="pb-24 md:pb-8">
+        <PageIntroSkeleton label="Loading For You…" />
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-8 w-20 rounded-full" />
+          <Skeleton className="h-8 w-24 rounded-full" />
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={i} className="h-40 rounded-xl" />
+          ))}
+        </div>
+      </PageMain>
+    </PageShell>
+  );
+}
+
+export function FormSkeleton({ href = "/events/new", label = "Loading form…" }: { href?: string; label?: string }) {
+  return (
+    <PageShell>
+      <HeaderSkeleton href={href} />
+      <PageMain width="form">
+        <PageIntroSkeleton label={label} />
+        <Skeleton className="h-80 rounded-xl" />
+      </PageMain>
+    </PageShell>
+  );
+}
+
+export function EventsListSkeleton() {
+  return (
+    <div className="space-y-3" aria-busy="true">
+      {Array.from({ length: 4 }, (_, i) => (
+        <Skeleton key={i} className="h-20 rounded-xl" />
+      ))}
+    </div>
+  );
+}
+
+export function MapCanvasSkeleton() {
+  return (
+    <div
+      className="flex h-[min(70vh,720px)] items-center justify-center rounded-xl border bg-card shadow-[var(--shadow-card)]"
+      aria-busy="true"
+    >
+      <div className="space-y-3 p-6 text-center">
+        <Skeleton className="mx-auto h-10 w-10 rounded-full" />
+        <p className="text-sm text-muted-foreground">Loading map…</p>
+      </div>
+    </div>
+  );
+}

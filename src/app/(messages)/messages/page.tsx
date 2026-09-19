@@ -1,6 +1,7 @@
 import { MessagesInbox } from "@/components/messages-inbox";
 import { PageHeader, PageMain } from "@/components/page-chrome";
-import { StatusCard } from "@/components/status-card";
+import { ErrorState } from "@/components/query-state";
+import { LoadedStamp } from "@/components/timestamp";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { listMessageChannels, parseMessageFilter } from "@/lib/messages";
 import { requireMessageViewer } from "@/lib/messages-viewer";
@@ -37,9 +38,12 @@ export default async function MessagesPage({
         description="Filter All, Unread, or Groups. Message from Sgarlata is the pinned official channel."
       />
       {errorMessage ? (
-        <StatusCard title="Messages unavailable" body={errorMessage} />
+        <ErrorState title="Messages unavailable" body={errorMessage} />
       ) : (
-        <MessagesInbox channels={channels} filter={filter} />
+        <>
+          <LoadedStamp />
+          <MessagesInbox channels={channels} filter={filter} />
+        </>
       )}
     </PageMain>
   );

@@ -6,8 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatDateTime } from "@/lib/format";
+import { DataTable, StickyTableHeader, Table, TableBody, TableHead, TableRow } from "@/components/data-table";
+import { Kpi, KpiGrid } from "@/components/kpi";
+import { EmptyState } from "@/components/query-state";
+import { TableCell } from "@/components/ui/table";
+import { formatDateTime, formatNumber } from "@/lib/format";
 import type { DataSyncBatch } from "@/lib/data-sync-types";
 
 function formatWhen(value: string | null) {
@@ -20,15 +23,6 @@ function statusLabel(status: DataSyncBatch["status"]) {
   if (status === "applying") return "Applying";
   if (status === "applied") return "Applied";
   return "Failed";
-}
-
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-xl bg-muted/80 px-4 py-3">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="font-heading text-2xl text-navy sm:text-3xl">{value}</p>
-    </div>
-  );
 }
 
 export function DataSyncPanel({ initialBatches }: { initialBatches: DataSyncBatch[] }) {
@@ -158,20 +152,20 @@ export function DataSyncPanel({ initialBatches }: { initialBatches: DataSyncBatc
             </div>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Stat label="People parsed" value={current.row_count.toLocaleString()} />
-              <Stat label="Will update" value={current.update_count.toLocaleString()} />
-              <Stat label="Will add" value={current.insert_count.toLocaleString()} />
-              <Stat label="Emails" value={current.email_count.toLocaleString()} />
-              <Stat label="Phones" value={current.phone_count.toLocaleString()} />
-              <Stat label="Roster years" value={current.roster_count.toLocaleString()} />
-            </div>
+            <KpiGrid className="sm:grid-cols-3 lg:grid-cols-3">
+              <Kpi tone="primary" icon="directory" label="People parsed" value={formatNumber(current.row_count)} />
+              <Kpi tone="secondary" icon="refresh" label="Will update" value={formatNumber(current.update_count)} />
+              <Kpi tone="secondary" icon="alum" label="Will add" value={formatNumber(current.insert_count)} />
+              <Kpi tone="secondary" icon="mail" label="Emails" value={formatNumber(current.email_count)} />
+              <Kpi tone="secondary" icon="phone" label="Phones" value={formatNumber(current.phone_count)} />
+              <Kpi tone="secondary" icon="events" label="Roster years" value={formatNumber(current.roster_count)} />
+            </KpiGrid>
 
             {current.sheet_counts.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {current.sheet_counts.map((sheet) => (
                   <Badge key={`${sheet.name}-${sheet.kind}`} variant="outline" className="font-normal">
-                    {sheet.name.trim()}: {sheet.rows.toLocaleString()}
+                    {sheet.name.trim()}: {formatNumber(sheet.rows)}
                   </Badge>
                 ))}
               </div>
@@ -194,7 +188,7 @@ export function DataSyncPanel({ initialBatches }: { initialBatches: DataSyncBatc
                   <div className="h-full bg-navy transition-all" style={{ width: `${progress}%` }} />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {current.apply_offset.toLocaleString()} of {current.row_count.toLocaleString()} applied
+                  {formatNumber(current.apply_offset)} of {formatNumber(current.row_count)} applied
                 </p>
                 <Button type="button" onClick={apply} disabled={busy !== null || current.row_count === 0}>
                   {busy === "apply"
@@ -208,10 +202,10 @@ export function DataSyncPanel({ initialBatches }: { initialBatches: DataSyncBatc
               </div>
             ) : (
               <div className="rounded-lg border border-navy/15 bg-navy/5 px-4 py-3 text-sm">
-                Applied {current.applied_update_count.toLocaleString()} updates and{" "}
-                {current.applied_insert_count.toLocaleString()} new alumni. Merged{" "}
-                {current.applied_email_count.toLocaleString()} emails, {current.applied_phone_count.toLocaleString()}{" "}
-                phones, and {current.applied_roster_count.toLocaleString()} roster years.
+                Applied {formatNumber(current.applied_update_count)} updates and{" "}
+                {formatNumber(current.applied_insert_count)} new alumni. Merged{" "}
+                {formatNumber(current.applied_email_count)} emails, {formatNumber(current.applied_phone_count)}{" "}
+                phones, and {formatNumber(current.applied_roster_count)} roster years.
               </div>
             )}
 
@@ -229,40 +223,38 @@ export function DataSyncPanel({ initialBatches }: { initialBatches: DataSyncBatc
             {current.preview.samples.length > 0 ? (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-navy">Preview sample</p>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Match</TableHead>
-                      <TableHead>Email</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {current.preview.samples.map((sample, index) => (
-                      <TableRow key={`${sample.name}-${index}`}>
-                        <TableCell className="font-medium">{sample.name}</TableCell>
-                        <TableCell>{sample.action === "update" ? "Update" : "Add"}</TableCell>
-                        <TableCell>{sample.matchBy ?? "—"}</TableCell>
-                        <TableCell className="max-w-[14rem] truncate">{sample.email ?? "—"}</TableCell>
+                <DataTable caption="Preview sample">
+                  <Table container={false}>
+                    <StickyTableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Match</TableHead>
+                        <TableHead>Email</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </StickyTableHeader>
+                    <TableBody>
+                      {current.preview.samples.map((sample, index) => (
+                        <TableRow key={`${sample.name}-${index}`}>
+                          <TableCell className="font-medium">{sample.name}</TableCell>
+                          <TableCell>{sample.action === "update" ? "Update" : "Add"}</TableCell>
+                          <TableCell>{sample.matchBy ?? "—"}</TableCell>
+                          <TableCell className="max-w-[14rem] truncate">{sample.email ?? "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </DataTable>
               </div>
             ) : null}
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="py-10 text-center">
-            <p className="font-heading text-xl text-navy">No sync batches yet</p>
-            <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
-              Upload the coach workbook to stage a batch in <code>data_sync</code>. Review the
-              counts, then apply to the live alumni tables.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="No sync batches yet"
+          body="Upload the coach workbook to stage a batch in data_sync. Review the counts, then apply to the live alumni tables."
+          icon="refresh"
+        />
       )}
 
       {batches.length > 0 ? (
@@ -287,7 +279,7 @@ export function DataSyncPanel({ initialBatches }: { initialBatches: DataSyncBatc
                 >
                   <span className="min-w-0 truncate font-medium text-navy">{batch.filename}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {statusLabel(batch.status)} · {batch.row_count.toLocaleString()} people
+                    {statusLabel(batch.status)} · {formatNumber(batch.row_count)} people
                   </span>
                 </button>
               ))}

@@ -3,9 +3,9 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/multi-select";
+import { SearchField } from "@/components/search-field";
 import {
   filtersToSearchParams,
   hasActiveFilters,
@@ -53,15 +53,14 @@ export function AlumniFiltersForm({
     >
       <div className="space-y-1.5">
         <Label htmlFor="q" className="text-xs uppercase tracking-wide text-muted-foreground">
-          Search
+          Search first
         </Label>
-        <Input
+        <SearchField
           id="q"
-          name="q"
           value={local.q}
-          onChange={(event) => setLocal((current) => ({ ...current, q: event.target.value }))}
+          onChange={(q) => setLocal((current) => ({ ...current, q }))}
           placeholder="Name, company, city, or email"
-          aria-label="Search alumni"
+          label="Search alumni"
         />
       </div>
 

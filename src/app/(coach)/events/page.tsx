@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { EventsChrome } from "@/components/events-chrome";
 import { EventsList } from "@/components/events-list";
 import { PageMain } from "@/components/page-chrome";
-import { StatusCard } from "@/components/status-card";
+import { EventsListSkeleton } from "@/components/page-skeletons";
+import { ErrorState } from "@/components/query-state";
 import { getEventActor } from "@/lib/event-actor";
 import { listEvents } from "@/lib/event-queries";
 import { parseEventTab } from "@/lib/event-types";
@@ -23,46 +25,66 @@ export default async function EventsPage({
     return (
       <EventsChrome locker={locker}>
         <PageMain>
-          <StatusCard title="Sign in required" body="Sign in to view events." />
+          <ErrorState title="Sign in required" body="Sign in to view events." />
         </PageMain>
       </EventsChrome>
     );
   }
 
-  try {
-    const result = await listEvents(tab, actor);
-    return (
-      <EventsChrome locker={locker}>
-        <PageMain>
-          <EventsList
+  return (
+    <EventsChrome locker={locker}>
+      <PageMain>
+        <Suspense fallback={<EventsListSkeleton />}>
+          <EventsBody
+            tab={tab}
             actor={actor}
-            tab={result.tab}
-            rows={result.rows}
-            upcomingCount={result.upcomingCount}
-            pastCount={result.pastCount}
-            mineCount={result.mineCount}
             created={params.created === "1"}
             forbidden={params.error === "forbidden"}
           />
-        </PageMain>
-      </EventsChrome>
+        </Suspense>
+      </PageMain>
+    </EventsChrome>
+  );
+}
+
+async function EventsBody({
+  tab,
+  actor,
+  created,
+  forbidden,
+}: {
+  tab: ReturnType<typeof parseEventTab>;
+  actor: NonNullable<Awaited<ReturnType<typeof getEventActor>>>;
+  created: boolean;
+  forbidden: boolean;
+}) {
+  try {
+    const result = await listEvents(tab, actor);
+    return (
+      <EventsList
+        actor={actor}
+        tab={result.tab}
+        rows={result.rows}
+        upcomingCount={result.upcomingCount}
+        pastCount={result.pastCount}
+        mineCount={result.mineCount}
+        created={created}
+        forbidden={forbidden}
+        loadedAt={new Date().toISOString()}
+      />
     );
   } catch (error) {
     return (
-      <EventsChrome locker={locker}>
-        <PageMain>
-          <StatusCard
-            title="Events unavailable"
-            body={
-              isMissingDatabaseConfig(error)
-                ? "DATABASE_URL is not set. Add it to .env.local, then restart the app."
-                : error instanceof Error
-                  ? error.message
-                  : "The events list could not be loaded."
-            }
-          />
-        </PageMain>
-      </EventsChrome>
+      <ErrorState
+        title="Events unavailable"
+        body={
+          isMissingDatabaseConfig(error)
+            ? "DATABASE_URL is not set. Add it to .env.local, then restart the app."
+            : error instanceof Error
+              ? error.message
+              : "The events list could not be loaded."
+        }
+      />
     );
   }
 }

@@ -92,10 +92,20 @@ export type FilterChip = {
   href: string;
 };
 
-export function alumniFilterChips(filters: AlumniFilters, action = "/"): FilterChip[] {
+export function alumniFilterChips(
+  filters: AlumniFilters,
+  action = "/",
+  extra?: Record<string, string>,
+): FilterChip[] {
   const hrefFor = (next: AlumniFilters) => {
-    const qs = filtersToSearchParams(next).toString();
-    return qs ? `${action}?${qs}` : action;
+    const qs = filtersToSearchParams(next);
+    if (extra) {
+      for (const [key, value] of Object.entries(extra)) {
+        if (value) qs.set(key, value);
+      }
+    }
+    const query = qs.toString();
+    return query ? `${action}?${query}` : action;
   };
   const chips: FilterChip[] = [];
   if (filters.q) {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fromTimeZoneLocal, parseEventDateTime } from "@/lib/event-datetime";
+import { formatEventWhen, fromTimeZoneLocal, parseEventDateTime } from "@/lib/event-datetime";
 
 test("Eastern daylight time converts to UTC", () => {
   const date = fromTimeZoneLocal("2026-10-04T18:00", "America/New_York");
@@ -23,4 +23,11 @@ test("parseEventDateTime accepts datetime-local and ISO", () => {
   assert.equal(iso.toISOString(), "2026-10-04T22:00:00.000Z");
   assert.equal(parseEventDateTime(""), null);
   assert.equal(parseEventDateTime("not-a-date"), null);
+});
+
+test("formatEventWhen uses the shared Eastern datetime layer", () => {
+  const when = formatEventWhen("2026-10-04T22:00:00.000Z");
+  assert.equal(when.label, "Sun, Oct 4, 2026 · 6:00 PM ET");
+  assert.equal(when.day, "Oct 4, 2026");
+  assert.equal(formatEventWhen("not-a-date").label, "Date TBA");
 });

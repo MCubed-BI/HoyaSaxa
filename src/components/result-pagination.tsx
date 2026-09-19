@@ -57,3 +57,60 @@ export function ResultPagination({
     </nav>
   );
 }
+
+export function ClientPagination({
+  page,
+  pageCount,
+  onPage,
+  className,
+}: {
+  page: number;
+  pageCount: number;
+  onPage: (page: number) => void;
+  className?: string;
+}) {
+  if (pageCount <= 1) return null;
+  const pages = pageWindow(page, pageCount);
+
+  return (
+    <nav className={cn("flex flex-wrap items-center justify-between gap-3 text-sm", className)} aria-label="Pagination">
+      {page > 1 ? (
+        <button type="button" onClick={() => onPage(page - 1)} className="font-medium text-navy hover:underline">
+          Previous
+        </button>
+      ) : (
+        <span className="text-muted-foreground">Previous</span>
+      )}
+      <ol className="flex flex-wrap items-center gap-1">
+        {pages.map((item, index) =>
+          item === "ellipsis" ? (
+            <li key={`e-${index}`} className="px-1 text-muted-foreground" aria-hidden>
+              …
+            </li>
+          ) : (
+            <li key={item}>
+              <button
+                type="button"
+                onClick={() => onPage(item)}
+                aria-current={item === page ? "page" : undefined}
+                className={cn(
+                  "inline-flex min-w-8 items-center justify-center rounded-md px-2 py-1 font-medium",
+                  item === page ? "bg-navy text-white" : "text-navy hover:bg-muted",
+                )}
+              >
+                {formatNumber(item)}
+              </button>
+            </li>
+          ),
+        )}
+      </ol>
+      {page < pageCount ? (
+        <button type="button" onClick={() => onPage(page + 1)} className="font-medium text-navy hover:underline">
+          Next
+        </button>
+      ) : (
+        <span className="text-muted-foreground">Next</span>
+      )}
+    </nav>
+  );
+}

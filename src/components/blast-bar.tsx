@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useSelection } from "@/components/selection-provider";
 import { filtersToSearchParams, hasActiveFilters, type AlumniFilters } from "@/lib/filters";
+import { formatNumber } from "@/lib/format";
 
 export function BlastBar({
   filters,
@@ -32,7 +33,7 @@ export function BlastBar({
       if (!response.ok) throw new Error("Could not add this group");
       const data = (await response.json()) as { ids: string[] };
       addMany(data.ids ?? []);
-      setStatus(`Added ${data.ids.length.toLocaleString()} alumni to the blast list.`);
+      setStatus(`Added ${formatNumber(data.ids.length)} alumni to the blast list.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not add group");
     } finally {
@@ -47,8 +48,8 @@ export function BlastBar({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm">
           <p className="font-medium">
-            {count.toLocaleString()} selected
-            {hasActiveFilters(filters) ? ` · ${totalMatching.toLocaleString()} match filters` : ""}
+            {formatNumber(count)} selected
+            {hasActiveFilters(filters) ? ` · ${formatNumber(totalMatching)} match filters` : ""}
           </p>
           {status ? <p className="mt-1 text-white/70">{status}</p> : null}
         </div>

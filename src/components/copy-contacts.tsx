@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { formatNumber } from "@/lib/format";
 
 type Payload = {
   count: number;
@@ -28,7 +29,7 @@ export function CopyContacts({ query }: { query: string }) {
         return;
       }
       await navigator.clipboard.writeText(values.join(kind === "emails" ? ", " : "\n"));
-      setStatus(`Copied ${values.length.toLocaleString()} ${kind}.`);
+      setStatus(`Copied ${formatNumber(values.length)} ${kind}.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Copy failed");
     } finally {

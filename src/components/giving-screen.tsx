@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { EmptyState } from "@/components/query-state";
+import { Kpi, KpiGrid } from "@/components/kpi";
+import { pillClass } from "@/components/page-chrome";
+import { LoadedStamp, Timestamp } from "@/components/timestamp";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Timestamp } from "@/components/timestamp";
-import { formatNumber } from "@/lib/format";
+import { formatCount, formatCurrencyDollars, formatNumber } from "@/lib/format";
 import {
   IMPACT_AMOUNT_DOLLARS,
   formatPledgeDollars,
@@ -26,10 +29,12 @@ export function GivingScreen({
   initial,
   recorded,
   amountError,
+  loadedAt,
 }: {
   initial: GivingSummary;
   recorded?: boolean;
   amountError?: boolean;
+  loadedAt?: string;
 }) {
   const [tab, setTab] = useState<Tab>("impact");
   const [amountDollars, setAmountDollars] = useState("25");
@@ -75,18 +80,43 @@ export function GivingScreen({
 
   return (
     <div className="space-y-5">
+      <KpiGrid>
+        <Kpi
+          tone="primary"
+          icon="giving"
+          label="Recorded"
+          value={formatPledgeDollars(summary.totals.amount_cents)}
+          hint={formatCount(summary.totals.count, "intent")}
+        />
+        <Kpi
+          tone="secondary"
+          icon="dollar"
+          label="Leaders"
+          value={formatNumber(summary.leaders.length)}
+          hint="Class and position boards come later"
+        />
+        <Kpi
+          tone="secondary"
+          icon="profile"
+          label="Recent"
+          value={formatNumber(summary.pledges.length)}
+          hint="Unpaid intents in Neon"
+        />
+      </KpiGrid>
+      {loadedAt ? <LoadedStamp value={loadedAt} /> : null}
+
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Giving sections">
         {TABS.map((item) => (
-          <Button
+          <button
             key={item.id}
             type="button"
             role="tab"
             aria-selected={tab === item.id}
-            variant={tab === item.id ? "default" : "outline"}
+            className={pillClass(tab === item.id)}
             onClick={() => setTab(item.id)}
           >
             {item.label}
-          </Button>
+          </button>
         ))}
       </div>
 
@@ -106,7 +136,7 @@ export function GivingScreen({
                     aria-pressed={amountDollars === String(amount)}
                     onClick={() => setAmountDollars(String(amount))}
                   >
-                    ${amount}
+                    {formatCurrencyDollars(amount)}
                   </Button>
                 ))}
                 <Button
@@ -169,31 +199,34 @@ export function GivingScreen({
       ) : null}
 
       {tab === "leaderboards" ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Leaderboards</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p className="text-muted-foreground">
-              {formatNumber(summary.totals.count)} intent{summary.totals.count === 1 ? "" : "s"} ·{" "}
-              {formatPledgeDollars(summary.totals.amount_cents)} recorded
-            </p>
-            {summary.leaders.length === 0 ? (
-              <p className="text-muted-foreground">No pledges yet. Class and position boards come later.</p>
-            ) : (
+        summary.leaders.length === 0 ? (
+          <EmptyState
+            title="No pledges yet"
+            body="Class and position boards come later. Record an unpaid intent on Impact to start the list."
+            icon="giving"
+          />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Leaderboards</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                {formatCount(summary.totals.count, "intent")} · {formatPledgeDollars(summary.totals.amount_cents)} recorded
+              </p>
               <ul className="space-y-2">
                 {summary.leaders.map((row) => (
                   <li key={row.donor_label} className="flex justify-between gap-3 border-b py-2 last:border-0">
-                    <span>{row.donor_label}</span>
-                    <span>
-                      {formatPledgeDollars(row.amount_cents)} · {row.pledge_count}
+                    <span className="font-medium text-navy">{row.donor_label}</span>
+                    <span className="text-muted-foreground">
+                      {formatPledgeDollars(row.amount_cents)} · {formatCount(row.pledge_count, "pledge")}
                     </span>
                   </li>
                 ))}
               </ul>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )
       ) : null}
 
       {tab === "impact" && summary.pledges.length > 0 ? (
@@ -204,8 +237,8 @@ export function GivingScreen({
           <CardContent className="space-y-2 text-sm">
             {summary.pledges.map((pledge) => (
               <div key={pledge.id} className="flex justify-between gap-3 border-b py-2 last:border-0">
-                <span>{pledge.donor_label || "Anonymous"}</span>
-                <span>
+                <span className="font-medium text-navy">{pledge.donor_label || "Anonymous"}</span>
+                <span className="text-muted-foreground">
                   {formatPledgeDollars(pledge.amount_cents)} · {pledge.status}
                   {pledge.created_at ? (
                     <>

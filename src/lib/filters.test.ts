@@ -15,3 +15,9 @@ test("alumniFilterChips builds removable chips", () => {
   assert.ok(hasActiveFilters({ ...emptyFilters(), q: "Kasten" }));
   assert.equal(hasActiveFilters(emptyFilters()), false);
 });
+
+test("alumniFilterChips keeps extra query params", () => {
+  const chips = alumniFilterChips({ ...emptyFilters(), q: "Hoyas" }, "/blast", { channel: "email" });
+  assert.ok(chips[0]?.href.includes("channel=email"));
+  assert.ok(chips[0]?.href.startsWith("/blast?"));
+});

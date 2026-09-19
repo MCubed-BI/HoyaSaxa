@@ -1,8 +1,12 @@
 import { SiteHeader } from "@/components/site-header";
+import { AlumniFilterChips } from "@/components/alumni-filter-chips";
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { CopyContacts } from "@/components/copy-contacts";
+import { DataTable, StickyTableHeader, Table, TableBody, TableHead, TableRow } from "@/components/data-table";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
-import { StatusCard } from "@/components/status-card";
+import { EmptyState, ErrorState } from "@/components/query-state";
+import { LoadedStamp } from "@/components/timestamp";
+import { TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
@@ -41,12 +45,14 @@ export default async function ReportsPage({
             description="Multi-select a group, then download a CSV or continue to an in-app text or email blast."
           />
 
+          <AlumniFilterChips filters={filters} action="/reports" />
           <AlumniFiltersForm
             filters={filters}
             facets={facets}
             action="/reports"
             submitLabel="Build group"
           />
+          <LoadedStamp />
 
           <Card>
             <CardHeader>
@@ -72,11 +78,15 @@ export default async function ReportsPage({
                 </Button>
               </div>
               {count === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {hasActiveFilters(filters)
-                    ? "No alumni match this group. Widen the filters."
-                    : "The database is empty. Run the import script, then build a group here."}
-                </p>
+                <EmptyState
+                  title={hasActiveFilters(filters) ? "No alumni match this group" : "The database is empty"}
+                  body={
+                    hasActiveFilters(filters)
+                      ? "Widen the filters to build a report group."
+                      : "Run the import script, then build a group here."
+                  }
+                  icon="reports"
+                />
               ) : (
                 <CopyContacts query={query} />
               )}
@@ -84,39 +94,46 @@ export default async function ReportsPage({
           </Card>
 
           {previewRows.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Preview</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {previewRows.map((row) => (
-                  <div key={row.id} className="flex items-baseline justify-between gap-3 border-b py-2 last:border-0">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-navy">{row.name || displayName({
-                        preferred_name: null,
-                        first_name: null,
-                        last_name: row.name,
-                        full_name: row.name,
-                      })}</p>
-                      <p className="truncate text-sm text-muted-foreground">
+            <DataTable caption="Preview">
+              <Table container={false}>
+                <StickyTableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Position / class</TableHead>
+                    <TableHead>Contact</TableHead>
+                  </TableRow>
+                </StickyTableHeader>
+                <TableBody>
+                  {previewRows.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="font-medium text-navy">
+                        {row.name ||
+                          displayName({
+                            preferred_name: null,
+                            first_name: null,
+                            last_name: row.name,
+                            full_name: row.name,
+                          })}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
                         {[positionLabel(row.position), classYearLabel(row.class_year), row.company_name]
                           .filter(Boolean)
                           .join(" · ") || "—"}
-                      </p>
-                    </div>
-                    <p className="shrink-0 text-xs text-muted-foreground">
-                      {row.emails.length} email{row.emails.length === 1 ? "" : "s"} · {row.phones.length} phone
-                      {row.phones.length === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                ))}
-                {count > previewRows.length ? (
-                  <p className="pt-1 text-sm text-muted-foreground">
-                    Showing {previewRows.length} of {formatNumber(count)}. Download the CSV for the full list.
-                  </p>
-                ) : null}
-              </CardContent>
-            </Card>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatNumber(row.emails.length)} email{row.emails.length === 1 ? "" : "s"} ·{" "}
+                        {formatNumber(row.phones.length)} phone{row.phones.length === 1 ? "" : "s"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {count > previewRows.length ? (
+                <p className="border-t px-4 py-2 text-sm text-muted-foreground">
+                  Showing {formatNumber(previewRows.length)} of {formatNumber(count)}. Download the CSV for the full list.
+                </p>
+              ) : null}
+            </DataTable>
           ) : null}
         </PageMain>
       </PageShell>
@@ -126,7 +143,7 @@ export default async function ReportsPage({
       <PageShell>
         <SiteHeader current="reports" />
         <PageMain>
-          <StatusCard
+          <ErrorState
             title="Reports unavailable"
             body={
               isMissingDatabaseConfig(error)

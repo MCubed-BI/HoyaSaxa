@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Kpi, KpiGrid } from "@/components/kpi";
+import { EmptyState } from "@/components/query-state";
+import { SearchableRecipients } from "@/components/searchable-recipients";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useSelection } from "@/components/selection-provider";
 import { hasActiveFilters, type AlumniFilters } from "@/lib/filters";
-import { displayPhone } from "@/lib/phone";
+import { formatCount, formatNumber } from "@/lib/format";
 
 export type BlastComposerMode = "staff" | "alum";
 
@@ -132,7 +136,7 @@ export function BlastComposer({
       return;
     }
     await navigator.clipboard.writeText(values.join(kind === "emails" ? ", " : "\n"));
-    setStatus(`Copied ${values.length.toLocaleString()} ${kind}.`);
+    setStatus(`Copied ${formatNumber(values.length)} ${kind}.`);
   }
 
   async function sendBlast() {
@@ -187,7 +191,7 @@ export function BlastComposer({
               disabled={alumMode || ids.length === 0}
             />
             <span>
-              {alumMode ? "Directory picks" : "Manual picks"} · {ids.length.toLocaleString()} alumni
+              {alumMode ? "Directory picks" : "Manual picks"} · {formatCount(ids.length, "alumnus", "alumni")}
               {ids.length === 0 ? (
                 <span className="block text-muted-foreground">
                   {alumMode
@@ -223,20 +227,24 @@ export function BlastComposer({
           </label>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg bg-muted px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">In group</p>
-              <p className="font-heading text-3xl text-navy">{(preview?.count ?? 0).toLocaleString()}</p>
+          {busy === "preview" && !preview ? (
+            <div className="grid gap-3 sm:grid-cols-3" aria-busy="true">
+              <Skeleton className="h-20 rounded-xl" />
+              <Skeleton className="h-20 rounded-xl" />
+              <Skeleton className="h-20 rounded-xl" />
             </div>
-            <div className="rounded-lg bg-muted px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">With email</p>
-              <p className="font-heading text-3xl text-navy">{(preview?.withEmail ?? 0).toLocaleString()}</p>
-            </div>
-            <div className="rounded-lg bg-muted px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">With phone</p>
-              <p className="font-heading text-3xl text-navy">{(preview?.withPhone ?? 0).toLocaleString()}</p>
-            </div>
-          </div>
+          ) : (
+            <KpiGrid>
+              <Kpi tone="primary" icon="directory" label="In group" value={formatNumber(preview?.count ?? 0)} />
+              <Kpi tone="secondary" icon="mail" label="With email" value={formatNumber(preview?.withEmail ?? 0)} />
+              <Kpi
+                tone={preview && preview.count > 0 && preview.withPhone === 0 ? "alert" : "secondary"}
+                icon="phone"
+                label="With phone"
+                value={formatNumber(preview?.withPhone ?? 0)}
+              />
+            </KpiGrid>
+          )}
         </CardContent>
       </Card>
 
@@ -285,7 +293,7 @@ export function BlastComposer({
           <p className="text-xs text-muted-foreground">
             {channel === "sms"
               ? `${message.length} characters · SMS segments start at 160`
-              : `${readyCount.toLocaleString()} recipients with email`}
+              : `${formatCount(readyCount, "recipient")} with email`}
           </p>
           {preview ? (
             <p className="text-sm text-muted-foreground">
@@ -398,29 +406,31 @@ export function BlastComposer({
         </CardContent>
       </Card>
 
-      {list.length > 0 ? (
+      {busy === "preview" && !preview ? (
+        <Skeleton className="h-48 rounded-xl" />
+      ) : list.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
               {channel === "sms" ? "People who will be texted" : "People who will be emailed"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {list.slice(0, 25).map((row) => (
-              <div key={row.id} className="flex items-baseline justify-between gap-3 border-b py-2 last:border-0">
-                <p className="truncate font-medium text-navy">{row.name}</p>
-                <p className="shrink-0 text-sm text-muted-foreground">
-                  {channel === "sms" ? displayPhone(row.phone ?? "") : row.email}
-                </p>
-              </div>
-            ))}
-            {list.length > 25 ? (
-              <p className="text-sm text-muted-foreground">
-                Showing 25 of {list.length.toLocaleString()} with {channel === "sms" ? "phone numbers" : "email"}.
-              </p>
-            ) : null}
+          <CardContent>
+            <SearchableRecipients rows={list} channel={channel} />
           </CardContent>
         </Card>
+      ) : preview ? (
+        <EmptyState
+          title={alumMode ? "Pick classmates first" : "No recipients in this group"}
+          body={
+            alumMode
+              ? "Check names on /directory, then return here to compose."
+              : channel === "sms"
+                ? "Nobody in this group has a phone number yet."
+                : "Nobody in this group has an email yet."
+          }
+          icon="blast"
+        />
       ) : null}
     </div>
   );

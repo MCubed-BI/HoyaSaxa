@@ -20,10 +20,10 @@ export function QuickActions({ canOpenStaffDirectory }: { canOpenStaffDirectory:
         : "Read-only Hoya Directory. Profiles stay with the Directory lane.",
     },
     {
-      href: "/portal/events",
+      href: "/events",
       title: "Events",
       icon: "events",
-      body: "Upcoming / Past / My Events stub until the Events lane lands.",
+      body: "Upcoming, past, and events you created or added.",
     },
     {
       href: "/newsflash",
@@ -32,10 +32,10 @@ export function QuickActions({ canOpenStaffDirectory }: { canOpenStaffDirectory:
       body: "Lars Newsflash — board writes, alumni read.",
     },
     {
-      href: "/portal/giving",
+      href: "/giving",
       title: "Giving",
       icon: "giving",
-      body: "Pledge amounts now. Stripe and campaigns stay with the Giving lane.",
+      body: "Record an unpaid pledge intent. Stripe checkout is later.",
     },
   ];
 

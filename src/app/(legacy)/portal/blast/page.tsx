@@ -1,6 +1,8 @@
 import { BlastComposer } from "@/components/blast-composer";
 import { LockerHeader } from "@/components/locker-header";
+import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { SelectionProvider } from "@/components/selection-provider";
+import { LoadedStamp } from "@/components/timestamp";
 import { emptyFilters } from "@/lib/filters";
 import { requireLockerViewer } from "@/lib/locker-viewer";
 
@@ -16,25 +18,18 @@ export default async function PortalAlumBlastPage() {
 
   return (
     <SelectionProvider>
-      <div className="flex min-h-full flex-col">
+      <PageShell>
         <LockerHeader current="blast" viewer={viewer} />
-        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Alumni outreach
-            </p>
-            <h2 className="font-heading text-3xl text-navy">Email classmates</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Compose email to alumni you selected on the directory. Send uses the same{" "}
-              <code>sendProviderEmail</code> Gmail SMTP path as staff when{" "}
-              <code>GMAIL_USER</code> and <code>GMAIL_APP_PASSWORD</code> are set (From is that
-              mailbox). Without those, Prepare opens a Gmail or mailto draft. Coach filter blast,
-              Twilio text, and Data Sync stay staff-only.
-            </p>
-          </div>
+        <PageMain width="narrow" className="pb-24 md:pb-8">
+          <PageHeader
+            eyebrow="Alumni outreach"
+            title="Email classmates"
+            description="Compose email to alumni you selected on the directory. Send uses the same Gmail SMTP path as staff when configured. Without those, Prepare opens a Gmail or mailto draft. Coach filter blast, Twilio text, and Data Sync stay staff-only."
+          />
+          <LoadedStamp />
           <BlastComposer filters={emptyFilters()} initialChannel="email" mode="alum" />
-        </main>
-      </div>
+        </PageMain>
+      </PageShell>
     </SelectionProvider>
   );
 }

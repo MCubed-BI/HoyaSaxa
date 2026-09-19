@@ -1,13 +1,15 @@
 import { FundraisingCampaignForm, FundraisingPledgeForm } from "@/components/portal-forms";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { SiteHeader } from "@/components/site-header";
-import { StatusCard } from "@/components/status-card";
+import { EmptyState, ErrorState } from "@/components/query-state";
+import { Kpi, KpiGrid } from "@/components/kpi";
+import { LoadedStamp } from "@/components/timestamp";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { listFundraisingCampaigns } from "@/lib/portal-queries";
 import { canManageFundraising } from "@/lib/roles";
-import { formatCurrency } from "@/lib/format";
+import { formatCount, formatCurrency, formatNumber } from "@/lib/format";
 import { requireViewer } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +39,7 @@ export default async function FundraisingPage() {
           description="MVP campaigns and pledge intents in Neon. Stripe checkout is later and optional. Mailto and external links are labeled placeholders."
         />
 
+        <LoadedStamp />
         {canManageFundraising(viewer.role) ? (
           <Card>
             <CardHeader>
@@ -49,11 +52,26 @@ export default async function FundraisingPage() {
         ) : null}
 
         {errorMessage ? (
-          <StatusCard title="Fundraising unavailable" body={errorMessage} />
+          <ErrorState title="Fundraising unavailable" body={errorMessage} />
         ) : campaigns.length === 0 ? (
-          <StatusCard title="No campaigns yet" body="Staff can add a campaign. Alumni will pledge intents here." />
+          <EmptyState title="No campaigns yet" body="Staff can add a campaign. Alumni will pledge intents here." icon="giving" />
         ) : (
           <div className="space-y-4">
+            <KpiGrid>
+              <Kpi tone="primary" icon="giving" label="Campaigns" value={formatNumber(campaigns.length)} />
+              <Kpi
+                tone="secondary"
+                icon="dollar"
+                label="Pledged"
+                value={formatCurrency(campaigns.reduce((sum, campaign) => sum + (campaign.pledged_cents ?? 0), 0))}
+              />
+              <Kpi
+                tone="secondary"
+                icon="profile"
+                label="Intents"
+                value={formatNumber(campaigns.reduce((sum, campaign) => sum + campaign.pledge_count, 0))}
+              />
+            </KpiGrid>
             {campaigns.map((campaign) => (
               <Card key={campaign.id}>
                 <CardHeader>
@@ -64,7 +82,7 @@ export default async function FundraisingPage() {
                     <p className="text-sm text-muted-foreground">{campaign.description}</p>
                   ) : null}
                   <p className="text-sm">
-                    {campaign.pledge_count} pledge{campaign.pledge_count === 1 ? "" : "s"}
+                    {formatCount(campaign.pledge_count, "pledge")}
                     {campaign.pledged_cents ? ` · ${formatCurrency(campaign.pledged_cents)} recorded` : ""}
                     {campaign.goal_cents ? ` · goal ${formatCurrency(campaign.goal_cents)}` : ""}
                   </p>

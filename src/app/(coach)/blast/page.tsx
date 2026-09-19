@@ -1,8 +1,10 @@
+import { AlumniFilterChips } from "@/components/alumni-filter-chips";
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { BlastComposer, type BlastChannel } from "@/components/blast-composer";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
+import { ErrorState } from "@/components/query-state";
 import { SiteHeader } from "@/components/site-header";
-import { StatusCard } from "@/components/status-card";
+import { LoadedStamp } from "@/components/timestamp";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { parseAlumniFilters } from "@/lib/filters";
 import { getAlumniFacets } from "@/lib/queries";
@@ -36,7 +38,9 @@ export default async function BlastPage({
             title="Blast"
             description="One group — filters and/or checked alumni — then compose a text or an email in the app and send. Twilio and Gmail SMTP deliver when configured; otherwise the app prepares Messages, mailto, or copy."
           />
+          <AlumniFilterChips filters={filters} action="/blast" extra={{ channel }} />
           <AlumniFiltersForm filters={filters} facets={facets} action="/blast" submitLabel="Update group" />
+          <LoadedStamp />
           <BlastComposer filters={filters} initialChannel={channel} />
         </PageMain>
       </PageShell>
@@ -46,7 +50,7 @@ export default async function BlastPage({
       <PageShell>
         <SiteHeader current="blast" />
         <PageMain>
-          <StatusCard
+          <ErrorState
             title="Blast unavailable"
             body={
               isMissingDatabaseConfig(error)

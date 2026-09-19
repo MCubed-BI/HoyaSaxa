@@ -5,7 +5,10 @@ import Link from "next/link";
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { AppIcon } from "@/components/icons";
+import { EmptyState } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
+import { formatNumber } from "@/lib/format";
 import type { AlumniMapPoint } from "@/lib/types";
 
 type ViewMode = "heat" | "markers" | "both";
@@ -82,9 +85,11 @@ export function FindMyAlumMap({
 
   if (points.length === 0) {
     return (
-      <div className="flex h-[min(70vh,720px)] items-center justify-center rounded-xl border bg-card text-sm text-muted-foreground shadow-[var(--shadow-card)]">
-        No mapped locations yet. Current city/state, hometown, or a US address is needed.
-      </div>
+      <EmptyState
+        title="No mapped locations yet"
+        body="Current city/state, hometown, or a US address is needed."
+        icon="map"
+      />
     );
   }
 
@@ -108,7 +113,10 @@ export function FindMyAlumMap({
             {label}
           </Button>
         ))}
-        <span className="text-sm text-muted-foreground">{points.length} mapped</span>
+        <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+          <AppIcon name="map" className="size-3.5" />
+          {formatNumber(points.length)} mapped
+        </span>
       </div>
       <div className="h-[min(70vh,720px)] overflow-hidden rounded-xl border shadow-[var(--shadow-card)]">
         <MapContainer className="h-full w-full" center={[39.5, -98.35]} zoom={4} scrollWheelZoom>

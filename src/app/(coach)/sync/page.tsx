@@ -1,7 +1,7 @@
 import { SiteHeader } from "@/components/site-header";
 import { DataSyncPanel } from "@/components/data-sync-panel";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
-import { StatusCard } from "@/components/status-card";
+import { ErrorState } from "@/components/query-state";
 import { listDataSyncBatches, type DataSyncBatch } from "@/lib/data-sync";
 import { ensureDataSyncTable } from "@/lib/data-sync-schema";
 import { isMissingDatabaseConfig } from "@/lib/db";
@@ -35,7 +35,7 @@ export default async function SyncPage() {
           description="Upload a workbook, preview who will be updated or added, then apply the staged batch to the live Neon alumni tables. Existing records are merged, not replaced."
         />
         {errorMessage ? (
-          <StatusCard title="Data Sync unavailable" body={errorMessage} />
+          <ErrorState title="Data Sync unavailable" body={errorMessage} />
         ) : (
           <DataSyncPanel initialBatches={batches} />
         )}
