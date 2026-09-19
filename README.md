@@ -164,7 +164,7 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/portal/events` / `/portal/giving` — aliases to `/events` and `/giving`
 - `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases to the shipped lanes
 - `/alum` — redirects to `/portal`
-- `/find-my-alum` — location groups
+- `/find-my-alum` — alumni location map + heat (current city/state, hometown, or parsed US address). Staff nav link; alum More link. Defaults to US centroids; optional `GEOCODE_PROVIDER=nominatim|hybrid`.
 - `/locker` — messages access-code preview
 - `/home/login` — locker preview login
 - `/` — searchable staff directory (cards on mobile, table on desktop)
