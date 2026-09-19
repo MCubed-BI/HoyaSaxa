@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HoyaAvatar } from "@/components/hoya-avatar";
+import { PageHeader, PageMain, pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +14,7 @@ import { DIRECTORY_PILLS } from "@/lib/locker-types";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Legacy Locker",
+  title: "Directory",
   description: "Hoya Football directory — athletes, alumni, coaches, and staff.",
 };
 
@@ -34,14 +35,12 @@ export default async function DirectoryPage({
   const pageCount = Math.max(1, Math.ceil(result.total / result.pageSize));
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-      <div>
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-gold">Hoya Directory</p>
-        <h1 className="font-heading text-3xl text-white">The roster</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Search by name, class, or city. Cards show photo, class, sport, and city.
-        </p>
-      </div>
+    <PageMain width="record">
+      <PageHeader
+        eyebrow="Hoya Directory"
+        title="The roster"
+        description="Search by name, class, or city. Cards show photo, class, sport, and city."
+      />
 
       <form action="/directory" method="get" className="flex flex-col gap-3 sm:flex-row">
         {role !== "all" ? <input type="hidden" name="role" value={role} /> : null}
@@ -63,11 +62,7 @@ export default async function DirectoryPage({
               href={directoryHref({ q, role: pill.id })}
               role="tab"
               aria-selected={active}
-              className={`rounded-full border px-3 py-1 text-sm ${
-                active
-                  ? "border-gold bg-gold text-gold-foreground"
-                  : "border-gold/35 bg-card text-foreground hover:border-gold/70"
-              }`}
+              className={pillClass(active)}
             >
               {pill.label}
             </Link>
@@ -94,11 +89,11 @@ export default async function DirectoryPage({
             return (
               <li key={person.id}>
                 <Link href={athleteHref(person.id)} className="block">
-                  <Card className="h-full ring-gold/20 hover:ring-gold/45">
+                  <Card className="h-full transition-shadow hover:shadow-[var(--shadow-elevated)]">
                     <CardContent className="flex gap-3 py-4">
                       <HoyaAvatar person={person} />
                       <div className="min-w-0 space-y-1">
-                        <p className="truncate font-medium text-white">{displayName(toNameFields(person))}</p>
+                        <p className="truncate font-medium text-navy">{displayName(toNameFields(person))}</p>
                         <p className="text-sm text-muted-foreground">
                           {[person.classLabel, person.sport, city].filter(Boolean).join(" · ") ||
                             person.sport}
@@ -120,14 +115,14 @@ export default async function DirectoryPage({
       {pageCount > 1 ? (
         <div className="flex items-center justify-between text-sm">
           {result.page > 1 ? (
-            <Link href={directoryHref({ q, role, page: result.page - 1 })} className="text-gold hover:underline">
+            <Link href={directoryHref({ q, role, page: result.page - 1 })} className="font-medium text-navy hover:underline">
               Previous
             </Link>
           ) : (
             <span className="text-muted-foreground">Previous</span>
           )}
           {result.page < pageCount ? (
-            <Link href={directoryHref({ q, role, page: result.page + 1 })} className="text-gold hover:underline">
+            <Link href={directoryHref({ q, role, page: result.page + 1 })} className="font-medium text-navy hover:underline">
               Next
             </Link>
           ) : (
@@ -135,6 +130,6 @@ export default async function DirectoryPage({
           )}
         </div>
       ) : null}
-    </main>
+    </PageMain>
   );
 }

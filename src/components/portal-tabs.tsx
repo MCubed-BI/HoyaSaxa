@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pillClass } from "@/components/page-chrome";
 
 export function PortalTabs({
   tabs,
@@ -8,13 +9,7 @@ export function PortalTabs({
   return (
     <div className="flex flex-wrap gap-2">
       {tabs.map((tab) => (
-        <Link
-          key={tab.href}
-          href={tab.href}
-          className={`rounded-full px-3 py-1.5 text-sm ${
-            tab.active ? "bg-navy text-white" : "bg-muted text-foreground hover:bg-accent"
-          }`}
-        >
+        <Link key={tab.href} href={tab.href} className={pillClass(Boolean(tab.active))}>
           {tab.label}
         </Link>
       ))}

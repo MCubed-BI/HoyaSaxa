@@ -1,14 +1,17 @@
-import { cookies } from "next/headers";
 import { HoyaDirectoryHeader } from "@/components/hoya-directory-header";
-import { hasAlumSessionCookie } from "@/lib/locker-session";
+import { getLockerViewer } from "@/lib/locker-viewer";
 
 export default async function HoyaLayout({ children }: { children: React.ReactNode }) {
-  const jar = await cookies();
-  const signedIn = hasAlumSessionCookie((name) => jar.get(name)?.value);
+  const locker = await getLockerViewer();
+  const signedIn = Boolean(locker);
 
   return (
-    <div className="locker flex min-h-full flex-col">
-      <HoyaDirectoryHeader signedIn={signedIn} />
+    <div className={signedIn ? "flex min-h-full flex-col pb-24 md:pb-0" : "flex min-h-full flex-col"}>
+      <HoyaDirectoryHeader
+        signedIn={signedIn}
+        roleLabel={locker?.roleLabel}
+        viewerLabel={locker?.label}
+      />
       {children}
     </div>
   );

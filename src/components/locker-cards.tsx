@@ -44,7 +44,7 @@ export function QuickActions({ canOpenStaffDirectory }: { canOpenStaffDirectory:
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {actions.map((action) => (
         <Link key={action.title} href={action.href}>
-          <Card className="h-full transition-colors hover:bg-muted/40">
+          <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]">
             <CardContent className="py-4">
               <p className="font-medium text-navy">{action.title}</p>
               <p className="mt-1 text-sm text-muted-foreground">{action.body}</p>
@@ -93,7 +93,7 @@ export function ActivityList({ items }: { items: ActivityItem[] }) {
   return (
     <ol className="space-y-3">
       {items.map((item) => (
-        <li key={item.id} className="rounded-lg border bg-muted/40 px-4 py-3">
+        <li key={item.id} className="rounded-xl border bg-muted/40 px-4 py-3">
           <p className="text-sm font-medium text-navy">{item.title}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {item.body} · {formatLockerDate(item.when)}

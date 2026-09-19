@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MessagesCompose } from "@/components/messages-compose";
+import { PageHeader, PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,32 +41,34 @@ export default async function MessageChannelPage({
 
   if (errorMessage) {
     return (
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
+      <PageMain width="narrow" className="pb-24 md:pb-8">
         <StatusCard title="Channel unavailable" body={errorMessage} />
-      </main>
+      </PageMain>
     );
   }
 
   if (!channel) notFound();
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-      <div>
-        <Link href="/messages" className="text-sm text-navy hover:underline">
+    <PageMain width="narrow" className="pb-24 md:pb-8">
+      <div className="space-y-3">
+        <Link href="/messages" className="text-sm font-medium text-navy hover:underline">
           ← Messages
         </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <h2 className="font-heading text-3xl text-navy">{channel.name}</h2>
-          {channel.kind === "official" ? (
-            <Badge variant="secondary">Official</Badge>
-          ) : (
-            <Badge variant="outline">Group</Badge>
-          )}
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {channel.description ||
-            (canPost ? "Staff can post. Alumni read this channel." : "Read only for alumni.")}
-        </p>
+        <PageHeader
+          title={channel.name}
+          description={
+            channel.description ||
+            (canPost ? "Staff can post. Alumni read this channel." : "Read only for alumni.")
+          }
+          actions={
+            channel.kind === "official" ? (
+              <Badge variant="secondary">Official</Badge>
+            ) : (
+              <Badge variant="outline">Group</Badge>
+            )
+          }
+        />
       </div>
 
       {canPost ? (
@@ -100,6 +103,6 @@ export default async function MessageChannelPage({
           ))}
         </div>
       )}
-    </main>
+    </PageMain>
   );
 }

@@ -35,7 +35,7 @@ export function AlumniFiltersForm({
   return (
     <form
       action={action}
-      className="grid gap-4 rounded-xl border bg-card p-4 shadow-sm"
+      className="grid gap-4 rounded-xl border bg-card p-5 shadow-[var(--shadow-card)]"
       onSubmit={(event) => {
         event.preventDefault();
         const next: AlumniFilters = {

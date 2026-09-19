@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FeedPostCard } from "@/components/locker-cards";
 import { LockerHeader } from "@/components/locker-header";
+import { Notice, PageHeader, PageMain, PageShell, pillClass } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import {
   FEED_TABS,
@@ -32,39 +33,28 @@ export default async function ForYouFeedPage({
   const posts = filterFeedPosts(data.feed, tab);
 
   return (
-    <div className="flex min-h-full flex-col">
+    <PageShell>
       <LockerHeader current="feed" viewer={viewer} />
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Feed</p>
-          <h2 className="font-heading text-3xl text-navy">For You</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Official Newsflash plus alumni posts. Teammates and Following are stubs until roster
-            links and a follow graph exist.
-          </p>
-        </div>
+      <PageMain width="narrow" className="pb-24 md:pb-8">
+        <PageHeader
+          eyebrow="Feed"
+          title="For You"
+          description="Official Newsflash plus alumni posts. Teammates and Following are stubs until roster links and a follow graph exist."
+        />
 
         <div className="flex flex-wrap gap-2">
           {FEED_TABS.map((item) => (
             <Link
               key={item}
               href={item === "for-you" ? "/feed" : `/feed?tab=${item}`}
-              className={`rounded-md px-3 py-1.5 text-sm ${
-                tab === item
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-secondary-foreground hover:bg-muted"
-              }`}
+              className={pillClass(tab === item)}
             >
               {feedTabLabel(item)}
             </Link>
           ))}
         </div>
 
-        {data.usingFallback ? (
-          <p className="rounded-lg border bg-muted px-4 py-3 text-sm text-muted-foreground">
-            {data.fallbackReason}
-          </p>
-        ) : null}
+        {data.usingFallback ? <Notice>{data.fallbackReason}</Notice> : null}
 
         {posts.length === 0 ? (
           <StatusCard title={feedTabLabel(tab)} body={feedTabStub(tab)} />
@@ -75,7 +65,7 @@ export default async function ForYouFeedPage({
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </PageMain>
+    </PageShell>
   );
 }

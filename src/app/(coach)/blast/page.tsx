@@ -1,5 +1,6 @@
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { BlastComposer, type BlastChannel } from "@/components/blast-composer";
+import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
@@ -27,27 +28,24 @@ export default async function BlastPage({
   try {
     const facets = await getAlumniFacets();
     return (
-      <div className="flex min-h-full flex-col">
+      <PageShell>
         <SiteHeader current="blast" />
-        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Outreach</p>
-            <h2 className="font-heading text-3xl text-navy">Blast</h2>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              One group — filters and/or checked alumni — then compose a text or an email in the app and send.
-              Twilio and Resend/SendGrid deliver when configured; otherwise the app prepares Messages, mailto, or copy.
-            </p>
-          </div>
+        <PageMain>
+          <PageHeader
+            eyebrow="Outreach"
+            title="Blast"
+            description="One group — filters and/or checked alumni — then compose a text or an email in the app and send. Twilio and Resend/SendGrid deliver when configured; otherwise the app prepares Messages, mailto, or copy."
+          />
           <AlumniFiltersForm filters={filters} facets={facets} action="/blast" submitLabel="Update group" />
           <BlastComposer filters={filters} initialChannel={channel} />
-        </main>
-      </div>
+        </PageMain>
+      </PageShell>
     );
   } catch (error) {
     return (
-      <div className="flex min-h-full flex-col">
+      <PageShell>
         <SiteHeader current="blast" />
-        <main className="mx-auto w-full max-w-6xl px-4 py-6">
+        <PageMain>
           <StatusCard
             title="Blast unavailable"
             body={
@@ -58,8 +56,8 @@ export default async function BlastPage({
                   : "Could not load this blast group."
             }
           />
-        </main>
-      </div>
+        </PageMain>
+      </PageShell>
     );
   }
 }

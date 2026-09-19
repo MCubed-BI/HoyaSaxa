@@ -1,6 +1,7 @@
 import { FeedPostCard } from "@/components/locker-cards";
 import { LockerHeader } from "@/components/locker-header";
 import { NewsflashForm } from "@/components/newsflash-form";
+import { Notice, PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { newsflashToFeedPost } from "@/lib/locker-data";
@@ -14,20 +15,14 @@ export default async function NewsflashPage() {
   const data = await loadLockerHome();
 
   return (
-    <div className="flex min-h-full flex-col">
+    <PageShell>
       <LockerHeader current="newsflash" viewer={viewer} />
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Board
-          </p>
-          <h2 className="font-heading text-3xl text-navy">Newsflash</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Board role on <code>hoya_alum_session</code> can publish. Alumni read every post. Dated
-            posts also fill the Home upcoming-event card until the Events lane owns{" "}
-            <code>events</code>.
-          </p>
-        </div>
+      <PageMain width="narrow" className="pb-24 md:pb-8">
+        <PageHeader
+          eyebrow="Board"
+          title="Newsflash"
+          description="Board can publish. Alumni read every post. Dated posts also fill the Home upcoming-event card."
+        />
 
         {viewer.canPostNewsflash ? (
           <Card>
@@ -40,17 +35,13 @@ export default async function NewsflashPage() {
             </CardContent>
           </Card>
         ) : (
-          <p className="rounded-lg border bg-muted px-4 py-3 text-sm text-muted-foreground">
+          <Notice>
             You can read Newsflash. Publishing is limited to board (sign in as <code>Lars</code> on
             /home/login).
-          </p>
+          </Notice>
         )}
 
-        {data.usingFallback ? (
-          <p className="rounded-lg border bg-muted px-4 py-3 text-sm text-muted-foreground">
-            {data.fallbackReason}
-          </p>
-        ) : null}
+        {data.usingFallback ? <Notice>{data.fallbackReason}</Notice> : null}
 
         {data.newsflash.length === 0 ? (
           <StatusCard
@@ -64,7 +55,7 @@ export default async function NewsflashPage() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </PageMain>
+    </PageShell>
   );
 }

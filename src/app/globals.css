@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-source-serif);
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --font-heading: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -53,42 +53,46 @@
 }
 
 :root {
+  /* Locked system: deep navy / charcoal / white. Gold is a brand hairline only. */
   --navy: #041e42;
-  --navy-foreground: #f4f5f7;
-  --gold: #c5a572;
+  --navy-foreground: #f4f4f5;
+  --gold: #b9975b;
   --gold-foreground: #041e42;
-  --background: #f3f4f6;
-  --foreground: #1c2430;
+  --background: #f2f3f4;
+  --foreground: #1a1d21;
   --card: #ffffff;
-  --card-foreground: #1c2430;
+  --card-foreground: #1a1d21;
   --popover: #ffffff;
-  --popover-foreground: #1c2430;
+  --popover-foreground: #1a1d21;
   --primary: #041e42;
-  --primary-foreground: #f7f7f5;
-  --secondary: #e6e8ec;
+  --primary-foreground: #f7f7f8;
+  --secondary: #e8eaed;
   --secondary-foreground: #041e42;
-  --muted: #eceef1;
-  --muted-foreground: #5c6570;
-  --accent: #d9dde3;
+  --muted: #eceeef;
+  --muted-foreground: #5c6168;
+  --accent: #e4e6e9;
   --accent-foreground: #041e42;
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: #d5d9e0;
-  --input: #d5d9e0;
+  --destructive: oklch(0.55 0.2 25);
+  --border: #d9dce0;
+  --input: #d4d7db;
   --ring: #041e42;
   --chart-1: #041e42;
-  --chart-2: #6b7280;
-  --chart-3: #9aa3ad;
-  --chart-4: #c5b48a;
-  --chart-5: #1f2937;
-  --radius: 0.5rem;
+  --chart-2: #5c6168;
+  --chart-3: #8b9096;
+  --chart-4: #b9975b;
+  --chart-5: #2a2e33;
+  --radius: 0.625rem;
   --sidebar: #041e42;
-  --sidebar-foreground: #f4f5f7;
-  --sidebar-primary: #f4f5f7;
+  --sidebar-foreground: #f4f4f5;
+  --sidebar-primary: #f4f4f5;
   --sidebar-primary-foreground: #041e42;
   --sidebar-accent: #16325c;
-  --sidebar-accent-foreground: #f4f5f7;
+  --sidebar-accent-foreground: #f4f4f5;
   --sidebar-border: #16325c;
-  --sidebar-ring: #c5b48a;
+  --sidebar-ring: #b9975b;
+  --shadow-xs: 0 1px 2px rgb(26 29 33 / 0.05);
+  --shadow-card: 0 1px 2px rgb(26 29 33 / 0.04), 0 8px 24px rgb(26 29 33 / 0.04);
+  --shadow-elevated: 0 1px 2px rgb(26 29 33 / 0.05), 0 16px 36px rgb(26 29 33 / 0.07);
 }
 
 @layer base {
@@ -96,7 +100,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
   html {
     @apply font-sans;
@@ -105,38 +109,19 @@
   h2,
   h3,
   .font-heading {
-    font-family: var(--font-source-serif), ui-serif, Georgia, serif;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+  :focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--ring) 70%, white);
+    outline-offset: 2px;
   }
 }
 
-/* Scoped to public Directory / athlete profiles. Coach CRM stays on the light tokens. */
-.locker {
-  --background: #020d22;
-  --foreground: #f3ecdf;
-  --card: #0b274c;
-  --card-foreground: #f3ecdf;
-  --popover: #0b274c;
-  --popover-foreground: #f3ecdf;
-  --primary: #c5a572;
-  --primary-foreground: #041e42;
-  --secondary: #12315c;
-  --secondary-foreground: #f3ecdf;
-  --muted: #12315c;
-  --muted-foreground: #c9c2b2;
-  --accent: #16325c;
-  --accent-foreground: #f3ecdf;
-  --border: rgb(197 165 114 / 0.32);
-  --input: rgb(197 165 114 / 0.4);
-  --ring: #c5a572;
-  color: var(--foreground);
-  background-color: #020d22;
-  background-image:
-    linear-gradient(180deg, rgb(4 30 66 / 0.35), rgb(2 13 34 / 0.92)),
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 46px,
-      rgb(197 165 114 / 0.045) 46px,
-      rgb(197 165 114 / 0.045) 47px
-    );
+@layer components {
+  .surface-card {
+    background-color: var(--card);
+    box-shadow: var(--shadow-card);
+  }
 }

@@ -1,5 +1,6 @@
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { FindMyAlumMapLoader } from "@/components/find-my-alum-map-loader";
+import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { PortalShell } from "@/components/portal-shell";
 import { SiteHeader } from "@/components/site-header";
 import { StatusCard } from "@/components/status-card";
@@ -35,21 +36,19 @@ export default async function FindMyAlumPage({
 
   const body = (
     <>
-      <div>
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Directory</p>
-        <h2 className="font-heading text-3xl text-navy">Find My Alum</h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Map and heat of alumni locations from current city/state, then hometown, then a parsed US
-          address. Pins jitter slightly so people in the same city stay clickable.
-        </p>
+      <PageHeader
+        eyebrow="Directory"
+        title="Find My Alum"
+        description="Map and heat of alumni locations from current city/state, then hometown, then a parsed US address. Pins jitter slightly so people in the same city stay clickable."
+      >
         {mapped ? (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {mapped.mappedCount} mapped
             {mapped.skippedCount ? ` · ${mapped.skippedCount} without a usable place` : ""}
             {mapped.totalAlumni ? ` · ${mapped.totalAlumni} in this filter` : ""}
           </p>
         ) : null}
-      </div>
+      </PageHeader>
       {facets ? <AlumniFiltersForm filters={filters} facets={facets} action="/find-my-alum" /> : null}
       {errorMessage ? (
         <StatusCard title="Find My Alum unavailable" body={errorMessage} />
@@ -71,9 +70,9 @@ export default async function FindMyAlumPage({
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <PageShell>
       <SiteHeader current="find-my-alum" />
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">{body}</main>
-    </div>
+      <PageMain>{body}</PageMain>
+    </PageShell>
   );
 }

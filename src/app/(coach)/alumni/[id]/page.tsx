@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageMain, PageShell } from "@/components/page-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,10 +47,10 @@ export default async function AlumniDetailPage({
     ];
 
     return (
-      <div className="flex min-h-full flex-col">
+      <PageShell>
         <SiteHeader current="directory" />
-        <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-          <Link href="/" className="text-sm text-navy hover:underline">
+        <PageMain width="record">
+          <Link href="/" className="text-sm font-medium text-navy hover:underline">
             ← Back to directory
           </Link>
 
@@ -189,19 +190,19 @@ export default async function AlumniDetailPage({
               )}
             </CardContent>
           </Card>
-        </main>
-      </div>
+        </PageMain>
+      </PageShell>
     );
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {
       return (
-        <div className="flex min-h-full flex-col">
+        <PageShell>
           <SiteHeader current="directory" />
-          <main className="mx-auto w-full max-w-4xl px-4 py-12 text-center">
+          <PageMain width="record" className="text-center">
             <h2 className="font-heading text-2xl text-navy">Database is not configured</h2>
             <p className="mt-2 text-sm text-muted-foreground">Set DATABASE_URL and reload.</p>
-          </main>
-        </div>
+          </PageMain>
+        </PageShell>
       );
     }
     throw error;

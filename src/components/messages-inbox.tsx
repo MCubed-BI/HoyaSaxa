@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { filterMessageChannels, type MessageChannelRow, type MessageFilter } from "@/lib/messages";
 
@@ -34,9 +35,7 @@ export function MessagesInbox({
               href={href}
               role="tab"
               aria-selected={active}
-              className={`rounded-md px-3 py-1.5 text-sm ${
-                active ? "bg-navy text-white" : "bg-muted text-foreground hover:bg-accent"
-              }`}
+              className={pillClass(active)}
             >
               {item.label}
             </Link>
@@ -53,7 +52,7 @@ export function MessagesInbox({
               : "No channels yet."}
         </p>
       ) : (
-        <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+        <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
           {rows.map((channel) => (
             <li key={channel.id}>
               <Link href={`/messages/${channel.slug}`} className="block px-4 py-3 hover:bg-muted/40">

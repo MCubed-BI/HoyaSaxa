@@ -1,4 +1,5 @@
 import { MessagesInbox } from "@/components/messages-inbox";
+import { PageHeader, PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { listMessageChannels, parseMessageFilter } from "@/lib/messages";
@@ -29,21 +30,17 @@ export default async function MessagesPage({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          {viewer.kind === "alum" ? "Alumni · read only" : "Staff · can post"}
-        </p>
-        <h2 className="font-heading text-3xl text-navy">Messages</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Filter All, Unread, or Groups. Message from Sgarlata is the pinned official channel.
-        </p>
-      </div>
+    <PageMain width="narrow" className="pb-24 md:pb-8">
+      <PageHeader
+        eyebrow={viewer.kind === "alum" ? "Alumni · read only" : "Staff · can post"}
+        title="Messages"
+        description="Filter All, Unread, or Groups. Message from Sgarlata is the pinned official channel."
+      />
       {errorMessage ? (
         <StatusCard title="Messages unavailable" body={errorMessage} />
       ) : (
         <MessagesInbox channels={channels} filter={filter} />
       )}
-    </main>
+    </PageMain>
   );
 }
