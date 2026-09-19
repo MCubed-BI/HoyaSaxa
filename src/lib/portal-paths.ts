@@ -6,6 +6,7 @@ const PUBLIC_PATHS = [
   "/locker",
   "/api/login",
   "/api/locker/login",
+  "/api/locker/logout",
   "/api/messages/alum-session",
   "/api/alumni/lookup",
   "/api/alumni/register",
