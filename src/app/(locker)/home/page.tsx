@@ -18,7 +18,7 @@ export default async function LockerHomePage() {
       <LockerHeader current="home" viewer={viewer} />
       <PageMain className="pb-24 md:pb-8">
         <PageHeader
-          eyebrow={`${viewer.roleLabel} · ${viewer.source === "hoya_alum_session" ? "hoya_alum_session" : "staff session"}`}
+          eyebrow={viewer.roleLabel}
           title={`Welcome back, ${viewer.label}.`}
           description="Home, For You, and Newsflash. Directory, Events, and Giving stay with their lanes — the cards below just link over."
           actions={

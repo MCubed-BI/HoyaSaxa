@@ -21,12 +21,7 @@ export default async function NewsflashPage() {
         <PageHeader
           eyebrow="Board"
           title="Newsflash"
-          description={
-            <>
-              Board role on <code>hoya_alum_session</code> can publish. Alumni read every post. Dated
-              posts also fill the Home upcoming-event card until the Events lane owns <code>events</code>.
-            </>
-          }
+          description="Board can publish. Alumni read every post. Dated posts also fill the Home upcoming-event card."
         />
 
         {viewer.canPostNewsflash ? (

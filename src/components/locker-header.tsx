@@ -1,5 +1,5 @@
 import { ProductHeader } from "@/components/product-header";
-import { portalMoreItems, portalNavItems, type NavKey } from "@/lib/nav";
+import { portalNavItems, portalSecondaryItems, type NavKey } from "@/lib/nav";
 import type { LockerViewer } from "@/lib/locker-viewer";
 
 export function LockerHeader({
@@ -10,8 +10,7 @@ export function LockerHeader({
   viewer?: LockerViewer | null;
 }) {
   const primary = portalNavItems();
-  const more = viewer ? portalMoreItems(viewer.role === "coach" ? "coach" : viewer.role) : [];
-  const secondary = more.filter((item) => item.key === "feed" || item.key === "newsflash");
+  const secondary = portalSecondaryItems();
 
   return (
     <ProductHeader

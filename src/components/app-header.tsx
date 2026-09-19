@@ -2,7 +2,7 @@
 
 import { ProductHeader } from "@/components/product-header";
 import { useOptionalSelectionCount } from "@/components/selection-provider";
-import { navItemsForRole, type NavKey } from "@/lib/nav";
+import { navItemsForRole, portalSecondaryItems, type NavKey } from "@/lib/nav";
 import { roleLabel, type Role } from "@/lib/roles";
 
 export function AppHeader({
@@ -28,6 +28,7 @@ export function AppHeader({
     <ProductHeader
       homeHref={homeHref}
       items={items}
+      secondaryItems={isAlumShell ? portalSecondaryItems() : []}
       current={current}
       roleLabel={roleLabel(resolvedRole)}
       viewerLabel={viewerLabel}

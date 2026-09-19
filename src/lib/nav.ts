@@ -63,6 +63,14 @@ export function portalNavItems(): NavItem[] {
   ];
 }
 
+/** Desktop extras that sit next to the primary portal tabs on locker chrome. */
+export function portalSecondaryItems(): NavItem[] {
+  return [
+    { href: "/feed", label: "For You", key: "feed" },
+    { href: "/newsflash", label: "Newsflash", key: "newsflash" },
+  ];
+}
+
 export function portalMoreItems(role: Role): NavItem[] {
   const items: NavItem[] = [
     { href: "/feed", label: "For You", key: "feed" },
