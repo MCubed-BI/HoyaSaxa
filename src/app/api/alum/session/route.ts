@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isVerifiedHoyaIdentity } from "@/lib/access";
 import { readAlumSession } from "@/lib/alum-session";
-import { accessModeForRole } from "@/lib/roles";
+import { resolvePlatformRole } from "@/lib/platform-roles";
 
 export async function GET(request: Request) {
   const session = readAlumSession(request);
@@ -10,7 +10,14 @@ export async function GET(request: Request) {
   }
   return NextResponse.json({
     session,
-    mode: accessModeForRole(session.role),
+    mode: resolvePlatformRole({
+      sessionRole: session.role,
+      source: "alum-session",
+      email: session.email,
+      alumniId: session.alumniId,
+      name: session.name,
+      username: session.name,
+    }),
     verifiedHoya: isVerifiedHoyaIdentity(session),
   });
 }

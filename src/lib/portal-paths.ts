@@ -24,6 +24,9 @@ const ALUM_ALLOWED_PREFIXES = [
   "/home",
   "/feed",
   "/newsflash",
+  "/board",
+  "/brothers",
+  "/sgarlata",
   "/messages",
   "/message",
   "/locker",
@@ -42,6 +45,8 @@ const ALUM_ALLOWED_PREFIXES = [
   "/api/events",
   "/api/giving",
   "/api/blast",
+  "/api/feed",
+  "/api/badges",
   "/api/logout",
 ];
 
@@ -80,7 +85,11 @@ export function loginPathFor(pathname: string) {
     pathname === "/events" ||
     pathname.startsWith("/events/") ||
     pathname === "/newsflash" ||
-    pathname.startsWith("/newsflash/")
+    pathname.startsWith("/newsflash/") ||
+    pathname === "/board" ||
+    pathname.startsWith("/board/") ||
+    pathname === "/brothers" ||
+    pathname.startsWith("/brothers/")
   ) {
     return "/home/login";
   }

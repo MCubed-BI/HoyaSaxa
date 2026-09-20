@@ -27,7 +27,7 @@ export async function ensurePortalTables() {
     WHERE email IS NOT NULL AND btrim(email) <> ''
   `);
 
-  for (const username of DEFAULT_ADMIN_USERNAMES) {
+  for (const username of [...DEFAULT_ADMIN_USERNAMES, "Hoyas"]) {
     await sql.query(
       `
       INSERT INTO staff_roles (username, role)

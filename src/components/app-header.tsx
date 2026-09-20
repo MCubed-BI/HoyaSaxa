@@ -7,7 +7,7 @@ import { roleLabel, type Role } from "@/lib/roles";
 
 function fromForNav(current?: NavKey, role?: Role) {
   if (current === "blast") return role === "alum" || role === "board" ? "/portal/blast" : "/blast";
-  if (current === "newsflash") return "/newsflash";
+  if (current === "newsflash" || current === "board") return "/board";
   if (current === "feed") return "/feed";
   if (current === "home") return "/home";
   if (current === "portal-directory" || current === "profile") return "/directory";

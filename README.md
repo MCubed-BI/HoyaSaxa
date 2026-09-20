@@ -33,9 +33,23 @@ Additive portal tables (created if missing): `staff_roles`, `coach_messages`, `n
 
    Defaults are only for local and demo use. Set both variables on Vercel for production.
 
+## Platform contracts (Coders 1–5)
+
+Stacking surface for Myspace / feed / badges. Details: [`docs/CODERS.md`](docs/CODERS.md).
+
+| Layer | Keys | Notes |
+| --- | --- | --- |
+| Cookie roles (unchanged) | `owner` `coach` `alum` `board` | `ga_session` / `hoya_alum_session` |
+| Platform roles | `admin` `board` `alum` | `src/lib/platform-roles.ts` |
+| Feed sections | `brothers` `board` `sgarlata` | `newsflash` → `board` (`/newsflash` → `/board`) |
+| Badges | `verified_hoya`, `donor_*`, `event_top_*` | Never show donor `$` |
+| Photos | `football_photo_url`, `linkedin_photo_url` | Claimed self or admin; `POST /api/alum/photos` |
+
+Admin resolution: `ADMIN_EMAILS`, `staff_roles`, coach `ga_session`, plus seeds Lars (board), Sgarlata / Hoyas (coach), Michael Kasten / Mike (`c8fc1d9c-d5a7-445d-8e59-b2bddd53d136`). Claim / login grants Verified Hoya.
+
 ## Roles
 
-Three product modes, enforced in `src/proxy.ts` and write APIs (not UI-only). Internal role values stay `owner` / `coach` / `board` / `alum` (`owner` and `coach` are **Admin**).
+Three product modes, enforced in `src/proxy.ts` and write APIs (not UI-only). Cookie roles stay `owner` / `coach` / `board` / `alum`; platform **admin** is an overlay (`owner`/`coach`, `ADMIN_EMAILS`, `staff_roles`, and seeded Lars / Sgarlata / Mike).
 
 | Mode | How it is assigned | What they can do |
 | --- | --- | --- |
@@ -114,31 +128,31 @@ table; currently **2003–current**) and upserts into `alumni` / `alumni_roster_
 
 Library: `src/lib/guhoyas-roster.ts` (`fetchGuhoyasRosters`, `mergeRostersIntoAlumni`, `fetchAndMergeGuhoyasRosters`).
 
-## Home / For You / Newsflash
+## Home / For You / Board
 
-Alumni-facing Home, For You feed, and Lars Newsflash. They use the existing CRM styles, do **not** replace the staff directory, and do not implement claim, athlete profiles, events CRUD, or giving.
+Alumni-facing Home, For You feed, and Board (legacy Newsflash). They use the existing CRM styles, do **not** replace the staff directory, and do not implement claim, athlete profiles, events CRUD, or giving.
 
 | Path | Who | What |
 | --- | --- | --- |
 | `/home/login` | public | Sets `hoya_alum_session` with `role=board` or `role=alum` |
 | `/home` | locker or staff session | Welcome hero, quick actions, upcoming event, recent activity |
-| `/feed` | locker or staff session | Tabs: For You / Teammates / Alumni / Following |
-| `/newsflash` | locker or staff session | Board publishes; alumni read |
+| `/feed` | locker or staff session | Sections `brothers` / `board` / `sgarlata` plus For You tabs |
+| `/board` | locker or staff session | Board publishes; alumni read. `/newsflash` redirects here |
 
 ### Locker demo session
 
 | Username | Role | Cookie |
 | --- | --- | --- |
-| `Lars` / `Sgarlata` / `Mike` | Admin (see/post all, including From Sgarlata) | `ga_session` |
+| `Lars` / `Sgarlata` / `Mike` | Admin (see/post all, including From Sgarlata) | `ga_session` at `/home/login` |
 | `Board` | Board Mode (no Sgarlata compose) | `hoya_alum_session` `role=board` |
-| `Alum` | alumnus (edit self, Brothers on For You, directory) | `hoya_alum_session` `role=alum` |
+| `Alum` | alumnus (edit self, Brothers, directory; Verified Hoya on claim) | `hoya_alum_session` `role=alum` |
 
 Password defaults to `COACH_PASSWORD` (`Sgarlata35` locally) unless `HOYA_BOARD_PASSWORD` / `HOYA_ALUM_PASSWORD` / `HOYA_LOCKER_PASSWORD` is set.
 
 Verify:
 
 1. Open `/home/login`, sign in as `Lars` / `Sgarlata35` (Admin). Confirm Home hero, quick actions, upcoming event, and recent activity.
-2. Open `/newsflash` as Admin or `Board` and publish a headline. Confirm it appears for an `Alum` session after sign-out / sign-in.
+2. Open `/board` as Admin or `Board` and publish a headline. Confirm it appears for an `Alum` session after sign-out / sign-in. `/newsflash` redirects to `/board`.
 3. Open `/feed`. For You shows official + alumni/Brothers posts. Alum can compose a Brothers post. Teammates and Following are stubs.
 
 ### Seed dependency
@@ -162,8 +176,8 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/me` — edit claimed records or merge a duplicate
 - `/portal` — alum entry; redirects to `/home`
 - `/home` — Welcome hero, Directory/Events/News/Giving, upcoming event, recent activity
-- `/feed` — For You / Teammates / Alumni / Following
-- `/newsflash` — Newsflash (Admin and Board publish, alumni read)
+- `/feed` — Brothers / Board / From Sgarlata plus For You / Teammates / Alumni / Following
+- `/board` — Board section (admin + board publish, alumni read). `/newsflash` redirects here
 - `/events` — Upcoming / Past / My Events (date, title, category, location, thumbnail)
 - `/events/new` — Create Event (coach and board only)
 - `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
@@ -171,7 +185,7 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/athletes/[id]` — public athlete profile (Overview/Stats/Photos/Career/Q&A)
 - `/portal/directory` / `/portal/profile` — aliases to `/directory`
 - `/portal/events` / `/portal/giving` — aliases to `/events` and `/giving`
-- `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases to the shipped lanes
+- `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases (`/portal/newsflash` → `/board`)
 - `/alum` — redirects to `/portal`
 - `/find-my-alum` — alumni location map + heat (current city/state, hometown, or parsed US address). Staff nav link; alum More link. Defaults to US centroids; optional `GEOCODE_PROVIDER=nominatim|hybrid`.
 - `/locker` — messages access-code preview

@@ -13,7 +13,11 @@
  *   // or: parseAlumSessionToken(jar.get(ALUM_SESSION_COOKIE)?.value)?.role === "alum"
  *
  * Register myself / alumni login always set role `"alum"` (never `"board"`).
- * `board` writes Newsflash only. Coach/owner post Sgarlata notes via ga_session.
+ * Claim / login also grants the Verified Hoya badge. Platform admin is resolved
+ * separately (`src/lib/platform-roles.ts`) from ADMIN_EMAILS, staff_roles, coach
+ * `ga_session`, or seeded identities — this cookie payload does not gain a new field.
+ * `board` writes the Board feed section (legacy Newsflash). Coach/owner / admin
+ * post Sgarlata notes via ga_session or platform admin.
  * This cookie never unlocks Data Sync, owner /blast, Twilio, or other staff gates.
  * Selected-directory email lives at /portal/blast and is scoped in /api/blast/*.
  * Locker-preview tokens ({ role, label, iat }) are a separate signer — see hoya-alum-session.ts.

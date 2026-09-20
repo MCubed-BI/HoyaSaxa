@@ -2,14 +2,8 @@ import { ALUM_SESSION_COOKIE, isPreviewAlumSession, readAlumSession } from "@/li
 import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
 import { HOYA_ALUM_SESSION_COOKIE, readHoyaAlumSession } from "@/lib/hoya-alum-session";
-import {
-  accessModeForRole,
-  canPostCoachMessage,
-  isAdminRole,
-  resolveRoleFromEnv,
-  type AccessMode,
-  type Role,
-} from "@/lib/roles";
+import { resolvePlatformRole } from "@/lib/platform-roles";
+import { resolveRoleFromEnv, type AccessMode, type Role } from "@/lib/roles";
 
 export type CookieReader = {
   get(name: string): { value: string } | undefined | null;
@@ -49,7 +43,13 @@ export function resolveCookieAccess(cookies: CookieReader): RequestAccess | null
     const role = resolveRoleFromEnv(staffUsername, getCoachCredentials().username);
     return {
       role,
-      mode: accessModeForRole(role),
+      mode: resolvePlatformRole({
+        sessionRole: role,
+        source: "staff",
+        username: staffUsername,
+        name: staffUsername,
+        coachSession: true,
+      }),
       source: "staff",
       label: staffUsername,
       alumniId: null,
@@ -61,12 +61,20 @@ export function resolveCookieAccess(cookies: CookieReader): RequestAccess | null
     cookies.get(ALUM_SESSION_COOKIE)?.value ?? cookies.get(HOYA_ALUM_SESSION_COOKIE)?.value ?? null;
   const contract = readAlumSession(token);
   if (contract) {
+    const alumniId = isPreviewAlumSession(contract) ? null : contract.alumniId;
     return {
       role: contract.role,
-      mode: accessModeForRole(contract.role),
+      mode: resolvePlatformRole({
+        sessionRole: contract.role,
+        source: "alum-session",
+        email: contract.email,
+        alumniId,
+        name: contract.name,
+        username: contract.name,
+      }),
       source: "alum-session",
       label: contract.name || contract.email || contract.role,
-      alumniId: isPreviewAlumSession(contract) ? null : contract.alumniId,
+      alumniId,
       verifiedHoya: isVerifiedHoyaIdentity(contract),
     };
   }
@@ -75,7 +83,12 @@ export function resolveCookieAccess(cookies: CookieReader): RequestAccess | null
   if (locker) {
     return {
       role: locker.role,
-      mode: accessModeForRole(locker.role),
+      mode: resolvePlatformRole({
+        sessionRole: locker.role,
+        source: "alum-session",
+        username: locker.label,
+        name: locker.label,
+      }),
       source: "alum-session",
       label: locker.label,
       alumniId: null,
@@ -85,21 +98,27 @@ export function resolveCookieAccess(cookies: CookieReader): RequestAccess | null
 
   const claim = readAlumniSessionFromCookies((name) => cookies.get(name)?.value);
   if (claim) {
+    const alumniId = claim.accountId.startsWith("locker:") ? null : claim.accountId;
     return {
       role: "alum",
-      mode: "alum",
+      mode: resolvePlatformRole({
+        sessionRole: "alum",
+        source: "alumni",
+        alumniId,
+      }),
       source: "alumni",
       label: "Alumnus",
-      alumniId: claim.accountId.startsWith("locker:") ? null : claim.accountId,
-      verifiedHoya: !claim.accountId.startsWith("locker:"),
+      alumniId,
+      verifiedHoya: Boolean(alumniId),
     };
   }
 
   return null;
 }
 
+/** Admin (including seeded Lars / Sgarlata / Mike) may compose Sgarlata. Board cannot. */
 export function canPostCoachCompose(access: RequestAccess | null | undefined) {
-  return Boolean(access && canPostCoachMessage(access.role) && isAdminRole(access.role));
+  return Boolean(access && access.mode === "admin");
 }
 
 /** Middleware + API gate. Board/Alum may read Sgarlata; only Admin may POST compose. */

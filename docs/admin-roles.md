@@ -8,6 +8,8 @@ Admin, Board, and Alum are enforced in `src/proxy.ts` (Next.js request gate) and
 2. **Board** — `hoya_alum_session` with `role=board` (preview username `Board`, or any name in `HOYA_BOARD_USERNAMES` that is **not** on the Admin list). They can see/post locker and portal content except Sgarlata / coach compose. Middleware returns **403** on those compose POSTs.
 3. **Alum** — claim/login `hoya_alum_session` with `role=alum`. They can edit their own record (`/me`, `POST /api/alumni/update`), post Brothers on For You (`POST /api/locker/feed`), and search the directory. A successful claim or alumni login sets **Verified Hoya**.
 
+Platform overlay for Coders 1–5 (`src/lib/platform-roles.ts`): feed section keys `brothers` | `board` | `sgarlata` (`newsflash` → `board`), photo columns, and badge stubs that never expose donor `$`. See [CODERS.md](CODERS.md).
+
 Resolution order: env lists (`HOYA_ADMIN_USERNAMES` / `HOYA_OWNER_USERNAMES` / `HOYA_COACH_USERNAMES` / `HOYA_BOARD_USERNAMES` / `HOYA_ALUM_USERNAMES`) then `staff_roles` in Neon (username or email). Admin wins if a name is on both Admin and Board lists.
 
 ## Add an Admin

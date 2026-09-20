@@ -16,6 +16,8 @@ import { isCoachLoggedIn } from "@/lib/session";
 // from `@/lib/alum-session` (cookie `hoya_alum_session`, role `"alum"`).
 // Same HMAC signer as GTown / Register myself. Locker Home may also mint a
 // locker-format token on the same cookie name. Do not use ga_session for alum.
+// Platform role (admin | board | alum) is resolved in `@/lib/platform-roles`
+// from these same cookies — no new cookie names.
 
 function isAlumniClaimPath(pathname: string) {
   return pathname === "/me" || pathname.startsWith("/me/") || pathname.startsWith("/api/alumni/");

@@ -5,8 +5,10 @@ import {
 } from "@/lib/alumni-auth";
 import { readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername, isValidSessionToken } from "@/lib/auth";
-import { canPostCoachMessage, resolveRoleFromEnv } from "@/lib/roles";
+import { canPostToFeedSection } from "@/lib/feed-sections";
 import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
+import { resolvePlatformRole } from "@/lib/platform-roles";
+import { canPostCoachMessage, resolveRoleFromEnv } from "@/lib/roles";
 
 export const SGARLATA_CHANNEL_SLUG = "sgarlata";
 
@@ -56,7 +58,7 @@ export function loginPathFor(pathname: string) {
 }
 
 export function canPostSgarlata(viewer: MessageViewer | null | undefined) {
-  return Boolean(viewer?.kind === "staff" && viewer.canPost);
+  return Boolean(viewer?.canPost);
 }
 
 export function defaultAlumAccessCode() {
@@ -101,11 +103,18 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
   const token = jar.get(HOYA_ALUM_SESSION_COOKIE)?.value;
   const contract = readAlumSession(token);
   if (contract) {
+    const platformRole = resolvePlatformRole({
+      sessionRole: contract.role,
+      source: "hoya_alum_session",
+      email: contract.email,
+      alumniId: contract.alumniId,
+      name: contract.name,
+    });
     return {
       kind: "alum",
       label: contract.name || contract.email || "Alumnus",
       viewerKey: `alum:contract:${contract.alumniId}`,
-      canPost: false,
+      canPost: canPostToFeedSection(platformRole, "sgarlata"),
     };
   }
 
@@ -121,11 +130,17 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
 
   const locker = readHoyaAlumSession(token);
   if (locker) {
+    const platformRole = resolvePlatformRole({
+      sessionRole: locker.role,
+      source: "hoya_alum_session",
+      username: locker.label,
+      name: locker.label,
+    });
     return {
       kind: "alum",
       label: locker.label,
       viewerKey: `alum:home:${locker.role}:${locker.label.toLowerCase()}`,
-      canPost: false,
+      canPost: canPostToFeedSection(platformRole, "sgarlata"),
     };
   }
 

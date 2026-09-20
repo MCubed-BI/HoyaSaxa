@@ -1,3 +1,5 @@
+import type { FeedSection } from "@/lib/feed-sections";
+
 export type NewsflashPost = {
   id: string;
   title: string;
@@ -16,6 +18,7 @@ export type FeedPost = {
   body: string;
   created_at: string;
   source: "newsflash" | "feed";
+  section?: FeedSection;
 };
 
 export type UpcomingEvent = {
@@ -80,6 +83,7 @@ export const DEMO_FEED: FeedPost[] = [
     body: "Official: fall camp wraps this week. Watch Newsflash for the board’s homecoming plan.",
     created_at: "2026-09-17T18:00:00.000Z",
     source: "feed",
+    section: "board",
   },
   {
     id: "demo-feed-alum",
@@ -90,6 +94,7 @@ export const DEMO_FEED: FeedPost[] = [
     body: "In town for a client dinner. Anyone around Dupont want to grab a Hoya pint?",
     created_at: "2026-09-16T21:00:00.000Z",
     source: "feed",
+    section: "brothers",
   },
 ];
 
@@ -131,6 +136,7 @@ export function newsflashToFeedPost(post: NewsflashPost): FeedPost {
     body: post.body,
     created_at: post.created_at,
     source: "newsflash",
+    section: "board",
   };
 }
 
@@ -138,6 +144,10 @@ export function filterFeedPosts(posts: FeedPost[], tab: FeedTab) {
   if (tab === "teammates" || tab === "following") return [];
   if (tab === "alumni") return posts.filter((post) => post.author_role === "alum");
   return posts;
+}
+
+export function filterFeedPostsBySection(posts: FeedPost[], section: FeedSection) {
+  return posts.filter((post) => (post.section ?? (post.source === "newsflash" ? "board" : "brothers")) === section);
 }
 
 export function feedTabLabel(tab: FeedTab) {

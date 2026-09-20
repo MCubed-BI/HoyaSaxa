@@ -17,7 +17,12 @@ import {
   type NewsflashPost,
   type UpcomingEvent,
 } from "@/lib/locker-data";
+import { canonicalizeFeedSection, type FeedSection } from "@/lib/feed-sections";
 import { ensureLockerTables } from "@/lib/locker-schema";
+
+function inferFeedSection(row: { section?: string | null; author_role?: string | null }): FeedSection {
+  return canonicalizeFeedSection(row.section) ?? (row.author_role === "official" ? "board" : "brothers");
+}
 
 type FallbackStore = { newsflash: NewsflashPost[]; feed: FeedPost[] };
 
@@ -121,6 +126,7 @@ export async function createLockerFeedPost(input: {
     body: input.body.trim(),
     created_at: new Date().toISOString(),
     source: "feed",
+    section: "brothers",
   };
   if (!getDatabaseUrl()) {
     const store = readFallback();
@@ -129,13 +135,13 @@ export async function createLockerFeedPost(input: {
     return post;
   }
   await ensureLockerTables();
-  const rows = await query<Array<Omit<FeedPost, "source">>>(
+  const rows = await query<Array<Omit<FeedPost, "source" | "section"> & { section?: string | null }>>(
     `
-    INSERT INTO locker_feed_posts (author_label, author_role, audience, title, body)
-    VALUES ($1, $2, $3, $4, $5)
-    RETURNING id::text, author_label, author_role, audience, title, body, created_at::text
+    INSERT INTO locker_feed_posts (author_label, author_role, audience, title, body, section)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id::text, author_label, author_role, audience, title, body, created_at::text, section
     `,
-    [post.author_label, post.author_role, post.audience, post.title, post.body],
+    [post.author_label, post.author_role, post.audience, post.title, post.body, post.section],
   );
   const row = rows[0];
   if (!row) return post;
@@ -143,6 +149,7 @@ export async function createLockerFeedPost(input: {
     ...row,
     author_role: row.author_role === "official" ? "official" : "alum",
     source: "feed" as const,
+    section: inferFeedSection(row),
   };
 }
 
@@ -151,9 +158,9 @@ export async function listLockerFeedPosts(): Promise<FeedPost[]> {
     return readFallback().feed;
   }
   await ensureLockerTables();
-  const rows = await query<Array<Omit<FeedPost, "source">>>(
+  const rows = await query<Array<Omit<FeedPost, "source" | "section"> & { section?: string | null }>>(
     `
-    SELECT id::text, author_label, author_role, audience, title, body, created_at::text
+    SELECT id::text, author_label, author_role, audience, title, body, created_at::text, section
     FROM locker_feed_posts
     ORDER BY created_at DESC
     LIMIT 50
@@ -163,7 +170,58 @@ export async function listLockerFeedPosts(): Promise<FeedPost[]> {
     ...row,
     author_role: row.author_role === "official" ? "official" : "alum",
     source: "feed" as const,
+    section: inferFeedSection(row),
   }));
+}
+
+export async function createSectionFeedPost(input: {
+  section: FeedSection;
+  title?: string | null;
+  body: string;
+  authorLabel: string;
+  authorRole?: "official" | "alum";
+}) {
+  const authorRole = input.authorRole ?? (input.section === "brothers" ? "alum" : "official");
+  if (!getDatabaseUrl()) {
+    const store = readFallback();
+    const post: FeedPost = {
+      id: randomUUID(),
+      author_label: input.authorLabel,
+      author_role: authorRole,
+      audience: input.section === "brothers" ? "alumni" : "for-you",
+      title: input.title?.trim() || null,
+      body: input.body.trim(),
+      created_at: new Date().toISOString(),
+      source: "feed",
+      section: input.section,
+    };
+    store.feed.unshift(post);
+    writeFallback(store);
+    return post;
+  }
+  await ensureLockerTables();
+  const rows = await query<Array<Omit<FeedPost, "source" | "section"> & { section?: string | null }>>(
+    `
+    INSERT INTO locker_feed_posts (author_label, author_role, audience, title, body, section)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id::text, author_label, author_role, audience, title, body, created_at::text, section
+    `,
+    [
+      input.authorLabel,
+      authorRole,
+      input.section === "brothers" ? "alumni" : "for-you",
+      input.title?.trim() || null,
+      input.body.trim(),
+      input.section,
+    ],
+  );
+  const row = rows[0]!;
+  return {
+    ...row,
+    author_role: row.author_role === "official" ? "official" : "alum",
+    source: "feed" as const,
+    section: inferFeedSection(row),
+  } satisfies FeedPost;
 }
 
 async function loadEventsLaneEvent(): Promise<UpcomingEvent | null> {
@@ -224,7 +282,7 @@ function upcomingFromNewsflash(posts: NewsflashPost[]): UpcomingEvent | null {
     startsAt: next.event_at,
     location: null,
     source: "newsflash",
-    href: "/newsflash",
+    href: "/board",
   };
 }
 

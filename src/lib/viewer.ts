@@ -6,10 +6,13 @@ import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/a
 import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
 import { getDatabaseUrl } from "@/lib/db";
 import { lookupAlumniClaim, lookupStaffRole } from "@/lib/portal-queries";
+import { identityFromViewer } from "@/lib/platform-session";
+import { resolvePlatformRole, type PlatformRole } from "@/lib/platform-roles";
 import { homePathForRole, resolveRoleFromEnv, roleLabel, type Role } from "@/lib/roles";
 
 export type Viewer = {
   role: Role;
+  platformRole: PlatformRole;
   label: string;
   username: string | null;
   email: string | null;
@@ -19,35 +22,56 @@ export type Viewer = {
   homePath: string;
 };
 
+function withPlatformRole(
+  viewer: Omit<Viewer, "platformRole">,
+  assignedRole?: string | null,
+): Viewer {
+  return {
+    ...viewer,
+    platformRole: resolvePlatformRole({
+      ...identityFromViewer(viewer),
+      assignedRole,
+    }),
+  };
+}
+
 export async function getCurrentViewer(): Promise<Viewer | null> {
   const jar = await cookies();
   const staffUsername = getSessionUsername(jar.get(SESSION_COOKIE)?.value);
   if (staffUsername) {
     let role = resolveRoleFromEnv(staffUsername, getCoachCredentials().username);
+    let assignedRole: Role | "admin" | null = null;
     if (getDatabaseUrl()) {
       try {
-        const assigned = await lookupStaffRole(staffUsername);
-        if (assigned && assigned !== "alum") role = assigned;
+        assignedRole = await lookupStaffRole(staffUsername);
+        if (assignedRole === "admin") {
+          role = "owner";
+        } else if (assignedRole && assignedRole !== "alum") {
+          role = assignedRole;
+        }
       } catch {
         // Env mapping is enough when portal tables are not reachable.
       }
     }
-    return {
-      role,
-      label: staffUsername,
-      username: staffUsername,
-      email: null,
-      accountId: null,
-      alumniId: null,
-      source: "staff",
-      homePath: homePathForRole(role),
-    };
+    return withPlatformRole(
+      {
+        role,
+        label: staffUsername,
+        username: staffUsername,
+        email: null,
+        accountId: null,
+        alumniId: null,
+        source: "staff",
+        homePath: homePathForRole(role),
+      },
+      assignedRole,
+    );
   }
 
   const token = jar.get(ALUM_SESSION_COOKIE)?.value ?? null;
   const contract = readAlumSession(token);
   if (contract) {
-    return {
+    return withPlatformRole({
       role: contract.role,
       label: contract.name || contract.email || roleLabel(contract.role),
       username: null,
@@ -56,21 +80,21 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
       alumniId: isPreviewAlumSession(contract) ? null : contract.alumniId,
       source: "alum-session",
       homePath: "/portal",
-    };
+    });
   }
 
   const locker = readHoyaAlumSession(token);
   if (locker) {
-    return {
+    return withPlatformRole({
       role: locker.role,
       label: locker.label,
-      username: null,
+      username: locker.label,
       email: null,
       accountId: null,
       alumniId: null,
       source: "alum-session",
       homePath: "/portal",
-    };
+    });
   }
 
   const messagesAlum = readAlumniSessionFromCookies((name) => jar.get(name)?.value);
@@ -89,7 +113,7 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
     }
   }
 
-  return {
+  return withPlatformRole({
     role: "alum",
     label: email ?? "Alumnus",
     username: null,
@@ -98,7 +122,7 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
     alumniId,
     source: "alumni",
     homePath: "/portal",
-  };
+  });
 }
 
 export async function requireViewer() {
@@ -110,6 +134,14 @@ export async function requireViewer() {
 export async function requireRole(allowed: Role[]) {
   const viewer = await requireViewer();
   if (!allowed.includes(viewer.role)) {
+    redirect(viewer.homePath);
+  }
+  return viewer;
+}
+
+export async function requirePlatformRole(allowed: PlatformRole[]) {
+  const viewer = await requireViewer();
+  if (!allowed.includes(viewer.platformRole)) {
     redirect(viewer.homePath);
   }
   return viewer;

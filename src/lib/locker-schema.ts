@@ -72,6 +72,11 @@ export async function ensureLockerTables() {
     CREATE INDEX IF NOT EXISTS locker_feed_posts_created_at
     ON locker_feed_posts (created_at DESC)
   `);
+  await sql.query(`ALTER TABLE locker_feed_posts ADD COLUMN IF NOT EXISTS section text`);
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS locker_feed_posts_section
+    ON locker_feed_posts (section, created_at DESC)
+  `);
 
   const newsflashCount = (await sql.query(`SELECT id FROM newsflash_posts LIMIT 1`)) as unknown[];
   if (newsflashCount.length === 0) {

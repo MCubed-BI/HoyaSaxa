@@ -20,7 +20,7 @@ export function CoachMessageForm({ next = "/message" }: { next?: string }) {
   );
 }
 
-export function NewsflashForm({ next = "/newsflash" }: { next?: string }) {
+export function NewsflashForm({ next = "/board" }: { next?: string }) {
   return (
     <form action="/api/portal/newsflash" method="post" className="space-y-3">
       <input type="hidden" name="next" value={next} />

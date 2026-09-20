@@ -21,6 +21,8 @@ export const alumni = pgTable("alumni", {
   emailPrimary: text("email_primary"),
   phonePrimary: text("phone_primary"),
   addressPrimary: text("address_primary"),
+  footballPhotoUrl: text("football_photo_url"),
+  linkedinPhotoUrl: text("linkedin_photo_url"),
   sourceFlags: jsonb("source_flags").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -264,6 +266,26 @@ export const events = pgTable("events", {
   createdByRole: text("created_by_role").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const alumBadges = pgTable(
+  "alum_badges",
+  {
+    alumniId: uuid("alumni_id").notNull(),
+    badgeType: text("badge_type").notNull(),
+    grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("alum_badges_alumni_type").on(table.alumniId, table.badgeType)],
+);
+
+export const eventCheckins = pgTable("event_checkins", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id")
+    .notNull()
+    .references(() => events.id, { onDelete: "cascade" }),
+  alumniId: uuid("alumni_id"),
+  attendeeKey: text("attendee_key"),
+  checkedInAt: timestamp("checked_in_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const eventRsvps = pgTable("event_rsvps", {

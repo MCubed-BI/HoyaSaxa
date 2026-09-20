@@ -128,7 +128,14 @@ describe("hoya_alum_session contract", () => {
     };
     assert.equal(isAlumLoggedIn(cookies), true);
     assert.equal(isCoachLoggedIn(cookies), false);
-    assert.deepEqual(readSessionInfo(cookies), { role: "alum", roles: ["alum"], alum: true, coach: false });
+    assert.deepEqual(readSessionInfo(cookies), {
+      role: "alum",
+      roles: ["alum"],
+      alum: true,
+      coach: false,
+      platformRole: "admin",
+      admin: true,
+    });
   });
 
   it("ignores the legacy ga_alumni_session cookie", () => {
