@@ -34,7 +34,7 @@ export default async function LockerPage({
   return (
     <AuthShell
       title="Alumni messages"
-      subtitle="Sets a hoya_alum_session cookie so alumni can read Messages. This is not Register myself."
+      subtitle="Enter the alumni access code to read Messages. This is not Register myself."
     >
       <form action="/api/messages/alum-session" method="post" className="space-y-4">
         <input type="hidden" name="next" value={safeNextPath(params.next)} />
@@ -57,7 +57,7 @@ export default async function LockerPage({
           <p className="text-sm text-destructive">That access code is not recognized.</p>
         ) : (
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Local / demo default is HoyaSaxa. Staff still sign in at /login to post.
+            Staff still sign in at the coach login to post.
           </p>
         )}
         <Button type="submit" className="h-10 w-full">

@@ -32,7 +32,7 @@ export default async function LoginPage({
   }
 
   return (
-    <AuthShell title="Sign in" subtitle="Staff gate for Admin (see/post all), including From Sgarlata.">
+    <AuthShell title="Sign in" subtitle="Staff sign-in for the Georgetown Football Alum Network.">
       <form action="/api/login" method="post" className="space-y-4">
         <input type="hidden" name="next" value={safeNextPath(params.next)} />
         <div className="space-y-1.5">
@@ -42,7 +42,6 @@ export default async function LoginPage({
             name="username"
             autoComplete="username"
             required
-            defaultValue="Hoyas"
             className="h-10"
           />
         </div>
@@ -61,15 +60,7 @@ export default async function LoginPage({
           <p className="text-sm text-destructive">That username or password is not recognized.</p>
         ) : (
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Shared staff password. Admin seed:{" "}
-            <span className="font-medium text-foreground">Hoyas</span>,{" "}
-            <span className="font-medium text-foreground">Lars</span>,{" "}
-            <span className="font-medium text-foreground">Sgarlata</span>,{" "}
-            <span className="font-medium text-foreground">Mike</span> /{" "}
-            <span className="font-medium text-foreground">Michael Kasten</span>.{" "}
-            <span className="font-medium text-foreground">Board</span> and{" "}
-            <span className="font-medium text-foreground">Alum</span> mint{" "}
-            <code>hoya_alum_session</code> and open the alumni portal.
+            Enter the username and password issued to you.
           </p>
         )}
         <Button type="submit" className="h-10 w-full">
