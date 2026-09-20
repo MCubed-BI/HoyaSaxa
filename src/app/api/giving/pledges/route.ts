@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isPreviewAlumSession, readAlumSessionFromCookies } from "@/lib/alum-session";
+import { seedAlumniIdForLabel } from "@/lib/badge-identity";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import {
   MAX_PLEDGE_CENTS,
@@ -73,10 +74,13 @@ export async function POST(request: Request) {
 
   try {
     const session = await readAlumSessionFromCookies();
-    const alumniId = session && !isPreviewAlumSession(session) ? session.alumniId : null;
+    const donorLabel = normalizeDonorLabel(body.donorLabel ?? body.donor_label);
+    const fromSession = session && !isPreviewAlumSession(session) ? session.alumniId : null;
+    const fromBody = typeof body.alumniId === "string" ? body.alumniId.trim() : "";
+    const alumniId = fromSession || fromBody || (donorLabel ? seedAlumniIdForLabel(donorLabel) : null);
     const pledge = await createGivingPledge({
       amountCents,
-      donorLabel: normalizeDonorLabel(body.donorLabel ?? body.donor_label),
+      donorLabel,
       alumniId,
     });
     if (!wantsJson) {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EventCheckInForm } from "@/components/event-check-in-form";
+import { eventBadgeFromAttendanceLeader } from "@/lib/badges-attendance";
 import { EventsChrome } from "@/components/events-chrome";
 import { Notice, PageHeader, PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
@@ -94,6 +95,7 @@ export default async function EventCheckInPage({
             rank={myRank?.rank ?? null}
             percentile={myRank?.percentile ?? null}
             checkedInAt={mine?.checkedInAt ?? null}
+            eventBadge={myRank ? eventBadgeFromAttendanceLeader(myRank) : null}
           />
 
           <section className="space-y-3">

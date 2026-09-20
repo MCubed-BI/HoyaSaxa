@@ -21,7 +21,15 @@ import {
   type EventBadgeFeedRow,
   type EventBadgeTotals,
 } from "@/lib/badge-event-feed";
+import {
+  addCentsByKey,
+  loadAlumniNameIndex,
+  resolveAlumniIdFromLabel,
+  resolveAttendanceAlumId,
+  type AlumniIdentity,
+} from "@/lib/badge-identity";
 import { getDatabaseUrl, getSql } from "@/lib/db";
+import { ensureGivingPledgesTable } from "@/lib/giving-schema";
 
 export const BADGE_TYPES = [
   "verified_hoya",
@@ -104,21 +112,42 @@ export function eventTopBadgeType(tier: BadgeTier): BadgeType {
 }
 
 /**
- * Coder 4 owns rank + percentile. Prefer their percentile; else rank/cohortSize.
- * Does not use attendanceCount (that would re-rank). Returns null below Bronze.
+ * Coder 4 owns rank + percentile. Prefer their percentile when it is 0–100;
+ * else rank/cohortSize. Rank-only still yields a chip (rank 1 = Platinum).
+ * Does not use attendanceCount (that would re-rank). Returns null below Bronze
+ * when a real percentile/cohort is known.
  */
 export function eventTierFromCoder4Feed(input: {
   rank?: number | null;
   percentile?: number | null;
   cohortSize?: number | null;
 }): BadgeTier | null {
-  if (input.percentile != null && Number.isFinite(Number(input.percentile))) {
-    return tierFromPercentile(Number(input.percentile));
+  const rank = input.rank == null ? Number.NaN : Number(input.rank);
+  const cohort = input.cohortSize == null ? Number.NaN : Number(input.cohortSize);
+  const raw = input.percentile == null ? Number.NaN : Number(input.percentile);
+  if (Number.isFinite(raw) && raw > 1) {
+    return tierFromPercentile(raw);
   }
-  if (input.rank != null && input.cohortSize != null) {
-    return tierFromPercentile(percentileFromRank(Number(input.rank), Number(input.cohortSize)));
+  if (Number.isFinite(rank) && rank >= 1 && Number.isFinite(cohort) && cohort >= 1) {
+    return tierFromPercentile(percentileFromRank(rank, cohort));
+  }
+  if (Number.isFinite(raw) && raw > 0 && raw <= 1) {
+    return tierFromPercentile(raw * 100);
+  }
+  if (Number.isFinite(rank) && rank >= 1) {
+    return rank === 1 ? "platinum" : "bronze";
   }
   return null;
+}
+
+export function hasUsableAttendanceRank(input: {
+  rank?: number | null;
+  percentile?: number | null;
+  cohortSize?: number | null;
+}) {
+  const rank = input.rank == null ? Number.NaN : Number(input.rank);
+  const percentile = input.percentile == null ? Number.NaN : Number(input.percentile);
+  return (Number.isFinite(rank) && rank >= 1) || (Number.isFinite(percentile) && percentile > 0);
 }
 
 export function eventBadgeFromCoder4Totals(totals: EventBadgeTotals | null | undefined): PublicBadge | null {
@@ -261,11 +290,25 @@ async function tableExists(tableName: string) {
   return Boolean(rows[0]?.name);
 }
 
-async function loadDonorTotals(): Promise<DonorTotal[]> {
+async function columnNames(tableName: string) {
+  const sql = getSql();
+  const rows = (await sql.query(
+    `
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = $1
+    `,
+    [tableName],
+  )) as Array<{ column_name: string }>;
+  return new Set(rows.map((row) => row.column_name));
+}
+
+async function loadFundraisingDonorTotals(alumni: AlumniIdentity[]): Promise<DonorTotal[]> {
+  if (!(await tableExists("fundraising_pledges"))) return [];
   const sql = getSql();
   const totals = new Map<string, number>();
-
-  if (await tableExists("fundraising_pledges")) {
+  const names = await columnNames("fundraising_pledges");
+  if (names.has("alumni_id")) {
     const rows = (await sql.query(
       `
       SELECT alumni_id::text AS key, COALESCE(SUM(amount_cents), 0)::bigint AS total_cents
@@ -274,62 +317,70 @@ async function loadDonorTotals(): Promise<DonorTotal[]> {
       GROUP BY alumni_id
       `,
     )) as Array<{ key: string; total_cents: string | number }>;
-    for (const row of rows) {
-      const key = normalizeAlumniId(row.key);
-      if (key) totals.set(key, Number(row.total_cents) || 0);
-    }
+    for (const row of rows) addCentsByKey(totals, row.key, Number(row.total_cents));
   }
-
-  if (await tableExists("giving_pledges")) {
-    const cols = (await sql.query(
+  if (names.has("name")) {
+    const rows = (await sql.query(
       `
-      SELECT column_name
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'giving_pledges'
+      SELECT name AS label, COALESCE(SUM(amount_cents), 0)::bigint AS total_cents
+      FROM fundraising_pledges
+      WHERE ${names.has("alumni_id") ? "alumni_id IS NULL AND" : ""}
+        NULLIF(btrim(name), '') IS NOT NULL
+        AND amount_cents IS NOT NULL
+      GROUP BY name
       `,
-    )) as Array<{ column_name: string }>;
-    const names = new Set(cols.map((col) => col.column_name));
-    if (names.has("alumni_id")) {
-      const rows = (await sql.query(
-        `
-        SELECT alumni_id::text AS key, COALESCE(SUM(amount_cents), 0)::bigint AS total_cents
-        FROM giving_pledges
-        WHERE alumni_id IS NOT NULL
-        GROUP BY alumni_id
-        `,
-      )) as Array<{ key: string; total_cents: string | number }>;
-      for (const row of rows) {
-        const key = normalizeAlumniId(row.key);
-        if (key) totals.set(key, (totals.get(key) ?? 0) + (Number(row.total_cents) || 0));
-      }
-    }
-    if (names.has("donor_label")) {
-      try {
-        const rows = (await sql.query(
-          `
-          SELECT a.id::text AS key, COALESCE(SUM(g.amount_cents), 0)::bigint AS total_cents
-          FROM giving_pledges g
-          JOIN alumni a
-            ON ${names.has("alumni_id") ? "g.alumni_id IS NULL AND" : ""}
-              NULLIF(btrim(g.donor_label), '') IS NOT NULL
-              AND lower(btrim(g.donor_label)) IN (
-                lower(btrim(a.full_name)),
-                lower(btrim(concat_ws(' ', NULLIF(btrim(a.first_name), ''), NULLIF(btrim(a.last_name), '')))),
-                lower(btrim(concat_ws(' ', NULLIF(btrim(a.preferred_name), ''), NULLIF(btrim(a.last_name), ''))))
-              )
-          GROUP BY a.id
-          `,
-        )) as Array<{ key: string; total_cents: string | number }>;
-        for (const row of rows) {
-          const key = normalizeAlumniId(row.key);
-          if (key) totals.set(key, (totals.get(key) ?? 0) + (Number(row.total_cents) || 0));
-        }
-      } catch {
-        // Name match is a fallback for pre-alumni_id /giving intents.
-      }
+    )) as Array<{ label: string; total_cents: string | number }>;
+    for (const row of rows) {
+      const key = resolveAlumniIdFromLabel(row.label, alumni);
+      addCentsByKey(totals, key, Number(row.total_cents));
     }
   }
+  return [...totals.entries()].map(([key, total_cents]) => ({ key, total_cents }));
+}
 
+async function loadGivingDonorTotals(alumni: AlumniIdentity[]): Promise<DonorTotal[]> {
+  await ensureGivingPledgesTable().catch(() => undefined);
+  if (!(await tableExists("giving_pledges"))) return [];
+  const sql = getSql();
+  const totals = new Map<string, number>();
+  const names = await columnNames("giving_pledges");
+  if (names.has("alumni_id")) {
+    const rows = (await sql.query(
+      `
+      SELECT alumni_id::text AS key, COALESCE(SUM(amount_cents), 0)::bigint AS total_cents
+      FROM giving_pledges
+      WHERE alumni_id IS NOT NULL AND amount_cents IS NOT NULL
+      GROUP BY alumni_id
+      `,
+    )) as Array<{ key: string; total_cents: string | number }>;
+    for (const row of rows) addCentsByKey(totals, row.key, Number(row.total_cents));
+  }
+  if (names.has("donor_label")) {
+    const rows = (await sql.query(
+      `
+      SELECT donor_label AS label, COALESCE(SUM(amount_cents), 0)::bigint AS total_cents
+      FROM giving_pledges
+      WHERE ${names.has("alumni_id") ? "alumni_id IS NULL AND" : ""}
+        NULLIF(btrim(donor_label), '') IS NOT NULL
+        AND amount_cents IS NOT NULL
+      GROUP BY donor_label
+      `,
+    )) as Array<{ label: string; total_cents: string | number }>;
+    for (const row of rows) {
+      const key = resolveAlumniIdFromLabel(row.label, alumni);
+      addCentsByKey(totals, key, Number(row.total_cents));
+    }
+  }
+  return [...totals.entries()].map(([key, total_cents]) => ({ key, total_cents }));
+}
+
+/** Isolated per-table reads — a fundraising schema miss must not wipe /giving. */
+export async function loadDonorTotals(): Promise<DonorTotal[]> {
+  const totals = new Map<string, number>();
+  const alumni = await loadAlumniNameIndex().catch(() => [] as AlumniIdentity[]);
+  const fundraising = await loadFundraisingDonorTotals(alumni).catch(() => [] as DonorTotal[]);
+  const giving = await loadGivingDonorTotals(alumni).catch(() => [] as DonorTotal[]);
+  for (const row of [...fundraising, ...giving]) addCentsByKey(totals, row.key, row.total_cents);
   return [...totals.entries()].map(([key, total_cents]) => ({ key, total_cents }));
 }
 
@@ -403,25 +454,54 @@ export async function consumeEventCheckinFeed(input?: { alumId?: string }): Prom
       a.event_id::text AS event_id,
       a.alumni_id::text AS alum_id,
       COALESCE(a.alumni_id::text, a.attendee_key) AS user_id,
+      a.attendee_key,
+      a.display_name,
       a.checked_in_at,
       ${titleExpr} AS event_title
     FROM event_checkins a
     ${join}
-    WHERE a.alumni_id IS NOT NULL
     ORDER BY a.checked_in_at DESC
     LIMIT 1000
     `,
+  ).catch(() =>
+    sql.query(
+      `
+      SELECT
+        a.event_id::text AS event_id,
+        a.alumni_id::text AS alum_id,
+        COALESCE(a.alumni_id::text, a.attendee_key) AS user_id,
+        a.attendee_key,
+        NULL AS display_name,
+        a.checked_in_at,
+        ${titleExpr} AS event_title
+      FROM event_checkins a
+      ${join}
+      ORDER BY a.checked_in_at DESC
+      LIMIT 1000
+      `,
+    ),
   )) as Array<{
     event_id: string;
     alum_id: string | null;
     user_id: string;
+    attendee_key: string | null;
+    display_name: string | null;
     checked_in_at: string | Date;
     event_title: string | null;
   }>;
 
+  const alumni = await loadAlumniNameIndex().catch(() => [] as AlumniIdentity[]);
   const counts = new Map<string, { alumId: string; userId: string; attendanceCount: number }>();
   for (const row of records) {
-    const alumId = row.alum_id?.trim();
+    const alumId = resolveAttendanceAlumId(
+      {
+        alumId: row.alum_id,
+        userId: row.user_id,
+        personKey: row.attendee_key,
+        displayName: row.display_name,
+      },
+      alumni,
+    );
     if (!alumId) continue;
     const prev = counts.get(alumId);
     counts.set(alumId, {
@@ -434,9 +514,18 @@ export async function consumeEventCheckinFeed(input?: { alumId?: string }): Prom
   const byAlum = new Map(leaders.map((row) => [row.alumId, row]));
   const rows: EventBadgeFeedRow[] = [];
   for (const row of records) {
-    const alumId = row.alum_id?.trim() || null;
+    const alumId =
+      resolveAttendanceAlumId(
+        {
+          alumId: row.alum_id,
+          userId: row.user_id,
+          personKey: row.attendee_key,
+          displayName: row.display_name,
+        },
+        alumni,
+      ) || null;
     if (!alumId) continue;
-    if (input?.alumId && alumId !== input.alumId) continue;
+    if (input?.alumId && normalizeAlumniId(alumId) !== normalizeAlumniId(input.alumId)) continue;
     const lifetime = byAlum.get(alumId);
     const title = row.event_title?.trim() ?? "";
     const eventId = row.event_id;
@@ -471,12 +560,17 @@ export async function computeEventTopBadge(
   coder4?: { totals?: EventBadgeTotals | null },
 ): Promise<PublicBadge | null> {
   if (coder4 && "totals" in coder4) {
-    return eventBadgeFromCoder4Totals(coder4.totals);
+    const badge = eventBadgeFromCoder4Totals(coder4.totals);
+    if (badge) return badge;
+    if (coder4.totals && hasUsableAttendanceRank(coder4.totals)) return null;
   }
   if (!getDatabaseUrl() || !alumniId.trim()) return null;
   try {
     const feed = await consumeEventCheckinFeed({ alumId: alumniId });
-    const totals = attendanceLeadersFromCoder4Feed(feed).find((row) => row.alumId === alumniId);
+    const wanted = normalizeAlumniId(alumniId);
+    const totals = attendanceLeadersFromCoder4Feed(feed).find(
+      (row) => normalizeAlumniId(row.alumId) === wanted,
+    );
     return eventBadgeFromCoder4Totals(totals);
   } catch {
     return null;

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PREVIEW_ALUMNI_ID } from "./alum-session";
+import { SEED_ADMIN_ALUMNI_ID } from "./platform-roles";
 import {
   attendanceLeadersFromCoder4Feed,
   eventBadgeFeedFromCoder4Json,
@@ -45,6 +46,10 @@ describe("badge primitives", () => {
       { key: "b", total_cents: 1_000 },
     ];
     assert.equal(donorTierForAlumniId("a", totals), "platinum");
+    assert.equal(donorTierForAlumniId("A", totals), "platinum");
+    assert.equal(donorTierForAlumniId(SEED_ADMIN_ALUMNI_ID, [
+      { key: SEED_ADMIN_ALUMNI_ID, total_cents: 25_000 },
+    ]), "platinum");
     assert.equal(donorTierForAlumniId("missing", totals), null);
     assert.equal(eventTierForAlumniId("a", [{ key: "a", checkins: 8 }, { key: "b", checkins: 1 }]), "platinum");
     const json = publicBadgesJson([toPublicBadge("donor_gold")]);
@@ -81,7 +86,9 @@ describe("badge primitives", () => {
     assert.equal(eventTierFromCoder4Feed({ percentile: 49 }), null);
     assert.equal(eventTierFromCoder4Feed({ rank: 1, cohortSize: 100 }), "platinum");
     assert.equal(eventTierFromCoder4Feed({ rank: 11, cohortSize: 100 }), "gold");
-    assert.equal(eventTierFromCoder4Feed({ rank: 2 }), null);
+    assert.equal(eventTierFromCoder4Feed({ rank: 1 }), "platinum");
+    assert.equal(eventTierFromCoder4Feed({ rank: 2 }), "bronze");
+    assert.equal(eventTierFromCoder4Feed({ percentile: 0.99 }), "platinum");
     assert.equal(eventTierFromCoder4Feed({}), null);
 
     const totals = {
