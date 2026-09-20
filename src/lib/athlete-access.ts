@@ -56,7 +56,12 @@ export async function getAthleteActor(alumniId: string): Promise<AthleteActor> {
     }
   }
 
-  const canEdit = canEditAlumniRecord(viewer.platformRole, viewer.alumniId, alumniId) || isClaimedSelf;
+  const canEdit = canEditAthletePhotos({
+    role: viewer.platformRole,
+    actorAlumniId: viewer.alumniId,
+    targetAlumniId: alumniId,
+    claimedSelf: isClaimedSelf,
+  });
   return {
     isAdmin,
     isClaimedSelf,
@@ -67,6 +72,18 @@ export async function getAthleteActor(alumniId: string): Promise<AthleteActor> {
     label: viewer.label,
     platformRole: viewer.platformRole,
   };
+}
+
+/** Shared photo/profile gate: canEditAlumniRecord (claimed self or admin). No ga_session required. */
+export function canEditAthletePhotos(input: {
+  role: PlatformRole | null;
+  actorAlumniId?: string | null;
+  targetAlumniId: string;
+  claimedSelf?: boolean;
+}) {
+  if (input.claimedSelf) return true;
+  if (!input.role) return false;
+  return canEditAlumniRecord(input.role, input.actorAlumniId, input.targetAlumniId);
 }
 
 export function actorCanEditAthlete(actor: Pick<AthleteActor, "isAdmin" | "isClaimedSelf">) {

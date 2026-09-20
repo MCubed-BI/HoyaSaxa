@@ -71,24 +71,6 @@ export function isStaffAlumniMutationPath(pathname: string) {
   return pathname === "/api/alumni/merge";
 }
 
-/** /me and claim APIs. Public register/lookup/login stay on PUBLIC_PATHS. */
-export function isAlumniClaimPath(pathname: string) {
-  return pathname === "/me" || pathname.startsWith("/me/") || pathname.startsWith("/api/alumni/");
-}
-
-/**
- * Claimed alum / locker / contract `hoya_alum_session` may open /me.
- * Do not require `ga_session`. Coach may only hit the staff merge path.
- */
-export function canAccessAlumniClaimPath(
-  pathname: string,
-  input: { hasPortalAlumSession: boolean; isCoach?: boolean },
-) {
-  if (!isAlumniClaimPath(pathname)) return false;
-  if (input.hasPortalAlumSession) return true;
-  return Boolean(input.isCoach && isStaffAlumniMutationPath(pathname));
-}
-
 export function isDataSyncPath(pathname: string) {
   return pathname === "/sync" || pathname.startsWith("/sync/") || pathname.startsWith("/api/data-sync");
 }

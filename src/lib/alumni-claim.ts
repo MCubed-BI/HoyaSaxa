@@ -4,19 +4,11 @@ import {
   normalizeLastName,
   parseClassYearInput,
 } from "@/lib/alumni-class-year";
-import { hashAlumniPassword, isValidEmail, readAlumniSessionFromCookies, verifyAlumniPassword } from "@/lib/alumni-auth";
+import { hashAlumniPassword, isValidEmail, verifyAlumniPassword } from "@/lib/alumni-auth";
 import { isLikelyDuplicate } from "@/lib/alumni-duplicates";
 import { ensureAlumniPhotoColumns } from "@/lib/alumni-photos";
 import { grantVerifiedHoya } from "@/lib/badges";
-import {
-  ALUM_ROLE,
-  ALUM_SESSION_COOKIE,
-  isPreviewAlumSession,
-  parseAlumSessionToken,
-  type AlumRole,
-  type CookieJar,
-} from "@/lib/alum-session";
-import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
+import { ALUM_ROLE, ALUM_SESSION_COOKIE, parseAlumSessionToken, type AlumRole, type CookieJar } from "@/lib/alum-session";
 import type { AlumniDetail, AlumniListItem } from "@/lib/types";
 
 export type ClaimMatch = AlumniListItem & {
@@ -337,65 +329,26 @@ export async function alumSessionIdentityForAccount(account: { id: string; email
   };
 }
 
-export type AlumniMeIdentity = {
-  hasAlumSession: boolean;
-  accountId: string | null;
-  alumniId: string | null;
-  email: string | null;
-  name: string | null;
-};
-
-/** Sync cookie read — contract, locker preview, or legacy claim token. */
-export function readAlumniMeSession(cookies: CookieJar): Omit<AlumniMeIdentity, "accountId"> {
-  const token = cookies.get(ALUM_SESSION_COOKIE)?.value;
-  const session = parseAlumSessionToken(token);
-  if (session) {
-    return {
-      hasAlumSession: true,
-      alumniId: isPreviewAlumSession(session) ? null : session.alumniId,
-      email: session.email || null,
-      name: session.name || null,
-    };
-  }
-  const locker = readHoyaAlumSession(token);
-  if (locker) {
-    return { hasAlumSession: true, alumniId: null, email: null, name: locker.label };
-  }
-  const claim = readAlumniSessionFromCookies((name) => cookies.get(name)?.value);
-  if (claim) {
-    return { hasAlumSession: true, alumniId: null, email: null, name: null };
-  }
-  return { hasAlumSession: false, alumniId: null, email: null, name: null };
-}
-
-export async function resolveAlumniMeIdentity(cookies: CookieJar): Promise<AlumniMeIdentity> {
-  const session = readAlumniMeSession(cookies);
-  if (!session.hasAlumSession) {
-    return { ...session, accountId: null };
-  }
-  let accountId: string | null = null;
-  if (session.email) {
-    try {
-      accountId = (await getAccountByEmail(session.email))?.id ?? null;
-    } catch {
-      accountId = null;
-    }
-  }
-  if (!accountId) {
-    const claim = readAlumniSessionFromCookies((name) => cookies.get(name)?.value);
-    if (claim && !claim.accountId.startsWith("locker:")) {
-      accountId = claim.accountId;
-    }
-  }
-  return { ...session, accountId };
-}
-
 export async function accountIdFromCookies(cookies: CookieJar) {
-  const identity = await resolveAlumniMeIdentity(cookies);
-  return identity.accountId;
+  const session = parseAlumSessionToken(cookies.get(ALUM_SESSION_COOKIE)?.value);
+  if (!session?.email) return null;
+  const account = await getAccountByEmail(session.email);
+  return account?.id ?? null;
 }
 
-async function hydrateAlumniRecords(people: Array<ClaimedRecord>): Promise<ClaimedRecord[]> {
+export async function getClaimedRecords(accountId: string): Promise<ClaimedRecord[]> {
+  await ensureAlumniAuthTables();
+  const people = await query<Array<ClaimedRecord>>(
+    `
+    SELECT ${LIST_COLUMNS}, a.source_flags, a.created_at, a.updated_at, c.created_at AS claimed_at
+    FROM alumni_claims c
+    JOIN alumni a ON a.id = c.alumni_id
+    WHERE c.account_id = $1
+    ORDER BY a.class_year DESC NULLS LAST, lower(a.last_name), lower(coalesce(a.first_name, ''))
+    `,
+    [accountId],
+  );
+
   const records: ClaimedRecord[] = [];
   for (const person of people) {
     const [emails, phones, rosterYears] = await Promise.all([
@@ -415,66 +368,6 @@ async function hydrateAlumniRecords(people: Array<ClaimedRecord>): Promise<Claim
     records.push({ ...person, emails, phones, roster_years: rosterYears });
   }
   return records;
-}
-
-export async function getClaimedRecords(accountId: string): Promise<ClaimedRecord[]> {
-  await ensureAlumniAuthTables();
-  const people = await query<Array<ClaimedRecord>>(
-    `
-    SELECT ${LIST_COLUMNS}, a.source_flags, a.created_at, a.updated_at, c.created_at AS claimed_at
-    FROM alumni_claims c
-    JOIN alumni a ON a.id = c.alumni_id
-    WHERE c.account_id = $1
-    ORDER BY a.class_year DESC NULLS LAST, lower(a.last_name), lower(coalesce(a.first_name, ''))
-    `,
-    [accountId],
-  );
-  return hydrateAlumniRecords(people);
-}
-
-export async function getAlumniRecordsByIds(alumniIds: string[]): Promise<ClaimedRecord[]> {
-  const ids = [...new Set(alumniIds.map((id) => id.trim()).filter(Boolean))];
-  if (ids.length === 0) return [];
-  await ensureAlumniAuthTables();
-  const people = await query<Array<ClaimedRecord>>(
-    `
-    SELECT ${LIST_COLUMNS}, a.source_flags, a.created_at, a.updated_at, a.updated_at AS claimed_at
-    FROM alumni a
-    WHERE a.id = ANY($1::uuid[])
-    ORDER BY a.class_year DESC NULLS LAST, lower(a.last_name), lower(coalesce(a.first_name, ''))
-    `,
-    [ids],
-  );
-  return hydrateAlumniRecords(people);
-}
-
-export async function getAlumniRecordsForMe(input: { accountId?: string | null; alumniId?: string | null }) {
-  if (input.accountId) {
-    const claimed = await getClaimedRecords(input.accountId);
-    if (claimed.length > 0) return claimed;
-  }
-  if (input.alumniId) return getAlumniRecordsByIds([input.alumniId]);
-  return [];
-}
-
-export async function loadAlumniMeState(cookies: CookieJar) {
-  const identity = await resolveAlumniMeIdentity(cookies);
-  if (!identity.hasAlumSession) return null;
-  const account = identity.accountId ? await getAccountById(identity.accountId) : null;
-  const records = await getAlumniRecordsForMe({
-    accountId: identity.accountId,
-    alumniId: identity.alumniId,
-  });
-  const lastName = records[0]?.last_name ?? "";
-  const mergeCandidates =
-    lastName && identity.accountId
-      ? await findSameLastNameCandidates(
-          lastName,
-          identity.accountId,
-          records.map((row) => row.id),
-        )
-      : [];
-  return { identity, account, records, mergeCandidates };
 }
 
 export async function claimAdditionalRecord(accountId: string, alumniId: string) {
@@ -523,7 +416,14 @@ const EDITABLE_FIELDS = [
 
 export type AlumniEditInput = Partial<Record<(typeof EDITABLE_FIELDS)[number], string | null>>;
 
-async function applyAlumniEdit(alumniId: string, patch: AlumniEditInput) {
+export async function updateClaimedRecord(accountId: string, alumniId: string, patch: AlumniEditInput) {
+  await ensureAlumniAuthTables();
+  const owned = await query<Array<{ alumni_id: string }>>(
+    `SELECT alumni_id FROM alumni_claims WHERE account_id = $1 AND alumni_id = $2`,
+    [accountId, alumniId],
+  );
+  if (!owned[0]) throw new Error("You can only edit a record you have claimed.");
+
   const sets: string[] = [];
   const params: unknown[] = [];
   for (const field of EDITABLE_FIELDS) {
@@ -538,21 +438,6 @@ async function applyAlumniEdit(alumniId: string, patch: AlumniEditInput) {
     `UPDATE alumni SET ${sets.join(", ")}, updated_at = now() WHERE id = $${params.length}`,
     params,
   );
-}
-
-export async function updateOwnAlumniRecord(alumniId: string, patch: AlumniEditInput) {
-  await ensureAlumniAuthTables();
-  await applyAlumniEdit(alumniId, patch);
-}
-
-export async function updateClaimedRecord(accountId: string, alumniId: string, patch: AlumniEditInput) {
-  await ensureAlumniAuthTables();
-  const owned = await query<Array<{ alumni_id: string }>>(
-    `SELECT alumni_id FROM alumni_claims WHERE account_id = $1 AND alumni_id = $2`,
-    [accountId, alumniId],
-  );
-  if (!owned[0]) throw new Error("You can only edit a record you have claimed.");
-  await applyAlumniEdit(alumniId, patch);
 }
 
 function pickFilled(keeper: string | null, source: string | null) {

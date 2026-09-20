@@ -1,14 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import { navItemsForRole, portalMoreItems } from "./nav";
-import {
-  canAccessAlumniClaimPath,
-  isAlumniClaimPath,
-  isAlumAllowedPath,
-  isPublicPath,
-  isStaffAlumniMutationPath,
-  loginPathFor,
-} from "./portal-paths";
+import { isAlumAllowedPath, isPublicPath, isStaffAlumniMutationPath, loginPathFor } from "./portal-paths";
 import { toPublicAlumniCard } from "./portal-queries";
 import { allowRequest, isCoachComposePath } from "./access";
 import {
@@ -151,12 +144,6 @@ describe("portal paths", () => {
     assert.equal(isStaffAlumniMutationPath("/api/alumni/merge"), true);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/register"), false);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/lookup"), false);
-    assert.equal(isAlumniClaimPath("/me"), true);
-    assert.equal(isAlumniClaimPath("/api/alumni/me"), true);
-    assert.equal(isAlumniClaimPath("/api/alum/photos"), false);
-    assert.equal(canAccessAlumniClaimPath("/me", { hasPortalAlumSession: true }), true);
-    assert.equal(canAccessAlumniClaimPath("/me", { hasPortalAlumSession: false, isCoach: true }), false);
-    assert.equal(canAccessAlumniClaimPath("/api/alumni/merge", { hasPortalAlumSession: false, isCoach: true }), true);
     assert.equal(isPublicPath("/api/session"), true);
     assert.equal(isAlumAllowedPath("/alum"), true);
     assert.equal(isAlumAllowedPath("/portal"), true);
