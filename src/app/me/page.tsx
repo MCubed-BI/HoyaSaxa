@@ -50,7 +50,8 @@ export default async function MePage() {
         <LockerHeader current="me" viewer={viewer} />
         <PageMain width="record">
           <PageHeader
-            title="My alumni record"
+            eyebrow="Profile"
+            title="My record"
             description="Alum Mode: edit your photos and contact record, search the Directory, and post Brothers on For You. A successful claim shows Verified Hoya."
             actions={records.length > 0 ? <VerifiedHoyaBadge /> : undefined}
           />

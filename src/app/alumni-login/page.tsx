@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isAlumLoggedIn } from "@/lib/alum-session";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 
 export const metadata: Metadata = {
   title: "Alumni login",
@@ -30,7 +31,10 @@ export default async function AlumniLoginPage({
   }
 
   return (
-    <AuthShell title="Alumni login" subtitle="Alum or Admin only. Sign in to open Alum Mode — For You, Directory, and your record.">
+    <AuthShell
+      title="Alumni login"
+      subtitle={`Alum or Admin only. Sign in to ${PRODUCT_DISPLAY_NAME} — For You, Directory, and your record.`}
+    >
       <form action="/api/alumni/login" method="post" className="space-y-4">
         <input type="hidden" name="next" value={safeNextPath(params.next)} />
         <div className="space-y-1.5">
@@ -44,7 +48,9 @@ export default async function AlumniLoginPage({
         {params.error ? (
           <p className="text-sm text-destructive">That email or password is not recognized.</p>
         ) : (
-          <p className="text-sm text-muted-foreground">This login is for alumni only. Admin access stays on the Admin login page.</p>
+          <p className="text-sm text-muted-foreground">
+            Use the email and password from Register myself. Portal usernames stay on Alum | Admin.
+          </p>
         )}
         <Button type="submit" className="w-full">
           Sign in
@@ -56,8 +62,8 @@ export default async function AlumniLoginPage({
           Register myself
         </Link>
         {" · "}
-        <Link href="/login" className="text-navy underline-offset-4 hover:underline">
-          Admin login
+        <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
+          Alum | Admin
         </Link>
       </p>
     </AuthShell>

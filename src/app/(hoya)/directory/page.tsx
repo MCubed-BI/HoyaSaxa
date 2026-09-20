@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Directory",
-  description: "Hoya Football directory — athletes, alumni, coaches, and staff.",
+  description: "Directory — athletes, alumni, coaches, and staff.",
 };
 
 function firstParam(value: string | string[] | undefined) {
@@ -37,8 +37,8 @@ export default async function DirectoryPage({
     return (
       <PageMain width="record">
         <PageHeader
-          eyebrow="Hoya Directory"
-          title="The roster"
+          eyebrow="Directory"
+          title="Roster"
           description="Search by name, class, or city. Cards on phone, a sticky table on desktop. Emails stay hidden here — select classmates and use Email selected to compose."
         />
         <HoyaDirectory
@@ -56,7 +56,7 @@ export default async function DirectoryPage({
   } catch (error) {
     return (
       <PageMain width="record">
-        <PageHeader eyebrow="Hoya Directory" title="The roster" />
+        <PageHeader eyebrow="Directory" title="Roster" />
         <ErrorState
           title="Directory unavailable"
           body={

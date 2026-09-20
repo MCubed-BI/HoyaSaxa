@@ -66,6 +66,11 @@ export function ForYouFeed({
   const sections = forYouSectionsForFilter(filter);
 
   return (
+    <div className="space-y-5">
+      <header>
+        <p className="app-kicker text-navy">Feed</p>
+        <h1 className="font-heading mt-1 text-[1.7rem] leading-tight text-navy">For You</h1>
+      </header>
     <div className="for-you">
       <aside className="for-you__identity">
         <HoyaAvatar
@@ -94,6 +99,7 @@ export function ForYouFeed({
           <Section key={section} section={section} posts={posts[section]} viewer={viewer} />
         ))}
       </div>
+    </div>
     </div>
   );
 }

@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AuthShell } from "@/components/auth-shell";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { LoginGate, type LoginGateMode } from "@/components/login-gate";
 import { getLockerViewer } from "@/lib/locker-viewer";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 
 export const metadata: Metadata = {
-  title: "Alumni portal",
+  title: "Sign in",
+  description: `Sign in to ${PRODUCT_DISPLAY_NAME}.`,
 };
 
 function safeNextPath(value: string | undefined) {
@@ -17,10 +15,14 @@ function safeNextPath(value: string | undefined) {
   return value;
 }
 
+function parseGate(value: string | undefined): LoginGateMode {
+  return value === "admin" ? "admin" : "alum";
+}
+
 export default async function LockerLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; gate?: string }>;
 }) {
   const params = await searchParams;
   const viewer = await getLockerViewer();
@@ -29,48 +31,11 @@ export default async function LockerLoginPage({
   }
 
   return (
-    <AuthShell title="Alumni portal" subtitle="Sign in to open the alumni portal.">
-      <form action="/api/locker/login" method="post" className="space-y-4">
-        <input type="hidden" name="next" value={safeNextPath(params.next)} />
-        <div className="space-y-1.5">
-          <Label htmlFor="username">Username</Label>
-          <Input
-            id="username"
-            name="username"
-            autoComplete="username"
-            required
-            className="h-10"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            className="h-10"
-          />
-        </div>
-        {params.error ? (
-          <p className="text-sm text-destructive">That username or password is not recognized.</p>
-        ) : (
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Enter the username and password issued to you.
-          </p>
-        )}
-        <Button type="submit" className="h-10 w-full">
-          Sign in
-        </Button>
-        <p className="text-center text-xs text-muted-foreground">
-          Admin access is at{" "}
-          <Link href="/login" className="text-navy underline-offset-4 hover:underline">
-            Admin login
-          </Link>
-          . Register myself is a separate path.
-        </p>
-      </form>
-    </AuthShell>
+    <LoginGate
+      pathname="/home/login"
+      mode={parseGate(params.gate)}
+      next={safeNextPath(params.next)}
+      error={Boolean(params.error)}
+    />
   );
 }

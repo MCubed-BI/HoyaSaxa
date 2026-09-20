@@ -37,9 +37,7 @@ export async function LockerHomeDashboard() {
         <UpcomingEventCard event={data.upcomingEvent} />
         <Card>
           <CardHeader>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Recent activity
-            </p>
+            <p className="app-kicker text-muted-foreground">Recent activity</p>
             <CardTitle className="text-navy">Latest</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
