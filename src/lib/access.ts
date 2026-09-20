@@ -1,4 +1,4 @@
-import { ALUM_SESSION_COOKIE, isPreviewAlumSession, readAlumSession } from "@/lib/alum-session";
+import { ALUM_SESSION_COOKIE, isPreviewAlumniId, readAlumSession } from "@/lib/alum-session";
 import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
 import { HOYA_ALUM_SESSION_COOKIE, readHoyaAlumSession } from "@/lib/hoya-alum-session";
@@ -23,18 +23,17 @@ export function isCoachComposePath(pathname: string) {
   return path === "/api/portal/coach-messages" || path === "/api/messages/channels/sgarlata/posts";
 }
 
+/**
+ * Verified Hoya is a claim/alum-session badge, including preview `Alum` login.
+ * Board and staff cookies are not auto-verified. A claim session with a real
+ * alumniId still counts when role is omitted.
+ */
 export function isVerifiedHoyaIdentity(input: { role?: string | null; alumniId?: string | null }) {
   if (input.role && input.role !== "alum") return false;
+  if (input.role === "alum") return true;
   const alumniId = input.alumniId?.trim() ?? "";
-  if (!alumniId) return false;
-  return !isPreviewAlumSession({
-    v: 1,
-    role: "alum",
-    alumniId,
-    email: "",
-    name: "",
-    exp: Math.floor(Date.now() / 1000) + 60,
-  });
+  if (!alumniId || isPreviewAlumniId(alumniId)) return false;
+  return true;
 }
 
 export function resolveCookieAccess(cookies: CookieReader): RequestAccess | null {
@@ -61,7 +60,7 @@ export function resolveCookieAccess(cookies: CookieReader): RequestAccess | null
     cookies.get(ALUM_SESSION_COOKIE)?.value ?? cookies.get(HOYA_ALUM_SESSION_COOKIE)?.value ?? null;
   const contract = readAlumSession(token);
   if (contract) {
-    const alumniId = isPreviewAlumSession(contract) ? null : contract.alumniId;
+    const alumniId = isPreviewAlumniId(contract.alumniId) ? null : contract.alumniId;
     return {
       role: contract.role,
       mode: resolvePlatformRole({
@@ -92,7 +91,7 @@ export function resolveCookieAccess(cookies: CookieReader): RequestAccess | null
       source: "alum-session",
       label: locker.label,
       alumniId: null,
-      verifiedHoya: false,
+      verifiedHoya: isVerifiedHoyaIdentity({ role: locker.role }),
     };
   }
 

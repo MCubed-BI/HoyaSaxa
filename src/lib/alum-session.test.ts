@@ -3,9 +3,12 @@ import { describe, it } from "node:test";
 import {
   ALUMNI_SESSION_COOKIE,
   ALUM_SESSION_COOKIE,
+  PREVIEW_ALUMNI_ID,
   alumSessionCookieName,
   createAlumSessionToken,
   isAlumLoggedIn,
+  isPreviewAlumniId,
+  isPreviewAlumSession,
   parseAlumSessionToken,
   readAlumSession,
   setAlumSessionCookies,
@@ -19,6 +22,11 @@ describe("hoya_alum_session contract", () => {
     assert.equal(ALUM_SESSION_COOKIE, "hoya_alum_session");
     assert.equal(alumSessionCookieName, "hoya_alum_session");
     assert.equal(ALUMNI_SESSION_COOKIE, "hoya_alum_session");
+    assert.equal(isPreviewAlumniId(PREVIEW_ALUMNI_ID), true);
+    assert.equal(isPreviewAlumniId("11111111-1111-4111-8111-111111111111"), false);
+    const preview = parseAlumSessionToken(createAlumSessionToken({ role: "alum", name: "Alum" }));
+    assert.equal(preview?.alumniId, PREVIEW_ALUMNI_ID);
+    assert.equal(preview ? isPreviewAlumSession(preview) : false, true);
   });
 
   it("round-trips a signed alum session", () => {

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { attendanceLeadersFromCoder4Feed, eventBadgeFeedFromCoder4Json } from "./badge-event-feed";
+import { PREVIEW_ALUMNI_ID } from "./alum-session";
 import {
   BADGE_PERCENTILE_THRESHOLDS,
   BADGE_TYPES,
@@ -12,6 +13,7 @@ import {
   eventSlugFromTitle,
   eventTierForAlumniId,
   eventTierFromCoder4Feed,
+  grantVerifiedHoyaForAlumSession,
   percentileFromRank,
   publicBadgesJson,
   tierFromPercentile,
@@ -45,6 +47,12 @@ describe("badge primitives", () => {
     assert.deepEqual(json, [{ type: "donor_gold", label: "Donor · Gold", tier: "gold" }]);
     assert.equal(JSON.stringify(json).includes("cent"), false);
     assert.equal(JSON.stringify(json).includes("$"), false);
+  });
+
+  it("skips grantVerifiedHoya for preview Alum (session-only badge)", async () => {
+    assert.equal(await grantVerifiedHoyaForAlumSession(null), null);
+    assert.equal(await grantVerifiedHoyaForAlumSession(""), null);
+    assert.equal(await grantVerifiedHoyaForAlumSession(PREVIEW_ALUMNI_ID), null);
   });
 
   it("assembles verified + donor + event chips without gift totals", () => {

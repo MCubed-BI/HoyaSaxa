@@ -1,4 +1,5 @@
 import { ProductHeader } from "@/components/product-header";
+import { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";
 import { portalNavItems, portalSecondaryItems, type NavItem } from "@/lib/nav";
 
 export function HoyaDirectoryHeader({
@@ -6,11 +7,13 @@ export function HoyaDirectoryHeader({
   roleLabel,
   viewerLabel,
   canEmailClassmates,
+  verifiedHoya,
 }: {
   signedIn?: boolean;
   roleLabel?: string;
   viewerLabel?: string;
   canEmailClassmates?: boolean;
+  verifiedHoya?: boolean;
 }) {
   if (!signedIn) {
     return (
@@ -37,6 +40,7 @@ export function HoyaDirectoryHeader({
       current="portal-directory"
       roleLabel={roleLabel ?? "Alumnus"}
       viewerLabel={viewerLabel}
+      trailing={verifiedHoya ? <VerifiedHoyaBadge /> : undefined}
       showSignOut
       signOutFrom="/directory"
       mobileNav="tabs"

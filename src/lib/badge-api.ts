@@ -62,6 +62,7 @@ export {
   eventTierFromCoder4Feed,
   eventTopBadgeType,
   grantVerifiedHoya,
+  grantVerifiedHoyaForAlumSession,
   isBadgeType,
   listPublicBadges,
   listPublicBadgesMany,

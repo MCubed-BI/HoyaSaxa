@@ -7,7 +7,7 @@ import {
 import { hashAlumniPassword, isValidEmail, readAlumniSessionFromCookies, verifyAlumniPassword } from "@/lib/alumni-auth";
 import { isLikelyDuplicate } from "@/lib/alumni-duplicates";
 import { ensureAlumniPhotoColumns } from "@/lib/alumni-photos";
-import { grantVerifiedHoya } from "@/lib/badges";
+import { grantVerifiedHoyaForAlumSession } from "@/lib/badges";
 import {
   ALUM_ROLE,
   ALUM_SESSION_COOKIE,
@@ -276,17 +276,9 @@ export async function registerAlumniAccount(input: {
       account.id,
       alumniId,
     ]);
-    await grantVerifiedHoyaSafe(alumniId);
+    await grantVerifiedHoyaForAlumSession(alumniId);
   }
   return { account, claimedIds: idsToClaim, classYear, lastName };
-}
-
-async function grantVerifiedHoyaSafe(alumniId: string) {
-  try {
-    await grantVerifiedHoya(alumniId);
-  } catch {
-    // Badge table is additive; claim/login still succeeds if it is missing.
-  }
 }
 
 export async function authenticateAlumni(email: string, password: string) {
@@ -327,7 +319,7 @@ export async function alumSessionIdentityForAccount(account: { id: string; email
     throw new Error("Claim a roster row before signing in.");
   }
   for (const record of records) {
-    await grantVerifiedHoyaSafe(record.id);
+    await grantVerifiedHoyaForAlumSession(record.id);
   }
   return {
     role: ALUM_ROLE,
@@ -503,7 +495,7 @@ export async function claimAdditionalRecord(accountId: string, alumniId: string)
     accountId,
     alumniId,
   ]);
-  await grantVerifiedHoyaSafe(alumniId);
+  await grantVerifiedHoyaForAlumSession(alumniId);
 }
 
 const EDITABLE_FIELDS = [

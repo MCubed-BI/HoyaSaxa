@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageMain, PageShell } from "@/components/page-chrome";
 import { ProductHeader } from "@/components/product-header";
+import { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";
 import { portalMoreItems, portalNavItems, type NavKey } from "@/lib/nav";
 import { roleLabel, type Role } from "@/lib/roles";
 import type { Viewer } from "@/lib/viewer";
@@ -25,6 +26,7 @@ export function PortalShell({
         current={current}
         roleLabel={roleLabel(viewer.role)}
         viewerLabel={viewer.label}
+        trailing={viewer.verifiedHoya ? <VerifiedHoyaBadge /> : undefined}
         showSignOut
         signOutFrom={current === "blast" ? "/portal/blast" : "/portal"}
         mobileNav="tabs"

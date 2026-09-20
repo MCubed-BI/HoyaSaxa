@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isVerifiedHoyaIdentity } from "@/lib/access";
 import { ALUMNI_SESSION_COOKIE, readAlumniSessionAccountId, readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { ALUM_SESSION_COOKIE, isPreviewAlumSession, readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
@@ -20,10 +21,11 @@ export type Viewer = {
   alumniId: string | null;
   source: "staff" | "alum-session" | "alumni";
   homePath: string;
+  verifiedHoya: boolean;
 };
 
 function withPlatformRole(
-  viewer: Omit<Viewer, "platformRole">,
+  viewer: Omit<Viewer, "platformRole" | "verifiedHoya"> & { verifiedHoya?: boolean },
   assignedRole?: string | null,
 ): Viewer {
   return {
@@ -32,6 +34,13 @@ function withPlatformRole(
       ...identityFromViewer(viewer),
       assignedRole,
     }),
+    verifiedHoya: Boolean(
+      viewer.verifiedHoya ??
+        isVerifiedHoyaIdentity({
+          role: viewer.role,
+          alumniId: viewer.alumniId,
+        }),
+    ),
   };
 }
 
@@ -63,6 +72,7 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
         alumniId: null,
         source: "staff",
         homePath: homePathForRole(role),
+        verifiedHoya: false,
       },
       assignedRole,
     );

@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isVerifiedHoyaIdentity } from "@/lib/access";
 import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
-import { ALUM_SESSION_COOKIE, isPreviewAlumSession, readAlumSession } from "@/lib/alum-session";
+import { ALUM_SESSION_COOKIE, readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
 import { canPostToFeedSection } from "@/lib/feed-sections";
 import {
@@ -76,7 +76,7 @@ export async function getLockerViewer(): Promise<LockerViewer | null> {
         source: "hoya_alum_session",
         email: contract.email,
         alumniId: contract.alumniId,
-        verifiedHoya: isVerifiedHoyaIdentity(contract) && !isPreviewAlumSession(contract),
+        verifiedHoya: isVerifiedHoyaIdentity(contract),
       }),
     };
   }
@@ -91,7 +91,7 @@ export async function getLockerViewer(): Promise<LockerViewer | null> {
         role: locker.role,
         label: locker.label,
         source: "hoya_alum_session",
-        verifiedHoya: false,
+        verifiedHoya: isVerifiedHoyaIdentity({ role: locker.role }),
       }),
     };
   }

@@ -52,7 +52,12 @@ export type CookieJar = {
   get(name: string): { value: string } | undefined;
 };
 
-const PREVIEW_ALUMNI_ID = "00000000-0000-0000-0000-000000000000";
+/** Sentinel used when preview `Alum` login has no claimed roster row. */
+export const PREVIEW_ALUMNI_ID = "00000000-0000-0000-0000-000000000000";
+
+export function isPreviewAlumniId(alumniId: string | null | undefined) {
+  return Boolean(alumniId && alumniId.trim() === PREVIEW_ALUMNI_ID);
+}
 
 function hmac(secret: string, value: string) {
   return createHmac("sha256", secret).update(value).digest("hex");
@@ -212,7 +217,7 @@ export async function requireAlumRole(...roles: AlumRole[]) {
 }
 
 export function isPreviewAlumSession(session: AlumSession) {
-  return session.alumniId === PREVIEW_ALUMNI_ID;
+  return isPreviewAlumniId(session.alumniId);
 }
 
 /** Portal/auth-boundary: true only when `hoya_alum_session` verifies as role `alum`. */
