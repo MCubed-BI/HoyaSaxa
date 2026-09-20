@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { attendanceLeadersFromCoder4Feed, eventBadgeFeedFromCoder4Json } from "./badge-event-feed";
 import { PREVIEW_ALUMNI_ID } from "./alum-session";
+import {
+  attendanceLeadersFromCoder4Feed,
+  eventBadgeFeedFromCoder4Json,
+  resolveFeedAlumId,
+} from "./badge-event-feed";
 import {
   BADGE_PERCENTILE_THRESHOLDS,
   BADGE_TYPES,
@@ -63,7 +67,7 @@ describe("badge primitives", () => {
     });
     assert.deepEqual(
       badges.map((badge) => badge.label),
-      ["Verified Hoya", "Donor · Platinum", "Event top · Gold"],
+      ["Verified Hoya", "Donor · Platinum", "Top Tailgate · Gold"],
     );
     assert.equal(JSON.stringify(badges).includes("$"), false);
     assert.equal(JSON.stringify(badges).includes("cent"), false);
@@ -90,7 +94,7 @@ describe("badge primitives", () => {
     };
     assert.deepEqual(eventBadgeFromCoder4Totals(totals), {
       type: "event_top_platinum",
-      label: "Event top · Platinum",
+      label: "Top Tailgate · Platinum",
       tier: "platinum",
     });
     assert.deepEqual(
@@ -106,7 +110,7 @@ describe("badge primitives", () => {
         percentile: 90,
         cohortSize: 100,
       }),
-      { type: "event_top_gold", label: "Event top · Gold", tier: "gold" },
+      { type: "event_top_gold", label: "Top Tailgate · Gold", tier: "gold" },
     );
     assert.equal(eventBadgeFromCoder4Totals(null), null);
     assert.equal(JSON.stringify(eventBadgeFromCoder4Totals(totals)).includes("$"), false);
@@ -116,7 +120,7 @@ describe("badge primitives", () => {
     const badge = await computeEventTopBadge("a", {
       totals: { alumId: "a", attendanceCount: 1, rank: 3, percentile: 75, cohortSize: 12 },
     });
-    assert.deepEqual(badge, { type: "event_top_silver", label: "Event top · Silver", tier: "silver" });
+    assert.deepEqual(badge, { type: "event_top_silver", label: "Top Tailgate · Silver", tier: "silver" });
     const none = await computeEventTopBadge("a", { totals: null });
     assert.equal(none, null);
   });
@@ -187,6 +191,31 @@ describe("badge primitives", () => {
     const leaders = attendanceLeadersFromCoder4Feed(payload);
     assert.deepEqual(leaders, [payload.alum]);
     assert.equal(JSON.stringify(leaders).includes("$"), false);
+  });
+
+  it("resolves roster ids from alum:<uuid> personKey when alumId is missing", () => {
+    const alumId = "c8fc1d9c-d5a7-445d-8e59-b2bddd53d136";
+    assert.equal(resolveFeedAlumId({ alumId: null, personKey: `alum:${alumId}` }), alumId);
+    assert.equal(resolveFeedAlumId({ alumId: "", userId: alumId }), alumId);
+    const leaders = attendanceLeadersFromCoder4Feed({
+      leaders: [
+        {
+          alumId: null,
+          personKey: `alum:${alumId}`,
+          userId: alumId,
+          attendanceCount: 4,
+          rank: 1,
+          percentile: 100,
+          cohortSize: 8,
+        },
+      ],
+    });
+    assert.equal(leaders[0]?.alumId, alumId);
+    assert.deepEqual(eventBadgeFromCoder4Totals(leaders[0]), {
+      type: "event_top_platinum",
+      label: "Top Tailgate · Platinum",
+      tier: "platinum",
+    });
   });
 
   it("builds Coder 4 eventSlug from title + eventId", () => {

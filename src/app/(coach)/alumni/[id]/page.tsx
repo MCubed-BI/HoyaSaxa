@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { HoyaBadgeRow } from "@/components/hoya-badges";
+import { HoyaBadgeRow } from "@/lib/badge-api";
 import { PageMain, PageShell } from "@/components/page-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";

@@ -4,6 +4,7 @@
  * Same payload as `GET /api/events/attendance/feed` and `?alumId=`.
  * Never writes `event_checkins`. Do not import this file from client components.
  */
+import { isPreviewAlumSession, readAlumSessionFromCookies } from "@/lib/alum-session";
 import { attendanceLeadersFromCoder4Feed, type EventBadgeTotals } from "@/lib/badge-event-feed";
 import { listPublicBadges, listPublicBadgesMany } from "@/lib/badges";
 import {
@@ -18,13 +19,28 @@ export function attendanceLeadersFromLiveFeed(feed: AttendanceBadgeFeed): EventB
     leaders: feed.leaders.map((row) => ({
       alumId: row.alumId ?? "",
       userId: row.userId,
+      personKey: row.personKey,
       attendanceCount: row.attendanceCount,
       rank: row.rank,
       percentile: row.percentile,
       cohortSize: row.cohortSize,
     })),
   });
-  return fromLeaders.length ? fromLeaders : attendanceLeadersFromCoder4Feed({ rows: feed.rows });
+  return fromLeaders.length
+    ? fromLeaders
+    : attendanceLeadersFromCoder4Feed({
+        rows: feed.rows.map((row) => ({
+          ...row,
+          personKey: row.userId.startsWith("alum:") ? row.userId : undefined,
+        })),
+      });
+}
+
+/** Claimed / contract `hoya_alum_session` — preview locker Alum is not Verified Hoya. */
+export async function sessionVerifiedAlumniIds() {
+  const session = await readAlumSessionFromCookies();
+  if (!session || isPreviewAlumSession(session) || !session.alumniId.trim()) return [];
+  return [session.alumniId];
 }
 
 /** Same JSON as `GET /api/events/attendance/feed` (+ optional `?alumId=`). */
@@ -49,13 +65,16 @@ export async function listPublicBadgesManyFromFeed(
   alumniIds: string[],
   options: { verifiedAlumniIds?: string[] } = {},
 ) {
+  const verifiedAlumniIds = [
+    ...new Set([...(options.verifiedAlumniIds ?? []), ...(await sessionVerifiedAlumniIds().catch(() => []))]),
+  ];
   try {
     const feed = await listEventCheckinFeed({ limit: 1000 });
     return listPublicBadgesMany(alumniIds, {
-      verifiedAlumniIds: options.verifiedAlumniIds,
+      verifiedAlumniIds,
       attendanceLeaders: attendanceLeadersFromLiveFeed(feed),
     });
   } catch {
-    return listPublicBadgesMany(alumniIds, options);
+    return listPublicBadgesMany(alumniIds, { verifiedAlumniIds });
   }
 }

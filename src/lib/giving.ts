@@ -103,15 +103,19 @@ export async function listGivingSummary(limit = 12): Promise<GivingSummary> {
   };
 }
 
-export async function createGivingPledge(input: { amountCents: number; donorLabel?: string | null }) {
+export async function createGivingPledge(input: {
+  amountCents: number;
+  donorLabel?: string | null;
+  alumniId?: string | null;
+}) {
   await ensureGivingPledgesTable();
   const rows = await query<GivingPledge[]>(
     `
-    INSERT INTO giving_pledges (amount_cents, donor_label, status)
-    VALUES ($1, $2, $3)
+    INSERT INTO giving_pledges (amount_cents, donor_label, status, alumni_id)
+    VALUES ($1, $2, $3, $4)
     RETURNING id, amount_cents, donor_label, status, created_at
     `,
-    [input.amountCents, input.donorLabel ?? null, UNPAID_INTENT_STATUS],
+    [input.amountCents, input.donorLabel ?? null, UNPAID_INTENT_STATUS, input.alumniId ?? null],
   );
   return rows[0];
 }

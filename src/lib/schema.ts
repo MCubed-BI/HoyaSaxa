@@ -248,6 +248,7 @@ export const givingPledges = pgTable("giving_pledges", {
   id: uuid("id").primaryKey().defaultRandom(),
   amountCents: integer("amount_cents").notNull(),
   donorLabel: text("donor_label"),
+  alumniId: uuid("alumni_id"),
   status: text("status").notNull().default("unpaid_intent"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

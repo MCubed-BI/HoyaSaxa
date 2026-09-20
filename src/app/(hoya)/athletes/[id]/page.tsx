@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { AthleteMergePanel } from "@/components/athlete-merge-panel";
 import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { HoyaAvatar } from "@/components/hoya-avatar";
-import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { PageMain, pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +10,7 @@ import { isPreviewAlumSession, readAlumSessionFromCookies } from "@/lib/alum-ses
 import { findLikelyDuplicateCandidates } from "@/lib/alumni-claim";
 import { getAthleteActor } from "@/lib/athlete-access";
 import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
+import { HoyaBadgeRow } from "@/lib/badge-api";
 import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { displayName, jobLabel, positionLabel } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
