@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -6,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isAlumLoggedIn } from "@/lib/alum-session";
+
+export const metadata: Metadata = {
+  title: "Alumni login",
+};
 
 function safeNextPath(value: string | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/me";

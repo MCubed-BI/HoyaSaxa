@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { cn } from "cn";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
+import { cn } from "cn";
 
 export function BrandMark({
   href,
   title = PRODUCT_DISPLAY_NAME,
-  eyebrow = "Georgetown Football",
+  eyebrow,
   inverted = false,
   compact = false,
 }: {
@@ -16,7 +16,12 @@ export function BrandMark({
   compact?: boolean;
 }) {
   return (
-    <Link href={href} className="group flex min-w-0 items-center gap-3 rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50">
+    <Link
+      href={href}
+      title={title}
+      aria-label={title}
+      className="group flex min-w-0 items-center gap-3 rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
       <span
         aria-hidden
         className={cn(
@@ -30,18 +35,20 @@ export function BrandMark({
         HS
       </span>
       <span className="min-w-0">
+        {eyebrow ? (
+          <span
+            className={cn(
+              "block text-[10px] font-medium uppercase tracking-[0.14em]",
+              inverted ? "text-white/55" : "text-muted-foreground",
+            )}
+          >
+            {eyebrow}
+          </span>
+        ) : null}
         <span
           className={cn(
-            "block text-[10px] font-medium uppercase tracking-[0.14em]",
-            inverted ? "text-white/55" : "text-muted-foreground",
-          )}
-        >
-          {eyebrow}
-        </span>
-        <span
-          className={cn(
-            "block truncate font-heading leading-none tracking-tight",
-            compact ? "text-lg" : "text-xl",
+            "block font-heading tracking-tight",
+            compact ? "text-[15px] leading-tight sm:text-base" : "text-xl leading-tight",
             inverted ? "text-white" : "text-navy",
           )}
         >

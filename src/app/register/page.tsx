@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth-shell";
 import { RegisterMyself } from "@/components/register-myself";
 import { isAlumLoggedIn } from "@/lib/alum-session";
+
+export const metadata: Metadata = {
+  title: "Register myself",
+};
 
 export default async function RegisterPage() {
   const jar = await cookies();

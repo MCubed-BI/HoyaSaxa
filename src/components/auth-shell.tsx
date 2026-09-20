@@ -16,7 +16,7 @@ export function AuthShell({
     <main className="flex flex-1 items-center justify-center bg-background px-4 py-16">
       <div className="w-full max-w-[420px] overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-elevated)]">
         <div className="space-y-4 px-6 pt-7 sm:px-8">
-          <BrandMark href="/" eyebrow={eyebrow ?? "Georgetown Football"} />
+          <BrandMark href="/" eyebrow={eyebrow} />
           <div>
             <h1 className="font-heading text-[1.75rem] leading-tight text-navy">{title}</h1>
             {subtitle ? <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{subtitle}</p> : null}

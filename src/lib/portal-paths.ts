@@ -55,8 +55,10 @@ export function isPublicPath(pathname: string) {
     return true;
   }
   if (pathname.startsWith("/_next")) return true;
-  if (pathname === "/favicon.ico" || pathname === "/robots.txt") return true;
-  if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/.test(pathname)) return true;
+  if (pathname === "/favicon.ico" || pathname === "/robots.txt" || pathname === "/manifest.webmanifest") {
+    return true;
+  }
+  if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$/.test(pathname)) return true;
   return false;
 }
 
