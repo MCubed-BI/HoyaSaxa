@@ -12,7 +12,7 @@
  *
  * Coder 4 / 5: import `@/lib/badge-api` (HoyaBadge + consume helpers).
  */
-import { isPreviewAlumniId } from "@/lib/alum-session";
+import { isPreviewAlumniId } from "@/lib/alum-preview";
 import {
   attendanceLeadersFromCoder4Feed,
   type EventBadgeFeed,

@@ -25,7 +25,10 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { PREVIEW_ALUMNI_ID, isPreviewAlumniId } from "@/lib/alum-preview";
 import { getCoachCredentials } from "@/lib/auth";
+
+export { PREVIEW_ALUMNI_ID, isPreviewAlumniId } from "@/lib/alum-preview";
 
 export const ALUM_SESSION_COOKIE = "hoya_alum_session";
 export const alumSessionCookieName = ALUM_SESSION_COOKIE;
@@ -51,13 +54,6 @@ export type AlumSessionPayload = AlumSession;
 export type CookieJar = {
   get(name: string): { value: string } | undefined;
 };
-
-/** Sentinel used when preview `Alum` login has no claimed roster row. */
-export const PREVIEW_ALUMNI_ID = "00000000-0000-0000-0000-000000000000";
-
-export function isPreviewAlumniId(alumniId: string | null | undefined) {
-  return Boolean(alumniId && alumniId.trim() === PREVIEW_ALUMNI_ID);
-}
 
 function hmac(secret: string, value: string) {
   return createHmac("sha256", secret).update(value).digest("hex");
