@@ -53,6 +53,7 @@ export default async function AdminBoardPage() {
                   key={row.id}
                   alumniId={row.alumni_id}
                   name={row.username || row.email || row.alumni_id}
+                  email={row.email ?? undefined}
                   granted
                 />
               ) : (

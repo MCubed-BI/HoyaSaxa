@@ -125,7 +125,9 @@ export default async function AthleteProfilePage({
         </CardContent>
       </Card>
 
-      {showBoardGrant ? <BoardMemberToggle alumniId={person.id} name={name} granted={boardGranted} /> : null}
+      {showBoardGrant ? (
+        <BoardMemberToggle alumniId={person.id} name={name} email={person.emails[0]} granted={boardGranted} />
+      ) : null}
 
       {actor.canMerge ? (
         <AthleteMergePanel keeperId={person.id} keeperName={name} candidates={visibleDuplicates} />

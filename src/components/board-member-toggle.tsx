@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 export function BoardMemberToggle({
   alumniId,
   name,
+  email,
   granted,
 }: {
   alumniId: string;
   name: string;
+  email?: string;
   granted: boolean;
 }) {
   const [board, setBoard] = useState(granted);
@@ -24,7 +26,7 @@ export function BoardMemberToggle({
       const response = await fetch("/api/admin/board", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ alumniId, board: !board, name }),
+        body: JSON.stringify({ alumniId, board: !board, name, email }),
       });
       const data = (await response.json()) as { error?: string; board?: boolean; keptAdmin?: boolean };
       if (!response.ok) throw new Error(data.error ?? "Could not update Board member");
