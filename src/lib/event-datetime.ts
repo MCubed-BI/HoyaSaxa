@@ -77,5 +77,13 @@ export function formatEventWhen(value: Date | string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
-  return { weekday, day, year, time, label: `${weekday}, ${day} ${year} · ${time} ET` };
+  const month = new Intl.DateTimeFormat("en-US", {
+    timeZone: EASTERN,
+    month: "short",
+  }).format(date);
+  const dateNum = new Intl.DateTimeFormat("en-US", {
+    timeZone: EASTERN,
+    day: "numeric",
+  }).format(date);
+  return { weekday, day, year, time, month, dateNum, label: `${weekday}, ${day} ${year} · ${time} ET` };
 }

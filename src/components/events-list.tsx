@@ -53,7 +53,7 @@ export function EventsList({
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Program"
+        eyebrow="Schedule"
         title="Events"
         description="Filter by upcoming or past, then search or narrow by category. Admin, Board, or Alum can post."
         actions={
@@ -106,17 +106,18 @@ export function EventsList({
             const when = formatEventWhen(event.starts_at);
             return (
               <li key={event.id} className="flex gap-3 p-3 sm:gap-4 sm:p-4">
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
-                  {event.thumbnail_url ? (
-                    // Arbitrary event URLs; next/image would need a remote allowlist.
-                    // eslint-disable-next-line @next/next/no-img-element
+                {event.thumbnail_url ? (
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+                    {/* Arbitrary event URLs; next/image would need a remote allowlist. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={event.thumbnail_url} alt="" width={56} height={56} className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                      {event.category.slice(0, 2)}
-                    </span>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="event-date" aria-hidden>
+                    <span className="event-date__month">{when.month}</span>
+                    <span className="event-date__day">{when.dateNum}</span>
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-medium">{event.title}</h3>

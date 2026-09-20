@@ -17,7 +17,7 @@ export function FilterToolbar({
   return (
     <div
       className={cn(
-        "sticky top-20 z-20 space-y-3 rounded-xl border bg-card/95 p-4 shadow-[var(--shadow-card)] backdrop-blur-sm",
+        "sticky z-20 space-y-3 rounded-xl border bg-card/95 p-4 shadow-[var(--shadow-card)] backdrop-blur-sm top-[var(--app-header-offset)]",
         className,
       )}
     >

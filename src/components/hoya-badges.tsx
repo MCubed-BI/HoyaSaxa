@@ -16,10 +16,10 @@ import { type PublicBadge, badgeLabel, type BadgeType, tierFromBadgeType } from 
  */
 const BADGE_TONE: Record<string, string> = {
   verified_hoya: "border-navy bg-navy text-white",
-  platinum: "border-[#c5b358] bg-[#c5b358]/20 text-navy",
-  gold: "border-amber-500 bg-amber-50 text-navy",
+  platinum: "border-silver-strong bg-silver/25 text-navy",
+  gold: "border-silver-strong bg-silver/20 text-navy",
   silver: "border-slate-400 bg-slate-100 text-navy",
-  bronze: "border-amber-800/70 bg-amber-50 text-navy",
+  bronze: "border-slate-500/70 bg-slate-50 text-navy",
 };
 
 function badgeTone(type: BadgeType, tier: string | null) {

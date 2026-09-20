@@ -6,6 +6,7 @@ import { AuthShell } from "@/components/auth-shell";
 import { RegisterMyself } from "@/components/register-myself";
 import { getAlumSession, isAlumLoggedIn } from "@/lib/alum-session";
 import { isClaimPhotoValidateStep } from "@/lib/claim-photos";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 
 export const metadata: Metadata = {
   title: "Register myself",
@@ -31,7 +32,7 @@ export default async function RegisterPage({
       subtitle={
         validate
           ? "Upload or paste image URLs for your football roster photo and LinkedIn headshot, then save before you finish."
-          : "Claim your roster row, add or replace photos, then create an alumni login."
+          : `Claim your roster row in ${PRODUCT_DISPLAY_NAME}, add or replace photos, then create an alumni login.`
       }
     >
       <RegisterMyself
@@ -39,9 +40,9 @@ export default async function RegisterPage({
         claimedAlumniId={validate ? session?.alumniId ?? null : null}
       />
       <p className="text-center text-sm text-muted-foreground">
-        Admin?{" "}
-        <Link href="/login" className="text-navy underline-offset-4 hover:underline">
-          Admin login
+        Already have access?{" "}
+        <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
+          Alum | Admin
         </Link>
       </p>
     </AuthShell>

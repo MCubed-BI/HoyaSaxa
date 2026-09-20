@@ -42,16 +42,12 @@ export function QuickActions({ canOpenStaffDirectory }: { canOpenStaffDirectory:
   return (
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {actions.map((action) => (
-        <Link key={action.title} href={action.href}>
-          <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]">
-            <CardContent className="py-4">
-              <p className="flex items-center gap-2 font-medium text-navy">
-                <AppIcon name={action.icon} className="size-4 text-gold" />
-                {action.title}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{action.body}</p>
-            </CardContent>
-          </Card>
+        <Link key={action.title} href={action.href} className="app-tile">
+          <span className="app-tile__icon">
+            <AppIcon name={action.icon} className="size-4 text-silver-strong" />
+          </span>
+          <p className="app-tile__title">{action.title}</p>
+          <p className="app-tile__body">{action.body}</p>
         </Link>
       ))}
     </section>
@@ -62,9 +58,7 @@ export function UpcomingEventCard({ event }: { event: UpcomingEvent }) {
   return (
     <Card>
       <CardHeader>
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Upcoming event
-        </p>
+        <p className="app-kicker text-muted-foreground">Upcoming event</p>
         <CardTitle className="text-navy">{event.title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">

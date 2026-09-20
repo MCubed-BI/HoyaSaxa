@@ -21,7 +21,7 @@ export function DirectoryPickToggle({
       type="checkbox"
       checked={isSelected(id)}
       onChange={() => toggle(id)}
-      className="mt-1 size-4 rounded border-input accent-gold"
+      className="mt-1 size-4 rounded border-input accent-silver"
       aria-label={`Select ${name} for email`}
     />
   );
@@ -31,7 +31,7 @@ export function AlumEmailBar({ href = "/portal/blast" }: { href?: string }) {
   const { count, clear } = useSelection();
   if (count === 0) return null;
   return (
-    <div className="sticky bottom-3 z-20 rounded-xl border border-gold/40 bg-navy px-4 py-3 text-white shadow-lg">
+    <div className="sticky bottom-3 z-20 rounded-xl border border-silver/40 bg-navy px-4 py-3 text-white shadow-lg">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-medium">{formatNumber(count)} selected for email</p>
         <div className="flex flex-wrap gap-2">
@@ -44,7 +44,7 @@ export function AlumEmailBar({ href = "/portal/blast" }: { href?: string }) {
             Clear picks
           </Button>
           <Button asChild>
-            <Link href={href} className="bg-gold text-gold-foreground hover:bg-gold/90">
+            <Link href={href} className="bg-silver text-silver-foreground hover:bg-silver/90">
               Email selected
             </Link>
           </Button>
