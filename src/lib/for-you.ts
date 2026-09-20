@@ -3,7 +3,8 @@ import { toNameFields } from "@/lib/locker-classify";
 import type { FeedPost } from "@/lib/locker-data";
 import { athleteHref } from "@/lib/locker-paths";
 import type { LockerPerson } from "@/lib/locker-types";
-import { FEED_SECTIONS, type FeedSection } from "@/lib/feed-sections";
+import { FEED_SECTIONS, canPostToFeedSection, type FeedSection } from "@/lib/feed-sections";
+import type { PlatformRole } from "@/lib/platform-roles";
 
 export { FEED_SECTIONS };
 export type { FeedSection };
@@ -28,6 +29,14 @@ export type ForYouIdentity = {
   preferredName: string | null;
   fullName: string | null;
 };
+
+/**
+ * For You compose boxes. Same ACL as `POST /api/feed/posts` —
+ * `canPostToFeedSection` (alum → brothers; board → brothers+board; admin → all).
+ */
+export function forYouComposableSections(role: PlatformRole): FeedSection[] {
+  return FEED_SECTIONS.filter((section) => canPostToFeedSection(role, section));
+}
 
 /** Visible For You headings. Keys stay `brothers` | `board` | `sgarlata`. */
 export function forYouHeading(section: FeedSection) {

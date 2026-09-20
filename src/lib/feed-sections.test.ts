@@ -32,9 +32,14 @@ describe("feed sections", () => {
     assert.equal(canPostToFeedSection("board", "brothers"), true);
     assert.equal(canPostToFeedSection("board", "board"), true);
     assert.equal(canPostToFeedSection("board", "sgarlata"), false);
+    assert.equal(canPostToFeedSection("admin", "brothers"), true);
     assert.equal(canPostToFeedSection("admin", "sgarlata"), true);
     assert.equal(canPostToFeedSection("admin", "board"), true);
+    assert.match(deniedFeedSectionMessage("alum", "board") ?? "", /board and admin/i);
+    assert.match(deniedFeedSectionMessage("alum", "sgarlata") ?? "", /admin/);
     assert.match(deniedFeedSectionMessage("board", "sgarlata") ?? "", /admin/);
+    assert.equal(deniedFeedSectionMessage("alum", "brothers"), null);
+    assert.equal(deniedFeedSectionMessage("board", "board"), null);
     assert.equal(deniedFeedSectionMessage("admin", "sgarlata"), null);
   });
 });
