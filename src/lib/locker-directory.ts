@@ -1,6 +1,7 @@
 import { ensureAlumniPhotoColumns } from "@/lib/alumni-photos";
 import { athletePhotoSlots, primaryPhotoUrl } from "@/lib/athlete-photo-slots";
 import { getDatabaseUrl, getSql, isMissingDatabaseConfig } from "@/lib/db";
+import { pickLinkedinProfileUrl, type LinkedinProfileFields } from "@/lib/linkedin-profile";
 import {
   classLabel,
   classifyLockerKind,
@@ -102,7 +103,7 @@ function mapRosterRow(row: RosterRow): LockerPerson {
     state: cleanCell(row.current_state),
     hometownCity: cleanCell(row.hometown_city),
     hometownState: cleanCell(row.hometown_state),
-    linkedinUrl: cleanCell(row.linkedin_url),
+    linkedinUrl: pickLinkedinProfileUrl({ linkedin_url: cleanCell(row.linkedin_url) }),
     headline: cleanCell(row.headline),
     companyName: cleanCell(row.company_name),
     jobTitle: cleanCell(row.job_title),
@@ -279,18 +280,54 @@ async function queryRosterById(id: string): Promise<LockerPersonDetail | null> {
   const row = people[0];
   if (!row) return null;
 
-  const rosterYears = (await sql.query(
-    `SELECT year, position, class FROM alumni_roster_years WHERE alumni_id = $1 ORDER BY year`,
-    [id],
-  )) as Array<{ year: number; position: string | null; class: string | null }>;
-
   const person = mapRosterRow(row);
+  const [rosterYears, linkedinUrl] = await Promise.all([
+    sql.query(`SELECT year, position, class FROM alumni_roster_years WHERE alumni_id = $1 ORDER BY year`, [
+      id,
+    ]) as Promise<Array<{ year: number; position: string | null; class: string | null }>>,
+    person.linkedinUrl ? Promise.resolve(person.linkedinUrl) : siblingLinkedinProfileUrl(person),
+  ]);
+  const resolved = { ...person, linkedinUrl };
   return {
-    ...person,
+    ...resolved,
     rosterYears,
-    photos: athletePhotoSlots(person),
+    photos: athletePhotoSlots(resolved),
     qa: emptyLockerQa(),
   };
+}
+
+type LinkedinSiblingRow = LinkedinProfileFields & {
+  id: string;
+  first_name: string | null;
+  last_name: string;
+  preferred_name: string | null;
+  full_name: string | null;
+  linkedin_url: string | null;
+};
+
+async function siblingLinkedinProfileUrl(person: LockerPerson) {
+  if (person.linkedinUrl || !person.lastName.trim()) return person.linkedinUrl;
+  try {
+    const sql = getSql();
+    const result = await sql.query(
+      `
+      SELECT id::text AS id, first_name, last_name, preferred_name, full_name, linkedin_url
+      FROM alumni
+      WHERE lower(btrim(last_name)) = lower(btrim($1))
+        AND id::text <> $2
+        AND linkedin_url IS NOT NULL AND btrim(linkedin_url) <> ''
+      ORDER BY updated_at DESC NULLS LAST
+      LIMIT 40
+      `,
+      [person.lastName, person.id],
+    );
+    const rows = Array.isArray(result)
+      ? (result as LinkedinSiblingRow[])
+      : ((result as { rows?: LinkedinSiblingRow[] }).rows ?? []);
+    return pickLinkedinProfileUrl(person, rows);
+  } catch {
+    return person.linkedinUrl;
+  }
 }
 
 export async function getLockerPersonById(id: string): Promise<LockerPersonDetail | null> {
