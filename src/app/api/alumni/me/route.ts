@@ -19,7 +19,13 @@ export async function GET() {
           records.map((row) => row.id),
         )
       : [];
-    return NextResponse.json({ account, records, mergeCandidates });
+    return NextResponse.json({
+      account,
+      records,
+      mergeCandidates,
+      verifiedHoya: records.length > 0,
+      mode: "alum",
+    });
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {
       return NextResponse.json({ error: "DATABASE_URL is not set" }, { status: 503 });

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { canPostNewsflash } from "@/lib/hoya-alum-session";
 import { createNewsflashPost } from "@/lib/locker-queries";
 import { getLockerViewer } from "@/lib/locker-viewer";
 
@@ -9,7 +8,7 @@ export async function POST(request: Request) {
   if (!viewer) {
     return NextResponse.redirect(new URL("/home/login", request.url), { status: 303 });
   }
-  if (!canPostNewsflash(viewer.role)) {
+  if (!viewer.canPostNewsflash) {
     return NextResponse.redirect(new URL("/newsflash", request.url), { status: 303 });
   }
 

@@ -105,6 +105,47 @@ export async function createNewsflashPost(input: {
   return rows[0];
 }
 
+export async function createLockerFeedPost(input: {
+  authorLabel: string;
+  authorRole?: "official" | "alum";
+  audience?: string;
+  title?: string;
+  body: string;
+}) {
+  const post: FeedPost = {
+    id: randomUUID(),
+    author_label: input.authorLabel.trim() || "Alumnus",
+    author_role: input.authorRole === "official" ? "official" : "alum",
+    audience: input.audience?.trim() || "brothers",
+    title: input.title?.trim() || null,
+    body: input.body.trim(),
+    created_at: new Date().toISOString(),
+    source: "feed",
+  };
+  if (!getDatabaseUrl()) {
+    const store = readFallback();
+    store.feed.unshift(post);
+    writeFallback(store);
+    return post;
+  }
+  await ensureLockerTables();
+  const rows = await query<Array<Omit<FeedPost, "source">>>(
+    `
+    INSERT INTO locker_feed_posts (author_label, author_role, audience, title, body)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id::text, author_label, author_role, audience, title, body, created_at::text
+    `,
+    [post.author_label, post.author_role, post.audience, post.title, post.body],
+  );
+  const row = rows[0];
+  if (!row) return post;
+  return {
+    ...row,
+    author_role: row.author_role === "official" ? "official" : "alum",
+    source: "feed" as const,
+  };
+}
+
 export async function listLockerFeedPosts(): Promise<FeedPost[]> {
   if (!getDatabaseUrl()) {
     return readFallback().feed;

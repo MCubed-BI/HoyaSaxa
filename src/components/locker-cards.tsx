@@ -113,7 +113,7 @@ export function FeedPostCard({ post }: { post: FeedPost }) {
     <Card>
       <CardHeader>
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-          {post.author_role === "official" ? "Official" : "Alumni"}
+          {post.author_role === "official" ? "Official" : post.audience === "brothers" ? "Brothers" : "Alumni"}
           {post.source === "newsflash" ? " · Newsflash" : ""} · {post.author_label}
         </p>
         {post.title ? <CardTitle className="text-navy">{post.title}</CardTitle> : null}

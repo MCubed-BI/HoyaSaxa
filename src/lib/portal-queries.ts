@@ -1,6 +1,6 @@
 import { getSql } from "@/lib/db";
 import { ensurePortalTables } from "@/lib/portal-schema";
-import type { Role } from "@/lib/roles";
+import { normalizeStaffRole, type Role } from "@/lib/roles";
 import type { AlumniListItem } from "@/lib/types";
 
 export type CoachMessage = {
@@ -57,11 +57,7 @@ export async function lookupStaffRole(username: string, email?: string | null): 
     `,
     [username.trim(), (email ?? "").trim()],
   );
-  const role = rows[0]?.role;
-  if (role === "owner" || role === "coach" || role === "alum" || role === "board") {
-    return role;
-  }
-  return null;
+  return normalizeStaffRole(rows[0]?.role);
 }
 
 export async function lookupAlumniClaim(accountId: string) {

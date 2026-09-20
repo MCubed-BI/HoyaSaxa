@@ -60,7 +60,9 @@ export default async function MessageChannelPage({
           title={channel.name}
           description={
             channel.description ||
-            (canPost ? "Staff can post. Alumni read this channel." : "Read only for alumni.")
+            (canPost
+              ? "Admin can post From Sgarlata. Board and alumni can read this channel."
+              : "Read only. Board and Alum cannot compose From Sgarlata.")
           }
           actions={
             channel.kind === "official" ? (
@@ -82,7 +84,9 @@ export default async function MessageChannelPage({
           </CardContent>
         </Card>
       ) : (
-        <p className="text-sm text-muted-foreground">Alumni can read this channel. Staff post via the coach login.</p>
+        <p className="text-sm text-muted-foreground">
+          Board and alumni can read this channel. Only Admin can compose From Sgarlata.
+        </p>
       )}
 
       {posts.length === 0 ? (

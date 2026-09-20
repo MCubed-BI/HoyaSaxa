@@ -26,6 +26,8 @@ export async function POST(request: Request) {
     const response = NextResponse.json({
       ok: true,
       role: "alum",
+      verifiedHoya: true,
+      mode: "alum",
       claimedIds: result.claimedIds,
       classYear: result.classYear,
     });

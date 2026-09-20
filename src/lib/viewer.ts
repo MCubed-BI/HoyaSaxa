@@ -24,13 +24,10 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
   const staffUsername = getSessionUsername(jar.get(SESSION_COOKIE)?.value);
   if (staffUsername) {
     let role = resolveRoleFromEnv(staffUsername, getCoachCredentials().username);
-    if (role === "alum" || role === "board") {
-      role = "coach";
-    }
     if (getDatabaseUrl()) {
       try {
         const assigned = await lookupStaffRole(staffUsername);
-        if (assigned && assigned !== "alum" && assigned !== "board") role = assigned;
+        if (assigned && assigned !== "alum") role = assigned;
       } catch {
         // Env mapping is enough when portal tables are not reachable.
       }

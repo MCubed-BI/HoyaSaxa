@@ -12,7 +12,7 @@ import {
   verifyCredentials,
 } from "@/lib/auth";
 import { homePathForRole, resolveRoleFromEnv } from "@/lib/roles";
-import { clearCoachSessionCookies, setCoachRoleHint } from "@/lib/session";
+import { clearAlumSessionCookies, clearCoachSessionCookies, setCoachRoleHint } from "@/lib/session";
 
 function safeNextPath(value: string | null, roleHome: string) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return roleHome;
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     return response;
   }
 
+  clearAlumSessionCookies(response, true);
   response.cookies.set(SESSION_COOKIE, createSessionToken(username), sessionCookieOptions());
   setCoachRoleHint(response);
   return response;

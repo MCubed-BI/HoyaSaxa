@@ -35,14 +35,15 @@ Additive portal tables (created if missing): `staff_roles`, `coach_messages`, `n
 
 ## Roles
 
-Four roles: **owner**, **coach**, **alum**, and **board** (Lars).
+Three product modes, enforced in `src/proxy.ts` and write APIs (not UI-only). Internal role values stay `owner` / `coach` / `board` / `alum` (`owner` and `coach` are **Admin**).
 
-| Role | How it is assigned | What they see |
+| Mode | How it is assigned | What they can do |
 | --- | --- | --- |
-| `owner` | `COACH_USERNAME` (default `Hoyas`) and `HOYA_OWNER_USERNAMES` → `ga_session` | Full staff shell: directory, blast, sync, reports, coach messages, newsflash, fundraising |
-| `coach` | `HOYA_COACH_USERNAMES` → `ga_session` | Same owner tools (blast stays on) |
-| `board` | `HOYA_BOARD_USERNAMES` (default `Lars`) → `hoya_alum_session` | Legacy Locker + Newsflash write. Never unlocks Data Sync or coach blast. |
-| `alum` | `hoya_alum_session` from Register/Claim, or preview username `Alum` | Legacy Locker + selected-directory email blast |
+| **Admin** | Coach gate `ga_session`. `COACH_USERNAME` (default `Hoyas`) plus `HOYA_ADMIN_USERNAMES` / `HOYA_OWNER_USERNAMES` / `staff_roles`. Seed: **Lars**, **Sgarlata**, **Mike**, **Michael**, **Michael Kasten** | See/post all, including From Sgarlata / Message from Head Coach |
+| **Board** | `hoya_alum_session` `role=board` (`HOYA_BOARD_USERNAMES`, default preview `Board`) | See/post locker + portal except Sgarlata / coach compose (403 on those POSTs) |
+| **Alum** | Claim/login `hoya_alum_session` `role=alum`, or preview `Alum` | Edit self, post Brothers on For You, search directory. **Verified Hoya** after a successful claim/login |
+
+Add Admins with `HOYA_ADMIN_USERNAMES` or `INSERT INTO staff_roles` — short runbook: [docs/admin-roles.md](docs/admin-roles.md).
 
 ### Alum session contract
 
@@ -68,7 +69,7 @@ Helpers: `readAlumSession(req)`, `alumSessionCookieName`, `AlumSession`, `requir
 
 Alum send uses the same `sendProviderEmail` path as staff. Live delivery is Gmail SMTP (`GMAIL_USER` + `GMAIL_APP_PASSWORD` via nodemailer). From is that mailbox. Without those, Prepare opens a Gmail compose window or a `mailto:` draft. `POST /api/blast/send` rejects alum SMS, `includeFilters`, and empty pick lists. `/api/blast/ids` (add filtered group) stays staff-only.
 
-Local preview: `/login` as `Alum` or `Lars` with the coach password mints `hoya_alum_session` and opens `/portal`.
+Local preview: `/login` as `Alum` or `Board` with the coach password mints `hoya_alum_session` and opens `/portal`. `/login` as `Lars`, `Sgarlata`, `Mike`, or `Hoyas` is Admin (`ga_session`).
 
 4. Install and run:
 
@@ -128,16 +129,17 @@ Alumni-facing Home, For You feed, and Lars Newsflash. They use the existing CRM 
 
 | Username | Role | Cookie |
 | --- | --- | --- |
-| `Lars` | board (can publish Newsflash) | `hoya_alum_session` `role=board` |
-| `Alum` | alumnus (read Home, For You, Newsflash) | `hoya_alum_session` `role=alum` |
+| `Lars` / `Sgarlata` / `Mike` | Admin (see/post all, including From Sgarlata) | `ga_session` |
+| `Board` | Board Mode (no Sgarlata compose) | `hoya_alum_session` `role=board` |
+| `Alum` | alumnus (edit self, Brothers on For You, directory) | `hoya_alum_session` `role=alum` |
 
 Password defaults to `COACH_PASSWORD` (`Sgarlata35` locally) unless `HOYA_BOARD_PASSWORD` / `HOYA_ALUM_PASSWORD` / `HOYA_LOCKER_PASSWORD` is set.
 
 Verify:
 
-1. Open `/home/login`, sign in as `Lars` / `Sgarlata35`. Confirm Home hero, quick actions, upcoming event, and recent activity.
-2. Open `/newsflash` as Lars and publish a headline. Confirm it appears for an `Alum` session after sign-out / sign-in.
-3. Open `/feed`. For You shows official + alumni posts. Teammates and Following are stubs.
+1. Open `/home/login`, sign in as `Lars` / `Sgarlata35` (Admin). Confirm Home hero, quick actions, upcoming event, and recent activity.
+2. Open `/newsflash` as Admin or `Board` and publish a headline. Confirm it appears for an `Alum` session after sign-out / sign-in.
+3. Open `/feed`. For You shows official + alumni/Brothers posts. Alum can compose a Brothers post. Teammates and Following are stubs.
 
 ### Seed dependency
 
@@ -161,7 +163,7 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/portal` — alum entry; redirects to `/home`
 - `/home` — Welcome hero, Directory/Events/News/Giving, upcoming event, recent activity
 - `/feed` — For You / Teammates / Alumni / Following
-- `/newsflash` — Lars Newsflash (board publishes, alumni read)
+- `/newsflash` — Newsflash (Admin and Board publish, alumni read)
 - `/events` — Upcoming / Past / My Events (date, title, category, location, thumbnail)
 - `/events/new` — Create Event (coach and board only)
 - `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
@@ -244,4 +246,4 @@ Staff `/blast` and alum `/portal/blast` both call `sendProviderEmail`. When `GMA
 
 ## Deploy
 
-Deploy to Vercel. Set `DATABASE_URL`, `COACH_USERNAME`, and `COACH_PASSWORD`. Optionally set `HOYA_OWNER_USERNAMES`, `HOYA_COACH_USERNAMES`, `HOYA_BOARD_USERNAMES`, `HOYA_ALUM_USERNAMES`, and `ALUMNI_SESSION_SECRET`. Add Twilio and/or `GMAIL_USER` + `GMAIL_APP_PASSWORD` when you are ready to send from the app. Auth stays on for every environment — unauthenticated visitors never see alumni data.
+Deploy to Vercel. Set `DATABASE_URL`, `COACH_USERNAME`, and `COACH_PASSWORD`. Optionally set `HOYA_ADMIN_USERNAMES` (replaces the Admin seed when set), `HOYA_OWNER_USERNAMES`, `HOYA_COACH_USERNAMES`, `HOYA_BOARD_USERNAMES`, `HOYA_ALUM_USERNAMES`, and `ALUMNI_SESSION_SECRET`. Add Admins via env or `staff_roles` — [docs/admin-roles.md](docs/admin-roles.md). Add Twilio and/or `GMAIL_USER` + `GMAIL_APP_PASSWORD` when you are ready to send from the app. Auth stays on for every environment — unauthenticated visitors never see alumni data.

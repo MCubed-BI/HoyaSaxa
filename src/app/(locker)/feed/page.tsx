@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrothersComposer } from "@/components/brothers-composer";
 import { FeedPostCard } from "@/components/locker-cards";
 import { LockerHeader } from "@/components/locker-header";
 import { Notice, PageHeader, PageMain, PageShell, pillClass } from "@/components/page-chrome";
@@ -55,6 +56,8 @@ export default async function ForYouFeedPage({
         </div>
 
         {data.usingFallback ? <Notice>{data.fallbackReason}</Notice> : null}
+
+        {viewer.canPostBrothers ? <BrothersComposer /> : null}
 
         {posts.length === 0 ? (
           <StatusCard title={feedTabLabel(tab)} body={feedTabStub(tab)} />

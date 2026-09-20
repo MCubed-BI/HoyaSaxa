@@ -1,4 +1,5 @@
 import { getSql } from "@/lib/db";
+import { DEFAULT_ADMIN_USERNAMES } from "@/lib/roles";
 
 let ensured = false;
 
@@ -25,6 +26,19 @@ export async function ensurePortalTables() {
     ON staff_roles (lower(email))
     WHERE email IS NOT NULL AND btrim(email) <> ''
   `);
+
+  for (const username of DEFAULT_ADMIN_USERNAMES) {
+    await sql.query(
+      `
+      INSERT INTO staff_roles (username, role)
+      SELECT $1, 'owner'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM staff_roles WHERE lower(username) = lower($1)
+      )
+      `,
+      [username],
+    );
+  }
 
   await sql.query(`
     CREATE TABLE IF NOT EXISTS coach_messages (
