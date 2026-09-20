@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     if (contentType.includes("application/json")) {
       const body = (await request.json()) as { email?: string; password?: string };
       const account = await authenticateAlumni(body.email ?? "", body.password ?? "");
-      const response = NextResponse.json({ ok: true, role: "alum" });
+      const response = NextResponse.json({ ok: true, role: "alum", verifiedHoya: true, mode: "alum" });
       setAlumSessionCookies(response, await alumSessionIdentityForAccount(account));
       return response;
     }

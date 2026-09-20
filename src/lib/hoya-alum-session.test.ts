@@ -28,11 +28,14 @@ afterEach(() => {
 });
 
 describe("hoya_alum_session", () => {
-  it("defaults Lars as board and Alum as alumnus", () => {
+  it("defaults Board preview and Alum as alumnus, and keeps seeded admins off the locker board list", () => {
+    delete process.env.HOYA_ADMIN_USERNAMES;
     delete process.env.HOYA_BOARD_USERNAMES;
     delete process.env.HOYA_ALUM_USERNAMES;
-    assert.deepEqual(lockerBoardUsernames(), ["Lars"]);
+    assert.deepEqual(lockerBoardUsernames(), ["Board"]);
     assert.deepEqual(lockerAlumUsernames(), ["Alum"]);
+    process.env.HOYA_BOARD_USERNAMES = "Lars,Board";
+    assert.deepEqual(lockerBoardUsernames(), ["Board"]);
   });
 
   it("issues a signed cookie payload with role=board", () => {
@@ -56,9 +59,10 @@ describe("hoya_alum_session", () => {
     delete process.env.HOYA_BOARD_PASSWORD;
     delete process.env.HOYA_ALUM_PASSWORD;
     delete process.env.HOYA_LOCKER_PASSWORD;
-    assert.deepEqual(verifyLockerCredentials("Lars", "Sgarlata35"), { role: "board", label: "Lars" });
+    assert.deepEqual(verifyLockerCredentials("Board", "Sgarlata35"), { role: "board", label: "Board" });
     assert.deepEqual(verifyLockerCredentials("Alum", "Sgarlata35"), { role: "alum", label: "Alum" });
-    assert.equal(verifyLockerCredentials("Lars", "wrong"), null);
+    assert.equal(verifyLockerCredentials("Board", "wrong"), null);
+    assert.equal(verifyLockerCredentials("Lars", "Sgarlata35"), null);
     assert.equal(verifyLockerCredentials("Hoyas", "Sgarlata35"), null);
   });
 });

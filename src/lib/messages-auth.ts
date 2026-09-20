@@ -4,7 +4,8 @@ import {
   readAlumniSessionFromCookies,
 } from "@/lib/alumni-auth";
 import { readAlumSession } from "@/lib/alum-session";
-import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
+import { SESSION_COOKIE, getCoachCredentials, getSessionUsername, isValidSessionToken } from "@/lib/auth";
+import { canPostCoachMessage, resolveRoleFromEnv } from "@/lib/roles";
 import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
 
 export const SGARLATA_CHANNEL_SLUG = "sgarlata";
@@ -84,12 +85,16 @@ export function viewerLabelFromAccountId(accountId: string) {
 
 export async function getMessageViewer(): Promise<MessageViewer | null> {
   const jar = await cookies();
-  if (isValidSessionToken(jar.get(SESSION_COOKIE)?.value)) {
+  const staffUsername = getSessionUsername(jar.get(SESSION_COOKIE)?.value);
+  if (staffUsername || isValidSessionToken(jar.get(SESSION_COOKIE)?.value)) {
+    const role = staffUsername
+      ? resolveRoleFromEnv(staffUsername, getCoachCredentials().username)
+      : "coach";
     return {
       kind: "staff",
-      label: "Staff",
-      viewerKey: "staff",
-      canPost: true,
+      label: staffUsername || "Staff",
+      viewerKey: staffUsername ? `staff:${staffUsername.toLowerCase()}` : "staff",
+      canPost: canPostCoachMessage(role),
     };
   }
 

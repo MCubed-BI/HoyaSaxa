@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AlumniMePanel } from "@/components/alumni-me-panel";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { ProductHeader } from "@/components/product-header";
+import { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ export default async function MePage() {
           <PageHeader
             title="My alumni record"
             description="Alumni can edit their own contact record or merge a duplicate roster row. This login does not open the coach directory."
+            actions={records.length > 0 ? <VerifiedHoyaBadge /> : undefined}
           />
           {records.length === 0 ? (
             <EmptyState

@@ -3,9 +3,15 @@ import { afterEach, describe, it } from "node:test";
 import { navItemsForRole, portalMoreItems } from "./nav";
 import { isAlumAllowedPath, isPublicPath, loginPathFor } from "./portal-paths";
 import { toPublicAlumniCard } from "./portal-queries";
+import { allowRequest, isCoachComposePath } from "./access";
 import {
+  accessModeForRole,
+  canPostBrothers,
+  canPostCoachMessage,
+  canPostNewsflash,
   canUseAlumEmailBlast,
   canUseBlast,
+  DEFAULT_ADMIN_USERNAMES,
   homePathForRole,
   resolveRoleFromEnv,
   staffUsernamesFromEnv,
@@ -19,23 +25,70 @@ afterEach(() => {
 
 describe("roles", () => {
   it("maps default staff usernames", () => {
+    delete process.env.HOYA_ADMIN_USERNAMES;
     delete process.env.HOYA_OWNER_USERNAMES;
     delete process.env.HOYA_COACH_USERNAMES;
     delete process.env.HOYA_BOARD_USERNAMES;
     delete process.env.HOYA_ALUM_USERNAMES;
     const lists = staffUsernamesFromEnv("Hoyas");
-    assert.deepEqual(lists.owner, ["Hoyas"]);
-    assert.deepEqual(lists.board, ["Lars"]);
+    assert.deepEqual(lists.owner, ["Hoyas", ...DEFAULT_ADMIN_USERNAMES]);
+    assert.deepEqual(lists.board, ["Board"]);
     assert.deepEqual(lists.alum, ["Alum"]);
   });
 
-  it("resolves env roles with owner precedence", () => {
-    process.env.HOYA_OWNER_USERNAMES = "Hoyas,Mike";
-    process.env.HOYA_BOARD_USERNAMES = "Lars,Mike";
+  it("resolves seeded admins and keeps a distinct Board preview", () => {
+    delete process.env.HOYA_ADMIN_USERNAMES;
+    delete process.env.HOYA_OWNER_USERNAMES;
+    process.env.HOYA_BOARD_USERNAMES = "Board";
     assert.equal(resolveRoleFromEnv("Hoyas", "Hoyas"), "owner");
-    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "board");
+    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "owner");
+    assert.equal(resolveRoleFromEnv("Sgarlata", "Hoyas"), "owner");
     assert.equal(resolveRoleFromEnv("Mike", "Hoyas"), "owner");
+    assert.equal(resolveRoleFromEnv("Michael Kasten", "Hoyas"), "owner");
+    assert.equal(resolveRoleFromEnv("Board", "Hoyas"), "board");
     assert.equal(resolveRoleFromEnv("Alum", "Hoyas"), "alum");
+  });
+
+  it("lets HOYA_ADMIN_USERNAMES replace the seed list", () => {
+    process.env.HOYA_ADMIN_USERNAMES = "Pat";
+    delete process.env.HOYA_OWNER_USERNAMES;
+    process.env.HOYA_BOARD_USERNAMES = "Lars";
+    assert.equal(resolveRoleFromEnv("Pat", "Hoyas"), "owner");
+    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "board");
+    assert.equal(resolveRoleFromEnv("Hoyas", "Hoyas"), "owner");
+    process.env.HOYA_ADMIN_USERNAMES = "";
+    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "owner");
+  });
+
+  it("maps product modes and compose rights", () => {
+    assert.equal(accessModeForRole("owner"), "admin");
+    assert.equal(accessModeForRole("coach"), "admin");
+    assert.equal(accessModeForRole("board"), "board");
+    assert.equal(accessModeForRole("alum"), "alum");
+    assert.equal(canPostCoachMessage("owner"), true);
+    assert.equal(canPostCoachMessage("coach"), true);
+    assert.equal(canPostCoachMessage("board"), false);
+    assert.equal(canPostCoachMessage("alum"), false);
+    assert.equal(canPostNewsflash("owner"), true);
+    assert.equal(canPostNewsflash("coach"), true);
+    assert.equal(canPostNewsflash("board"), true);
+    assert.equal(canPostNewsflash("alum"), false);
+    assert.equal(canPostBrothers("alum"), true);
+    assert.equal(canPostBrothers("board"), true);
+    assert.equal(isCoachComposePath("/api/messages/channels/sgarlata/posts"), true);
+    assert.equal(isCoachComposePath("/api/portal/coach-messages"), true);
+    assert.equal(
+      allowRequest({ role: "board", mode: "board", source: "alum-session", label: "Board", alumniId: null, verifiedHoya: false }, "/api/messages/channels/sgarlata/posts", "POST"),
+      false,
+    );
+    assert.equal(
+      allowRequest({ role: "owner", mode: "admin", source: "staff", label: "Lars", alumniId: null, verifiedHoya: false }, "/api/messages/channels/sgarlata/posts", "POST"),
+      true,
+    );
+    assert.equal(
+      allowRequest({ role: "board", mode: "board", source: "alum-session", label: "Board", alumniId: null, verifiedHoya: false }, "/messages/sgarlata", "GET"),
+      true,
+    );
   });
 
   it("hides staff blast for alum and board and offers selected email instead", () => {
@@ -87,6 +140,7 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/find-my-alum"), true);
     assert.equal(isAlumAllowedPath("/message"), true);
     assert.equal(isAlumAllowedPath("/api/portal/newsflash"), true);
+    assert.equal(isAlumAllowedPath("/api/locker/feed"), true);
     assert.equal(isAlumAllowedPath("/blast"), false);
     assert.equal(isPublicPath("/home/login"), true);
     assert.equal(isPublicPath("/api/logout"), true);

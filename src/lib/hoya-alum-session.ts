@@ -1,12 +1,17 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { DEFAULT_COACH_PASSWORD, getCoachCredentials } from "@/lib/auth";
+import {
+  DEFAULT_ALUM_PREVIEW_USERNAME,
+  DEFAULT_BOARD_PREVIEW_USERNAME,
+  adminUsernamesFromEnv,
+} from "@/lib/roles";
 
 export const HOYA_ALUM_SESSION_COOKIE = "hoya_alum_session";
 export const LOCKER_ROLES = ["alum", "board"] as const;
 export type LockerRole = (typeof LOCKER_ROLES)[number];
 
-export const DEFAULT_BOARD_USERNAME = "Lars";
-export const DEFAULT_ALUM_USERNAME = "Alum";
+export const DEFAULT_BOARD_USERNAME = DEFAULT_BOARD_PREVIEW_USERNAME;
+export const DEFAULT_ALUM_USERNAME = DEFAULT_ALUM_PREVIEW_USERNAME;
 
 export type HoyaAlumSession = {
   role: LockerRole;
@@ -52,7 +57,9 @@ function uniqueUsernames(values: string[]) {
 
 export function lockerBoardUsernames() {
   const listed = parseCsv(process.env.HOYA_BOARD_USERNAMES);
-  return uniqueUsernames(listed.length ? listed : [DEFAULT_BOARD_USERNAME]);
+  const raw = uniqueUsernames(listed.length ? listed : [DEFAULT_BOARD_USERNAME]);
+  const admins = new Set(adminUsernamesFromEnv(getCoachCredentials().username).map((item) => item.toLowerCase()));
+  return raw.filter((item) => !admins.has(item.toLowerCase()));
 }
 
 export function lockerAlumUsernames() {

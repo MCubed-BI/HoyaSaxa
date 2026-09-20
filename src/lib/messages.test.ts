@@ -81,6 +81,7 @@ describe("messages path gate", () => {
 
   it("lets staff post to Sgarlata and keeps alums read-only", () => {
     assert.equal(canPostSgarlata({ kind: "staff", label: "Staff", viewerKey: "staff", canPost: true }), true);
+    assert.equal(canPostSgarlata({ kind: "staff", label: "Board", viewerKey: "staff:board", canPost: false }), false);
     assert.equal(canPostSgarlata({ kind: "alum", label: "Alumnus", viewerKey: "alum:x", canPost: false }), false);
     assert.equal(lockerAccountId("Pat@Hoyas.edu"), "locker:pat@hoyas.edu");
     assert.equal(verifyAlumAccessCode("HoyaSaxa"), true);

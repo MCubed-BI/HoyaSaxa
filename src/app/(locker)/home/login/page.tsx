@@ -26,7 +26,7 @@ export default async function LockerLoginPage({
   return (
     <AuthShell
       title="Alumni portal"
-      subtitle="Board (Lars) can publish Newsflash. Alumni can read Home, For You, and Newsflash."
+      subtitle="Admin seed (Lars, Sgarlata, Mike) see/post all. Board can post everything except From Sgarlata. Alumni can edit self and post Brothers on For You."
     >
       <form action="/api/locker/login" method="post" className="space-y-4">
         <input type="hidden" name="next" value={safeNextPath(params.next)} />
@@ -56,9 +56,9 @@ export default async function LockerLoginPage({
           <p className="text-sm text-destructive">That username or password is not recognized.</p>
         ) : (
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Demo: <code>Lars</code> (board) or <code>Alum</code> (read). Password matches the shared staff
-            default unless <code>HOYA_BOARD_PASSWORD</code> / <code>HOYA_ALUM_PASSWORD</code> is set. Sets{" "}
-            <code>hoya_alum_session</code>.
+            Demo: <code>Lars</code> / <code>Sgarlata</code> / <code>Mike</code> (Admin), <code>Board</code>{" "}
+            (Board Mode), or <code>Alum</code> (Alum Mode). Password matches the shared staff default unless{" "}
+            <code>HOYA_BOARD_PASSWORD</code> / <code>HOYA_ALUM_PASSWORD</code> is set.
           </p>
         )}
         <Button type="submit" className="h-10 w-full">

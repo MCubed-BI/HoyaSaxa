@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
-import { allStaffUsernames } from "@/lib/roles";
+import { allStaffUsernames, isAdminUsername, staffUsernamesFromEnv } from "@/lib/roles";
 
 export const SESSION_COOKIE = "ga_session";
 export const COACH_ROLE = "coach" as const;
@@ -71,12 +71,12 @@ export function isValidSessionToken(token: string | undefined | null) {
 export function verifyCredentials(username: string, password: string) {
   const trimmed = username.trim();
   if (!isAllowedStaffUsername(trimmed)) return false;
-  const { password: coachPassword } = getCoachCredentials();
-  const boardNames = (process.env.HOYA_BOARD_USERNAMES || "Lars")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-  const useBoardPassword = Boolean(process.env.HOYA_BOARD_PASSWORD) && boardNames.includes(trimmed.toLowerCase());
+  const { username: coachUsername, password: coachPassword } = getCoachCredentials();
+  const boardNames = staffUsernamesFromEnv(coachUsername).board.map((item) => item.toLowerCase());
+  const useBoardPassword =
+    Boolean(process.env.HOYA_BOARD_PASSWORD) &&
+    !isAdminUsername(trimmed, coachUsername) &&
+    boardNames.includes(trimmed.toLowerCase());
   return safeEqual(password, useBoardPassword ? boardPassword() : coachPassword);
 }
 

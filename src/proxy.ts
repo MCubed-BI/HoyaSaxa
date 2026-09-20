@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { allowRequest, resolveCookieAccess } from "@/lib/access";
 import { ALUM_SESSION_COOKIE, isAlumLoggedIn, readAlumSession } from "@/lib/alum-session";
 import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { HOYA_ALUM_SESSION_COOKIE, isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
@@ -37,6 +38,16 @@ function hasPortalAlumSession(request: NextRequest) {
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const access = resolveCookieAccess({
+    get: (name) => request.cookies.get(name),
+  });
+
+  if (access && !allowRequest(access, pathname, request.method)) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL("/messages/sgarlata", request.url));
+  }
 
   if (isPublicPath(pathname)) {
     return NextResponse.next();
