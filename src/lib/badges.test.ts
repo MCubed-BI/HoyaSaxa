@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { attendanceLeadersFromCoder4Feed } from "./badge-event-feed";
+import { attendanceLeadersFromCoder4Feed, eventBadgeFeedFromCoder4Json } from "./badge-event-feed";
 import {
   BADGE_PERCENTILE_THRESHOLDS,
   BADGE_TYPES,
@@ -147,5 +147,36 @@ describe("badge primitives", () => {
     assert.deepEqual(fromRows, [
       { alumId: "b", userId: "b", attendanceCount: 2, rank: 5, percentile: 80, cohortSize: 20 },
     ]);
+  });
+
+  it("consumes GET /api/events/attendance/feed { alum, feed } without inventing ranks", () => {
+    const payload = {
+      alum: { alumId: "a", userId: "a", attendanceCount: 4, rank: 1, percentile: 100, cohortSize: 10 },
+      feed: {
+        version: 1,
+        attendanceCountScope: "lifetime",
+        rankBasis: "lifetime_all_events",
+        rows: [
+          {
+            eventId: "e1",
+            eventSlug: "spring-game",
+            eventTitle: "Spring Game",
+            alumId: "a",
+            userId: "a",
+            checkedInAt: "2026-04-01T16:00:00.000Z",
+            attendanceCount: 4,
+            rank: 1,
+            percentile: 100,
+            cohortSize: 10,
+          },
+        ],
+        leaders: [],
+      },
+    };
+    const feed = eventBadgeFeedFromCoder4Json(payload);
+    assert.equal(feed?.rows?.[0]?.eventSlug, "spring-game");
+    const leaders = attendanceLeadersFromCoder4Feed(payload);
+    assert.deepEqual(leaders, [payload.alum]);
+    assert.equal(JSON.stringify(leaders).includes("$"), false);
   });
 });

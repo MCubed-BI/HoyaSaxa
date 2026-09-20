@@ -74,6 +74,8 @@ export {
 export {
   EVENT_BADGE_FEED_VERSION,
   attendanceLeadersFromCoder4Feed,
+  eventBadgeFeedFromCoder4Json,
+  type Coder4AttendanceFeedResponse,
   type EventBadgeFeed,
   type EventBadgeFeedRow,
   type EventBadgeTotals,

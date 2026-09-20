@@ -120,7 +120,7 @@ const badgesById = await listPublicBadgesMany(ids, {
 });
 ```
 
-Coder 4 feed contract (consume-only): `eventId`, `eventSlug?`, `eventTitle?`, `alumId` / `userId`, `checkedInAt`, `attendanceCount`, `rank`, `percentile` (`cohortSize` optional).
+Coder 4 feed contract (consume-only): `eventId`, `eventSlug?`, `eventTitle?`, `alumId` / `userId`, `checkedInAt`, `attendanceCount`, `rank`, `percentile` (`cohortSize` optional). `GET /api/events/attendance/feed` and `?alumId=` → `{ alum, feed }` parse via `eventBadgeFeedFromCoder4Json`.
 
 - One person: `listPublicBadges(alumniId, { attendanceTotals })` or `GET /api/badges/:alumniId` → `{ alumniId, badges: PublicBadge[] }`
 - Directory: `listPublicBadgesMany(ids, { verifiedAlumniIds, attendanceLeaders })`

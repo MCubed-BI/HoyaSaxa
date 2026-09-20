@@ -14,16 +14,17 @@
  */
 export const EVENT_BADGE_FEED_VERSION = 1 as const;
 
+/** Coder 4 Ready row — `GET /api/events/attendance/feed`. */
 export type EventBadgeFeedRow = {
   eventId: string;
   eventSlug?: string;
   eventTitle?: string;
   alumId: string | null;
-  userId?: string;
+  userId: string;
   checkedInAt: string;
-  attendanceCount?: number;
-  rank?: number | null;
-  percentile?: number | null;
+  attendanceCount: number;
+  rank: number;
+  percentile: number;
   cohortSize?: number;
 };
 
@@ -41,33 +42,80 @@ export type EventBadgeTotals = {
 export type EventCheckinFeedRow = EventBadgeFeedRow;
 
 export type EventBadgeFeed = {
-  version?: typeof EVENT_BADGE_FEED_VERSION;
+  version?: typeof EVENT_BADGE_FEED_VERSION | number;
+  attendanceCountScope?: string;
+  rankBasis?: string;
   rows?: EventBadgeFeedRow[];
-  leaders?: EventBadgeTotals[];
+  leaders?: Array<EventBadgeTotals & { alumId?: string | null }>;
 };
+
+/** `GET /api/events/attendance/feed` or `?alumId=` → `{ alum, feed }`. */
+export type Coder4AttendanceFeedResponse =
+  | EventBadgeFeed
+  | {
+      alum?: EventBadgeTotals | null;
+      feed?: EventBadgeFeed | null;
+    };
 
 function alumKey(row: { alumId?: string | null }) {
   return typeof row.alumId === "string" && row.alumId.trim() ? row.alumId : "";
 }
 
+function asTotals(row: {
+  alumId?: string | null;
+  userId?: string;
+  attendanceCount?: number;
+  rank?: number | null;
+  percentile?: number | null;
+  cohortSize?: number;
+}): EventBadgeTotals | null {
+  const alumId = alumKey(row);
+  if (!alumId) return null;
+  return {
+    alumId,
+    userId: row.userId,
+    attendanceCount: row.attendanceCount ?? 0,
+    rank: row.rank ?? null,
+    percentile: row.percentile ?? null,
+    cohortSize: row.cohortSize,
+  };
+}
+
+/** Accept Coder 4's list payload or `{ alum, feed }` from the GET route. */
+export function eventBadgeFeedFromCoder4Json(payload: Coder4AttendanceFeedResponse | null | undefined): EventBadgeFeed | null {
+  if (!payload || typeof payload !== "object") return null;
+  if ("feed" in payload && payload.feed) {
+    const leaders = payload.feed.leaders?.length
+      ? payload.feed.leaders
+      : payload.alum
+        ? [payload.alum]
+        : [];
+    return { ...payload.feed, leaders };
+  }
+  if ("rows" in payload || "leaders" in payload) return payload;
+  if ("alum" in payload && payload.alum) {
+    return { rows: [], leaders: [payload.alum] };
+  }
+  return null;
+}
+
 /** Flatten Coder 4 `{ leaders, rows }` into one totals row per alumId. */
-export function attendanceLeadersFromCoder4Feed(feed: EventBadgeFeed | null | undefined): EventBadgeTotals[] {
-  if (!feed) return [];
-  if (feed.leaders?.length) {
-    return feed.leaders.filter((row) => alumKey(row));
+export function attendanceLeadersFromCoder4Feed(
+  feed: EventBadgeFeed | Coder4AttendanceFeedResponse | null | undefined,
+): EventBadgeTotals[] {
+  const normalized = eventBadgeFeedFromCoder4Json(feed) ?? (feed && "rows" in (feed as object) ? (feed as EventBadgeFeed) : null);
+  if (!normalized) return [];
+  if (normalized.leaders?.length) {
+    return normalized.leaders.flatMap((row) => {
+      const totals = asTotals(row);
+      return totals ? [totals] : [];
+    });
   }
   const byAlum = new Map<string, EventBadgeTotals>();
-  for (const row of feed.rows ?? []) {
-    const alumId = alumKey(row);
-    if (!alumId || byAlum.has(alumId)) continue;
-    byAlum.set(alumId, {
-      alumId,
-      userId: row.userId,
-      attendanceCount: row.attendanceCount ?? 0,
-      rank: row.rank ?? null,
-      percentile: row.percentile ?? null,
-      cohortSize: row.cohortSize,
-    });
+  for (const row of normalized.rows ?? []) {
+    const totals = asTotals(row);
+    if (!totals || byAlum.has(totals.alumId)) continue;
+    byAlum.set(totals.alumId, totals);
   }
   return [...byAlum.values()];
 }
