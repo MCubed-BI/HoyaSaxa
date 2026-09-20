@@ -138,6 +138,7 @@ export const staffRoles = pgTable("staff_roles", {
   id: uuid("id").primaryKey().defaultRandom(),
   username: text("username"),
   email: text("email"),
+  alumniId: uuid("alumni_id"),
   role: text("role").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

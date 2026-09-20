@@ -23,7 +23,7 @@ export default async function DirectoryPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireLockerViewer("/login");
+  await requireLockerViewer("/home/login");
   const params = await searchParams;
   const q = firstParam(params.q);
   const role = parseDirectoryPill(firstParam(params.role));

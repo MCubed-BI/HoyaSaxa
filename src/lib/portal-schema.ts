@@ -26,6 +26,12 @@ export async function ensurePortalTables() {
     ON staff_roles (lower(email))
     WHERE email IS NOT NULL AND btrim(email) <> ''
   `);
+  await sql.query(`ALTER TABLE staff_roles ADD COLUMN IF NOT EXISTS alumni_id uuid`);
+  await sql.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS staff_roles_alumni_id
+    ON staff_roles (alumni_id)
+    WHERE alumni_id IS NOT NULL
+  `);
 
   for (const username of [...DEFAULT_ADMIN_USERNAMES, "Hoyas"]) {
     await sql.query(

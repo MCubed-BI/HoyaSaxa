@@ -44,7 +44,7 @@ export function EventsList({
   const canCreate = canCreateEvents(actor.role);
   const emptyCopy =
     tab === "upcoming"
-      ? "No upcoming events yet. Coach or board staff can create one."
+      ? "No upcoming events yet. Admin, Board, or Alum can create one."
       : tab === "past"
         ? "No past events yet."
         : "Events you create or add appear here.";
@@ -54,7 +54,7 @@ export function EventsList({
       <PageHeader
         eyebrow="Program"
         title="Events"
-        description="Upcoming, past, and events you created or added. Each row shows date, title, category, location, and thumbnail."
+        description="Upcoming, past, and events you created or added. Anyone signed in (Admin, Board, or Alum) can post an event."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
@@ -76,7 +76,7 @@ export function EventsList({
         <p className="rounded-xl border bg-card px-4 py-3 text-sm text-navy shadow-[var(--shadow-xs)]">Event saved.</p>
       ) : null}
       {forbidden ? (
-        <p className="text-sm text-destructive">Create Event is limited to coach and board staff.</p>
+        <p className="text-sm text-destructive">Sign in as Alum, Board, or Admin to create an event.</p>
       ) : null}
 
       <nav className="flex flex-wrap gap-2" aria-label="Event lists">

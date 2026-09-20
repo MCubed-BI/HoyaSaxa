@@ -47,6 +47,8 @@ const ALUM_ALLOWED_PREFIXES = [
   "/api/blast",
   "/api/feed",
   "/api/badges",
+  "/api/admin",
+  "/admin",
   "/api/logout",
 ];
 
@@ -100,7 +102,7 @@ export function loginPathFor(pathname: string) {
     pathname === "/athletes" ||
     pathname.startsWith("/athletes/")
   ) {
-    return "/login";
+    return "/home/login";
   }
   if (
     pathname === "/home" ||

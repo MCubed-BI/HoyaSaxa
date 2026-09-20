@@ -10,7 +10,7 @@ import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/a
 import { homePathForRole, resolveRoleFromEnv } from "@/lib/roles";
 
 export const metadata: Metadata = {
-  title: "Sign in",
+  title: "Admin login",
 };
 
 function safeNextPath(value: string | undefined) {
@@ -32,7 +32,7 @@ export default async function LoginPage({
   }
 
   return (
-    <AuthShell title="Sign in" subtitle="Admin sign-in for the Georgetown Football Alum Network.">
+    <AuthShell title="Admin login" subtitle="Alum or Admin only.">
       <form action="/api/login" method="post" className="space-y-4">
         <input type="hidden" name="next" value={safeNextPath(params.next)} />
         <div className="space-y-1.5">

@@ -12,6 +12,7 @@ function fromForNav(current?: NavKey, role?: Role) {
   if (current === "home") return "/home";
   if (current === "portal-directory" || current === "profile") return "/directory";
   if (current === "messages") return "/messages";
+  if (current === "admin") return "/admin";
   return role === "alum" || role === "board" ? "/portal" : "/";
 }
 

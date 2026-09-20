@@ -19,7 +19,8 @@ export type NavKey =
   | "message"
   | "fundraising"
   | "find-my-alum"
-  | "me";
+  | "me"
+  | "admin";
 
 export type NavItem = {
   href: string;
@@ -49,6 +50,7 @@ export function navItemsForRole(role: Role): NavItem[] {
   }
   if (canUseOwnerTools(role)) {
     items.push({ href: "/sync", label: "Sync", key: "sync" });
+    items.push({ href: "/admin", label: "Admin", key: "admin" });
   }
   items.push({ href: "/portal", label: "Alum view", key: "alum" });
   return items;
@@ -85,7 +87,8 @@ export function portalMoreItems(role: Role): NavItem[] {
     items.push({ href: "/portal/blast", label: "Email classmates", key: "blast" });
   }
   if (role === "owner" || role === "coach") {
-    items.unshift({ href: "/", label: "Staff tools", key: "directory" });
+    items.unshift({ href: "/", label: "Admin portal", key: "directory" });
+    items.push({ href: "/admin", label: "Board grants", key: "admin" });
   }
   return items;
 }

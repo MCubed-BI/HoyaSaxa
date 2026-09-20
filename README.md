@@ -24,7 +24,7 @@ Additive portal tables (created if missing): `staff_roles`, `coach_messages`, `n
 
 2. Set `DATABASE_URL` to the Neon pooled connection string. Do not commit it.
 
-3. Coach login is required before any alumni data is shown.
+3. Alum or Admin login is required before any alumni data is shown.
 
    | Variable | Local / demo default | Production |
    | --- | --- | --- |
@@ -53,9 +53,9 @@ Three product modes, enforced in `src/proxy.ts` and write APIs (not UI-only). Co
 
 | Mode | How it is assigned | What they can do |
 | --- | --- | --- |
-| **Admin** | Coach gate `ga_session`. `COACH_USERNAME` (default `Hoyas`) plus `HOYA_ADMIN_USERNAMES` / `HOYA_OWNER_USERNAMES` / `staff_roles`. Seed: **Lars**, **Sgarlata**, **Mike**, **Michael**, **Michael Kasten** | See/post all, including From Sgarlata / Message from Head Coach |
-| **Board** | `hoya_alum_session` `role=board` (`HOYA_BOARD_USERNAMES`, default preview `Board`) | See/post locker + portal except Sgarlata / coach compose (403 on those POSTs) |
-| **Alum** | Claim/login `hoya_alum_session` `role=alum`, or preview `Alum` | Edit self, post Brothers on For You, search directory. **Verified Hoya** after a successful claim/login |
+| **Admin** | Admin login `ga_session`. `COACH_USERNAME` (default `Hoyas`) plus `HOYA_ADMIN_USERNAMES` / `HOYA_OWNER_USERNAMES` / `staff_roles`. Seed: **Lars**, **Sgarlata**, **Mike**, **Michael**, **Michael Kasten** | See/post all For You sections, including From Sgarlata |
+| **Board** | Cookie `role=board`, `HOYA_BOARD_USERNAMES`, or Admin **Board member** toggle (`staff_roles`) | Alum capabilities + Message from the Board. No Sgarlata compose |
+| **Alum** | Claim/login `hoya_alum_session` `role=alum`, or preview `Alum` | Full Alum Mode: Brothers on For You, Directory, /me photos, events. **Verified Hoya** after a successful claim/login |
 
 Add Admins with `HOYA_ADMIN_USERNAMES` or `INSERT INTO staff_roles` — short runbook: [docs/admin-roles.md](docs/admin-roles.md).
 
@@ -186,7 +186,7 @@ Claim / register pages are owned by another lane and are not touched here.
 
 Alum chrome uses existing CRM styles (function over polish). Primary nav is **Home · Directory · Events · Giving · Messages**.
 
-- `/login` — staff gate (`ga_session` for owner/coach; `Alum`/`Lars` mint `hoya_alum_session`)
+- `/login` — Admin login (`ga_session` for owner/coach; alum preview usernames mint `hoya_alum_session`)
 - `/register` — alumni claim (last name + graduating class)
 - `/alumni-login` — alumni email/password login
 - `/me` — edit claimed records or merge a duplicate. **Not me** on Merge accounts permanently hides that pair for the claimed login (`alumni_duplicate_dismissals`).
@@ -194,8 +194,8 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/home` — Welcome hero, Directory/Events/News/Giving, upcoming event, recent activity
 - `/feed` — For You (Myspace identity rail + Brothers / Board / Sgarlata). Keys stay `brothers` | `board` | `sgarlata`
 - `/board` — Board section (admin + board publish, alumni read). `/newsflash` redirects here
-- `/events` — Upcoming / Past / My Events (date, title, category, location, thumbnail)
-- `/events/new` — Create Event (coach and board only)
+- `/events` — Upcoming / Past / My Events (filterable date tabs; title, category, location, thumbnail)
+- `/events/new` — Create Event (Admin, Board, or Alum)
 - `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
 - `/directory` — Hoya Directory (search + All/Athletes/Alumni/Coaches/Staff). Requires `ga_session`, `hoya_alum_session`, or the claim session. Anonymous visitors are sent to `/login`. Emails stay hidden on these cards.
 - `/athletes/[id]` — public athlete profile (Overview/Stats/Photos/Career/Q&A). Likely-duplicate panel: Merge duplicate is unchanged; **Not me** permanently hides that pair for the viewing claimed alum (`account:{id}`) or staff admin (`admin:{username}`). The other scope can still see it.
@@ -228,11 +228,12 @@ The app uses existing Neon tables `alumni_accounts`, `alumni_claims`, and `alumn
 
 ## Events
 
-`+ Create Event` and `POST /api/events` allow **coach** and **board** only.
+`+ Create Event` and `POST /api/events` allow **Admin**, **Board**, and **Alum**. Events are not For You sections — posting an event is not Sgarlata compose.
 
-- Shared staff login (`COACH_USERNAME`, default `Hoyas`) is **coach** and can create.
-- Locker `hoya_alum_session` with role **board** (`HOYA_BOARD_USERNAMES`, default Lars) can create.
-- Locker **alum** and unauthenticated users cannot create. `/events/new` redirects to `/events?error=forbidden`.
+- Shared staff login (`COACH_USERNAME`, default `Hoyas`) is Admin (`coach` event role) and can create.
+- Locker `hoya_alum_session` with role **board** (or an Admin Board grant) can create.
+- Claimed / locker **alum** can create. Unauthenticated users cannot. `/events/new` redirects to `/events?error=forbidden`.
+- The list is filterable: Upcoming / Past / My Events tabs (date + audience). Type/search filters are owned by the events UI lane.
 - My Events is the current viewer’s created rows plus **Add to My Events**.
 - Home’s upcoming-event card reads the next `events.starts_at` row when this table exists.
 

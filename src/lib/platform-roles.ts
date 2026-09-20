@@ -6,9 +6,11 @@
  *   - alum / board: `hoya_alum_session` (`{ v:1, role:"alum"|"board", ... }` or locker preview)
  *
  * Platform roles (this module): `admin` | `board` | `alum`
- *   - admin  — see / post everything on feed + profile. Staff tools still need `ga_session`.
- *   - board  — everything except compose to From Sgarlata / coach message board
- *   - alum   — edit self, post Brothers, directory search; claim/login grants Verified Hoya
+ *   - admin  — see / post every For You section (brothers, board, sgarlata) + profile.
+ *              Staff tools still need `ga_session`.
+ *   - board  — Alum capabilities + Message from the Board (`board` section). No Sgarlata compose.
+ *              Granted via Admin toggle → `staff_roles` (`assignedRole=board`).
+ *   - alum   — claim/login unlocks For You Brothers, directory, /me photo edit; Verified Hoya.
  *
  * Prefer ADMIN_EMAILS, then `staff_roles` (role=admin), then a coach `ga_session`.
  * Seeded admins: Lars (board cookie), Sgarlata / Hoyas (coach session),
@@ -112,6 +114,10 @@ export function isAssignedAdmin(role: string | null | undefined) {
   return role === "admin" || role === "owner";
 }
 
+export function isAssignedBoard(role: string | null | undefined) {
+  return role === "board";
+}
+
 /**
  * Sync resolver for middleware / cookie gates (no DB).
  * Order: coach session → ADMIN_EMAILS → seed identities → assignedRole → session role.
@@ -130,7 +136,7 @@ export function resolvePlatformRole(identity: PlatformIdentity): PlatformRole {
   if (isAdminEmail(identity.email) || isSeedAdminIdentity(identity) || isAssignedAdmin(identity.assignedRole)) {
     return "admin";
   }
-  if (identity.sessionRole === "board") return "board";
+  if (identity.sessionRole === "board" || isAssignedBoard(identity.assignedRole)) return "board";
   return "alum";
 }
 
@@ -145,9 +151,31 @@ export function canSeeEverything(role: PlatformRole) {
   return role === "admin";
 }
 
-/** Board can do feed + directory work except Sgarlata / coach-board compose. */
+/** Admin only. Board / Alum never compose From Sgarlata. */
 export function canPostSgarlataOrCoachBoard(role: PlatformRole) {
   return role === "admin";
+}
+
+/** Events are not For You sections — Admin, Board, and Alum may post them. */
+export function canPostEvents(role: PlatformRole | null | undefined) {
+  return role === "admin" || role === "board" || role === "alum";
+}
+
+/** Alias for Coder 4 / session capabilities. Same ACL as `canPostEvents`. */
+export function canCreateProgramEvents(role: PlatformRole) {
+  return canPostEvents(role);
+}
+
+/** Claim → Alum Mode surfaces. Board inherits these plus `canPostBoardSection`. */
+export function alumModeCapabilities(role: PlatformRole) {
+  return {
+    canPostBrothers: canPostBrothers(role),
+    canPostBoard: canPostBoardSection(role),
+    canPostSgarlata: canPostSgarlataOrCoachBoard(role),
+    canCreateEvents: canCreateProgramEvents(role),
+    canSearchDirectory: canSearchDirectory(role),
+    canEditSelf: canEditSelfProfile(role),
+  };
 }
 
 export function canPostBrothers(role: PlatformRole) {

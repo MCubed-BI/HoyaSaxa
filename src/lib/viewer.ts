@@ -7,6 +7,7 @@ import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/a
 import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
 import { getDatabaseUrl } from "@/lib/db";
 import { lookupAlumniClaim, lookupStaffRole } from "@/lib/portal-queries";
+import { lookupAssignedRole } from "@/lib/staff-roles";
 import { identityFromViewer } from "@/lib/platform-session";
 import { resolvePlatformRole, type PlatformRole } from "@/lib/platform-roles";
 import { homePathForRole, resolveRoleFromEnv, roleLabel, type Role } from "@/lib/roles";
@@ -81,16 +82,33 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
   const token = jar.get(ALUM_SESSION_COOKIE)?.value ?? null;
   const contract = readAlumSession(token);
   if (contract) {
-    return withPlatformRole({
-      role: contract.role,
-      label: contract.name || contract.email || roleLabel(contract.role),
-      username: null,
-      email: contract.email || null,
-      accountId: null,
-      alumniId: isPreviewAlumSession(contract) ? null : contract.alumniId,
-      source: "alum-session",
-      homePath: "/portal",
-    });
+    const alumniId = isPreviewAlumSession(contract) ? null : contract.alumniId;
+    let assignedRole: string | null = null;
+    if (getDatabaseUrl()) {
+      try {
+        assignedRole = await lookupAssignedRole({
+          alumniId,
+          email: contract.email,
+          name: contract.name,
+          username: contract.name,
+        });
+      } catch {
+        assignedRole = null;
+      }
+    }
+    return withPlatformRole(
+      {
+        role: contract.role,
+        label: contract.name || contract.email || roleLabel(contract.role),
+        username: null,
+        email: contract.email || null,
+        accountId: null,
+        alumniId,
+        source: "alum-session",
+        homePath: "/portal",
+      },
+      assignedRole,
+    );
   }
 
   const locker = readHoyaAlumSession(token);

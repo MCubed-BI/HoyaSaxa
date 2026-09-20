@@ -38,4 +38,11 @@ Do not put an Admin username only in `HOYA_BOARD_USERNAMES` — Admin precedence
 
 ## Add a Board user (no Sgarlata compose)
 
-Set `HOYA_BOARD_USERNAMES=Board,Pat` (names that are **not** Admins). They share `COACH_PASSWORD` unless `HOYA_BOARD_PASSWORD` is set. Compose paths stay blocked in proxy + `POST /api/messages/channels/sgarlata/posts` + `POST /api/portal/coach-messages`.
+**Preferred (Admin UI, persisted in Neon):**
+
+1. Sign in as Admin (`/login` Admin login, or a seeded Admin session).
+2. Open the alumnus in Directory → athlete profile, or go to `/admin`.
+3. Toggle **Board member**. That writes `staff_roles` (`alumni_id` + `role=board`).
+4. Board Mode is Alum capabilities plus **Message from the Board** (`board` feed section). From Sgarlata stays Admin only. The grant applies on the next page load (platform role overlay). Admin accounts cannot be demoted here.
+
+Env preview still works: set `HOYA_BOARD_USERNAMES=Board,Pat` (names that are **not** Admins). They share `COACH_PASSWORD` unless `HOYA_BOARD_PASSWORD` is set. Compose paths stay blocked in proxy + `POST /api/messages/channels/sgarlata/posts` + `POST /api/portal/coach-messages`.

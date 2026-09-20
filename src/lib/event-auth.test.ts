@@ -17,10 +17,10 @@ test("parseUsernameList splits and de-dupes", () => {
   assert.deepEqual(parseUsernameList("  "), []);
 });
 
-test("Create Event is allowed for coach and board only", () => {
+test("Create Event is allowed for admin, board, and alum", () => {
   assert.equal(canCreateEvents("coach"), true);
   assert.equal(canCreateEvents("board"), true);
-  assert.equal(canCreateEvents("alum"), false);
+  assert.equal(canCreateEvents("alum"), true);
   assert.equal(canCreateEvents(null), false);
   assert.equal(canOverrideEventCheckIn("coach"), true);
   assert.equal(canOverrideEventCheckIn("alum"), false);
@@ -39,10 +39,10 @@ test("HOYA_BOARD_USERNAMES maps to board and can create", () => {
   assert.equal(canCreateEvents("board"), true);
 });
 
-test("HOYA_ALUM_USERNAMES maps to alum and cannot create", () => {
+test("HOYA_ALUM_USERNAMES maps to alum and can create events", () => {
   process.env.HOYA_ALUM_USERNAMES = "Alum";
   assert.equal(resolveEventRole("Alum", "Hoyas"), "alum");
-  assert.equal(canCreateEvents(resolveEventRole("Alum", "Hoyas")), false);
+  assert.equal(canCreateEvents(resolveEventRole("Alum", "Hoyas")), true);
 });
 
 test("board list wins over alum list", () => {

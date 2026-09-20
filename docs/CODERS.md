@@ -18,7 +18,7 @@ import { listPublicBadges, grantVerifiedHoya } from "@/lib/badges";
 import { updateAlumniPhotos } from "@/lib/alumni-photos";
 ```
 
-`GET /api/session` now also returns `{ platformRole, admin }` next to `{ role, roles, alum, coach }`.
+`GET /api/session` now also returns `{ platformRole, admin, canPostBrothers, canPostBoard, canPostSgarlata, canCreateEvents }` next to `{ role, roles, alum, coach }`.
 
 Viewer (`getCurrentViewer`) has `platformRole`. Locker viewer has `canPostNewsflash` / `canPostBrothers` / `canPostSgarlata`.
 
@@ -30,9 +30,9 @@ Viewer (`getCurrentViewer`) has `platformRole`. Locker viewer has `canPostNewsfl
 
 | Platform role | Who | Can do |
 | --- | --- | --- |
-| `admin` | Coach `ga_session`; `ADMIN_EMAILS`; `staff_roles.role=admin`; seeds below | See / post every feed section; edit any profile photos |
-| `board` | `hoya_alum_session` `role=board` (unless seeded admin) | Everything except compose to From Sgarlata / coach message board |
-| `alum` | Claim / login `hoya_alum_session` `role=alum` | Edit self, post Brothers, directory search; Verified Hoya on claim/login |
+| `admin` | Staff `ga_session`; `ADMIN_EMAILS`; `staff_roles.role=admin`; seeds below | See / post every For You section (`brothers`, `board`, `sgarlata`); edit any profile photos |
+| `board` | Cookie `role=board` or Admin toggle → `staff_roles.role=board` | Alum capabilities + Message from the Board. No Sgarlata compose |
+| `alum` | Claim / login `hoya_alum_session` `role=alum` | Full Alum Mode: For You Brothers, Directory, /me photos, Verified Hoya; can post events |
 
 **Seeds (admin):**
 
@@ -46,6 +46,10 @@ Board preview username is `Board`. **Board cannot compose Sgarlata.**
 **DB:** `staff_roles` (seeded owner for Lars / Sgarlata / Mike / Michael / Michael Kasten / Hoyas). Add-admin runbook: [admin-roles.md](admin-roles.md).
 
 Staff tools (Data Sync, Twilio blast, reports) still require `ga_session`. Platform admin on an alum cookie does **not** unlock `/sync`.
+
+Admin grants Board from `/admin` or an athlete profile (`POST /api/admin/board`). Persist on `staff_roles.alumni_id`. See [admin-roles.md](admin-roles.md).
+
+Events (not For You sections): Admin / Board / Alum can post. `/events` is filterable via existing Upcoming / Past / My Events tabs. Richer type/search filters stay with the events UI lane.
 
 `src/proxy.ts` still uses the existing cookie gates. New paths `/board`, `/brothers`, `/api/feed`, `/api/badges` are alum-allowlisted.
 

@@ -3,8 +3,11 @@ import { afterEach, describe, it } from "node:test";
 import {
   SEED_ADMIN_ALUMNI_ID,
   canEditAlumniRecord,
+  alumModeCapabilities,
+  canCreateProgramEvents,
   canPostBoardSection,
   canPostBrothers,
+  canPostEvents,
   canPostSgarlataOrCoachBoard,
   isAdminEmail,
   isSeedAdminIdentity,
@@ -62,8 +65,30 @@ describe("platform roles", () => {
     assert.equal(canPostBoardSection(board), true);
     assert.equal(canPostBoardSection(alum), false);
     assert.equal(canPostBrothers(alum), true);
+    assert.equal(canPostEvents("admin"), true);
+    assert.equal(canPostEvents(board), true);
+    assert.equal(canPostEvents(alum), true);
+    assert.equal(canPostEvents(null), false);
     assert.equal(canEditAlumniRecord("alum", "aaa", "aaa"), true);
     assert.equal(canEditAlumniRecord("alum", "aaa", "bbb"), false);
     assert.equal(canEditAlumniRecord("admin", null, "bbb"), true);
+    assert.equal(canCreateProgramEvents("alum"), true);
+    assert.equal(canCreateProgramEvents("board"), true);
+    assert.equal(canCreateProgramEvents("admin"), true);
+    assert.deepEqual(alumModeCapabilities("alum"), {
+      canPostBrothers: true,
+      canPostBoard: false,
+      canPostSgarlata: false,
+      canCreateEvents: true,
+      canSearchDirectory: true,
+      canEditSelf: true,
+    });
+  });
+
+  it("overlays staff_roles Board grant without minting admin", () => {
+    assert.equal(resolvePlatformRole({ sessionRole: "alum", assignedRole: "board", name: "Tim Barnes" }), "board");
+    assert.equal(canPostBoardSection(resolvePlatformRole({ sessionRole: "alum", assignedRole: "board" })), true);
+    assert.equal(canPostSgarlataOrCoachBoard(resolvePlatformRole({ sessionRole: "alum", assignedRole: "board" })), false);
+    assert.equal(resolvePlatformRole({ sessionRole: "alum", assignedRole: "admin" }), "admin");
   });
 });

@@ -42,7 +42,7 @@ export default async function EventCheckInIndexPage() {
             }
           />
           {rows.length === 0 ? (
-            <StatusCard title="No events yet" body="Coach or board staff can create an event first." />
+            <StatusCard title="No events yet" body="Admin, Board, or Alum can create an event first." />
           ) : (
             <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
               {rows.map((event) => {

@@ -15,6 +15,11 @@ export async function readyEventStore() {
   await seedDemoEventsIfEmpty();
 }
 
+function eventRoleFromRow(value: unknown): EventListItem["created_by_role"] {
+  if (value === "board" || value === "alum" || value === "coach") return value;
+  return "coach";
+}
+
 function mapEventRow(row: Record<string, unknown>, username: string): EventListItem {
   const category = isEventCategory(String(row.category)) ? (row.category as EventCategory) : "Other";
   const createdBy = String(row.created_by ?? "");
@@ -27,7 +32,7 @@ function mapEventRow(row: Record<string, unknown>, username: string): EventListI
     thumbnail_url: typeof row.thumbnail_url === "string" ? row.thumbnail_url : null,
     description: typeof row.description === "string" ? row.description : null,
     created_by: createdBy,
-    created_by_role: row.created_by_role === "board" ? "board" : "coach",
+    created_by_role: eventRoleFromRow(row.created_by_role),
     created_by_me: createdBy.toLowerCase() === username.toLowerCase(),
     rsvped: Boolean(row.rsvped),
     checked_in: Boolean(row.checked_in),

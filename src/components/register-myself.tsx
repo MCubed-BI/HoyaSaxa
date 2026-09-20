@@ -86,7 +86,7 @@ export function RegisterMyself() {
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Registration failed");
-      router.push("/me");
+      router.push("/home");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");

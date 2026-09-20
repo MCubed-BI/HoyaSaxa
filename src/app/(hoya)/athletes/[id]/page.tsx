@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AthleteEmailField } from "@/components/athlete-emails";
 import { AthleteMergePanel } from "@/components/athlete-merge-panel";
 import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
+import { BoardMemberToggle } from "@/components/board-member-toggle";
 import { HoyaAvatar } from "@/components/hoya-avatar";
 import { LinkedInProfileField } from "@/components/linkedin-profile-link";
 import { PageMain, pillClass } from "@/components/page-chrome";
@@ -20,6 +21,7 @@ import { getLockerPersonById } from "@/lib/locker-directory";
 import { athleteHref, parseAthleteTab } from "@/lib/locker-paths";
 import { ATHLETE_TABS } from "@/lib/locker-types";
 import { requireLockerViewer } from "@/lib/locker-viewer";
+import { isBoardMember } from "@/lib/staff-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +44,7 @@ export default async function AthleteProfilePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireLockerViewer("/login");
+  await requireLockerViewer("/home/login");
   const { id } = await params;
   const query = await searchParams;
   const person = await getLockerPersonById(id);
@@ -74,6 +76,15 @@ export default async function AthleteProfilePage({
   const visibleDuplicates = actor.isAdmin
     ? duplicates
     : duplicates.filter((row) => !row.claimed || row.claimed_by_me);
+  const showBoardGrant = actor.isAdmin && !person.id.startsWith("locker-");
+  let boardGranted = false;
+  if (showBoardGrant) {
+    try {
+      boardGranted = await isBoardMember(person.id);
+    } catch {
+      boardGranted = false;
+    }
+  }
 
   return (
     <PageMain width="narrow">
@@ -113,6 +124,8 @@ export default async function AthleteProfilePage({
           </div>
         </CardContent>
       </Card>
+
+      {showBoardGrant ? <BoardMemberToggle alumniId={person.id} name={name} granted={boardGranted} /> : null}
 
       {actor.canMerge ? (
         <AthleteMergePanel keeperId={person.id} keeperName={name} candidates={visibleDuplicates} />
