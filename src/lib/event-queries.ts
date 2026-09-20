@@ -57,8 +57,8 @@ export async function listEvents(tab: EventTab, actor: EventActor): Promise<Even
             WHERE r.event_id = e.id AND lower(r.attendee_key) = lower($1)
           ) AS rsvped,
           EXISTS (
-            SELECT 1 FROM event_attendance a
-            WHERE a.event_id = e.id AND a.person_key = $3
+            SELECT 1 FROM event_checkins a
+            WHERE a.event_id = e.id AND a.attendee_key = $3
           ) AS checked_in
         FROM events e
         WHERE

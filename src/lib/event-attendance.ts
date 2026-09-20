@@ -1,3 +1,7 @@
+/**
+ * Event check-in persistence for the PR #17 `event_checkins` stub.
+ * RSVP (`event_rsvps`) is not attendance. Do not add a parallel table.
+ */
 import { canOverrideEventCheckIn, type EventActor } from "@/lib/event-auth";
 import { ensureEventTables, seedDemoEventsIfEmpty } from "@/lib/event-schema";
 import { getSql } from "@/lib/db";
@@ -110,11 +114,18 @@ export function resolveCheckInAction(input: {
   return input.canOverride ? "override" : "forbidden-override";
 }
 
-/** Rank 1 = most lifetime check-ins. Percentile is from the top (rank / cohort × 100). */
-export function attendancePercentile(rank: number, cohortSize: number) {
-  if (cohortSize <= 0 || rank <= 0) return 100;
-  return (rank / cohortSize) * 100;
+/**
+ * Same formula as PR #17 `src/lib/badges.ts` `percentileFromRank`.
+ * Rank 1 of N → 100. Coder 3 applies ≥99 Platinum, ≥90 Gold, ≥75 Silver, ≥50 Bronze.
+ */
+export function percentileFromRank(rank: number, population: number) {
+  if (!Number.isFinite(rank) || !Number.isFinite(population) || rank < 1 || population < 1) {
+    return 0;
+  }
+  return (1 - (rank - 1) / population) * 100;
 }
+
+export const attendancePercentile = percentileFromRank;
 
 export function rankByCount<T extends { attendanceCount: number }>(rows: T[]) {
   const sorted = [...rows].sort((a, b) => b.attendanceCount - a.attendanceCount);
@@ -128,7 +139,7 @@ export function rankByCount<T extends { attendanceCount: number }>(rows: T[]) {
     return {
       ...row,
       rank,
-      percentile: attendancePercentile(rank, cohortSize),
+      percentile: percentileFromRank(rank, cohortSize),
       cohortSize,
     };
   });
@@ -139,14 +150,20 @@ function asIso(value: unknown) {
   return String(value);
 }
 
+function alumniIdOrNull(value: unknown) {
+  return typeof value === "string" && isEventRecordId(value) ? value : null;
+}
+
 function mapAttendanceRow(row: Record<string, unknown>): AttendanceRow {
+  const attendeeKey = String(row.attendee_key ?? row.person_key ?? "");
+  const alumId = alumniIdOrNull(row.alumni_id ?? row.alum_id);
   return {
     id: String(row.id),
     eventId: String(row.event_id),
-    personKey: String(row.person_key),
-    alumId: typeof row.alum_id === "string" && row.alum_id ? row.alum_id : null,
-    userId: String(row.user_id ?? ""),
-    displayName: String(row.display_name ?? row.user_id ?? ""),
+    personKey: attendeeKey,
+    alumId,
+    userId: alumId ?? attendeeKey,
+    displayName: String(row.display_name ?? attendeeKey),
     checkedInAt: asIso(row.checked_in_at),
     checkedInBy: String(row.checked_in_by ?? ""),
     checkedInByRole: String(row.checked_in_by_role ?? ""),
@@ -188,7 +205,7 @@ export async function getEventById(eventId: string) {
 export async function getAttendanceRecord(eventId: string, personKey: string) {
   await readyAttendanceStore();
   const rows = await query<Record<string, unknown>[]>(
-    `SELECT * FROM event_attendance WHERE event_id = $1 AND person_key = $2 LIMIT 1`,
+    `SELECT * FROM event_checkins WHERE event_id = $1 AND attendee_key = $2 LIMIT 1`,
     [eventId, personKey],
   );
   return rows[0] ? mapAttendanceRow(rows[0]) : null;
@@ -199,7 +216,7 @@ export async function listEventAttendance(eventId: string) {
   const rows = await query<Record<string, unknown>[]>(
     `
       SELECT *
-      FROM event_attendance
+      FROM event_checkins
       WHERE event_id = $1
       ORDER BY checked_in_at ASC
     `,
@@ -213,22 +230,21 @@ export async function listAttendanceLeaders(limit = 50): Promise<AttendanceLeade
   const rows = await query<Record<string, unknown>[]>(
     `
       SELECT
-        person_key,
-        alum_id,
-        user_id,
+        attendee_key,
+        alumni_id,
         display_name,
         COUNT(*)::int AS attendance_count,
         MAX(checked_in_at) AS last_checked_in_at
-      FROM event_attendance
-      GROUP BY person_key, alum_id, user_id, display_name
+      FROM event_checkins
+      GROUP BY attendee_key, alumni_id, display_name
     `,
   );
   return rankByCount(
     rows.map((row) => ({
-      personKey: String(row.person_key),
-      alumId: typeof row.alum_id === "string" && row.alum_id ? row.alum_id : null,
-      userId: String(row.user_id ?? ""),
-      displayName: String(row.display_name ?? row.user_id ?? ""),
+      personKey: String(row.attendee_key ?? ""),
+      alumId: alumniIdOrNull(row.alumni_id),
+      userId: alumniIdOrNull(row.alumni_id) ?? String(row.attendee_key ?? ""),
+      displayName: String(row.display_name ?? row.attendee_key ?? ""),
       attendanceCount: Number(row.attendance_count ?? 0),
       attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
       lastCheckedInAt: asIso(row.last_checked_in_at),
@@ -239,7 +255,7 @@ export async function listAttendanceLeaders(limit = 50): Promise<AttendanceLeade
 export async function lifetimeAttendanceCount(personKey: string) {
   await readyAttendanceStore();
   const rows = await query<Array<{ attendance_count: number }>>(
-    `SELECT COUNT(*)::int AS attendance_count FROM event_attendance WHERE person_key = $1`,
+    `SELECT COUNT(*)::int AS attendance_count FROM event_checkins WHERE attendee_key = $1`,
     [personKey],
   );
   return Number(rows[0]?.attendance_count ?? 0);
@@ -281,26 +297,22 @@ export async function checkInToEvent(input: {
   if (action === "override") {
     const rows = await query<Record<string, unknown>[]>(
       `
-        UPDATE event_attendance
+        UPDATE event_checkins
         SET
-          alum_id = $3,
-          user_id = $4,
-          display_name = $5,
+          alumni_id = $3,
+          display_name = $4,
           checked_in_at = now(),
-          checked_in_by = $6,
-          checked_in_by_role = $7,
-          source = $8
-        WHERE event_id = $1 AND person_key = $2
+          checked_in_by = $5,
+          source = $6
+        WHERE event_id = $1 AND attendee_key = $2
         RETURNING *
       `,
       [
         input.eventId,
         person.personKey,
-        person.alumId,
-        person.userId,
+        alumniIdOrNull(person.alumId),
         person.displayName,
         input.actor.username,
-        input.actor.role,
         source,
       ],
     );
@@ -311,22 +323,19 @@ export async function checkInToEvent(input: {
 
   const rows = await query<Record<string, unknown>[]>(
     `
-      INSERT INTO event_attendance (
-        event_id, person_key, alum_id, user_id, display_name,
-        checked_in_by, checked_in_by_role, source
+      INSERT INTO event_checkins (
+        event_id, alumni_id, attendee_key, display_name, checked_in_by, source
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      ON CONFLICT (event_id, person_key) DO NOTHING
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (event_id, attendee_key) WHERE attendee_key IS NOT NULL DO NOTHING
       RETURNING *
     `,
     [
       input.eventId,
+      alumniIdOrNull(person.alumId),
       person.personKey,
-      person.alumId,
-      person.userId,
       person.displayName,
       input.actor.username,
-      input.actor.role,
       source,
     ],
   );

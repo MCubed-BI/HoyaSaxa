@@ -9,25 +9,23 @@ import { ensureEventTables, seedDemoEventsIfEmpty } from "@/lib/event-schema";
 import { getSql } from "@/lib/db";
 
 /**
- * Coder 3 badge feed (consume-only).
+ * Coder 3 badge feed (consume-only). Soft-stacks PR #17 stubs.
  *
- * Import this module — do not dual-write badge UI here.
- * Soft-stack: CA bc-25180ec2 stubs were not on main at implementation time.
+ * Persistence is `event_checkins` (event_id, alumni_id, attendee_key, checked_in_at).
+ * `computeEventTopBadge` in `@/lib/badges` (PR #17) reads those rows — do not
+ * dual-write a parallel attendance table or badge UI here.
  *
- * Each row is one alum/person × event check-in, plus rolled **lifetime**
- * attendance totals (all events, all time — not season). Rank / percentile
- * are among all attendees across all events (“Top Tailgate” style).
+ * Each row is one person × event check-in plus rolled **lifetime** totals
+ * (all events, all time — not season). Rank / percentile use the same
+ * `percentileFromRank` as donor badges (rank 1 → 100).
  *
- * Coder 3 applies the same thresholds as donor badges:
- *   Top 1% → Platinum
- *   Top 10% → Gold
- *   Top 25% → Silver
- *   Top 50% → Bronze
+ * Coder 3 applies PR #17 thresholds:
+ *   ≥ 99 → Platinum, ≥ 90 → Gold, ≥ 75 → Silver, ≥ 50 → Bronze
  */
 export const ATTENDANCE_BADGE_FEED_VERSION = 1 as const;
 export const ATTENDANCE_RANK_BASIS = "lifetime_all_events" as const;
 export const ATTENDANCE_BADGE_THRESHOLDS_NOTE =
-  "Coder 3 applies thresholds from raw rank/percentile: top 1% Platinum, 10% Gold, 25% Silver, 50% Bronze.";
+  "PR #17 / Coder 3 apply percentileFromRank (rank 1 = 100): ≥99 Platinum, ≥90 Gold, ≥75 Silver, ≥50 Bronze.";
 
 export type AttendanceBadgeFeedRow = {
   eventId: string;
@@ -95,11 +93,11 @@ export async function listAttendanceBadgeFeed(input?: {
   }
   if (input?.alumId) {
     params.push(input.alumId);
-    filters.push(`a.alum_id = $${params.length}`);
+    filters.push(`a.alumni_id::text = $${params.length}`);
   }
   if (input?.userId) {
     params.push(input.userId);
-    filters.push(`a.user_id = $${params.length}`);
+    filters.push(`(a.attendee_key = $${params.length} OR a.alumni_id::text = $${params.length})`);
   }
   const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
   const limit = Math.min(Math.max(input?.limit ?? 500, 1), 1000);
@@ -109,12 +107,12 @@ export async function listAttendanceBadgeFeed(input?: {
     `
       SELECT
         a.event_id,
-        a.person_key,
-        a.alum_id,
-        a.user_id,
+        a.attendee_key AS person_key,
+        a.alumni_id::text AS alum_id,
+        COALESCE(a.alumni_id::text, a.attendee_key) AS user_id,
         a.checked_in_at,
         e.title AS event_title
-      FROM event_attendance a
+      FROM event_checkins a
       JOIN events e ON e.id = a.event_id
       ${where}
       ORDER BY a.checked_in_at DESC

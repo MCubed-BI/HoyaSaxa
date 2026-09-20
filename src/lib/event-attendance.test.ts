@@ -5,10 +5,10 @@ import { createSessionToken } from "./auth";
 import { eventActorFromTokens } from "./event-actor";
 import {
   ATTENDANCE_COUNT_SCOPE,
-  attendancePercentile,
   attendancePersonFromActor,
   attendancePersonFromStaffInput,
   isEventRecordId,
+  percentileFromRank,
   rankByCount,
   resolveCheckInAction,
 } from "./event-attendance";
@@ -77,10 +77,10 @@ describe("event check-in rules", () => {
     assert.equal(ranked[1]?.rank, 1);
     assert.equal(ranked[2]?.rank, 3);
     assert.equal(ranked[3]?.rank, 4);
-    assert.equal(ranked[0]?.percentile, 25);
-    assert.equal(ranked[2]?.percentile, 75);
-    assert.equal(attendancePercentile(1, 100), 1);
-    assert.equal(attendancePercentile(10, 100), 10);
+    assert.equal(ranked[0]?.percentile, 100);
+    assert.equal(ranked[2]?.percentile, 50);
+    assert.equal(percentileFromRank(1, 100), 100);
+    assert.equal(percentileFromRank(2, 100), 99);
     assert.equal(eventSlugFromTitle("Homecoming Tailgate", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"), "homecoming-tailgate-aaaaaaaa");
   });
 });
