@@ -44,7 +44,10 @@ async function query<T>(text: string, params: unknown[] = []) {
   return (await sql.query(text, params)) as unknown as T;
 }
 
-export async function lookupStaffRole(username: string, email?: string | null): Promise<Role | null> {
+export async function lookupStaffRole(
+  username: string,
+  email?: string | null,
+): Promise<Role | "admin" | null> {
   await ensurePortalTables();
   const rows = await query<Array<{ role: string }>>(
     `
@@ -57,7 +60,9 @@ export async function lookupStaffRole(username: string, email?: string | null): 
     `,
     [username.trim(), (email ?? "").trim()],
   );
-  return normalizeStaffRole(rows[0]?.role);
+  const role = rows[0]?.role;
+  if (role === "admin") return "admin";
+  return normalizeStaffRole(role);
 }
 
 export async function lookupAlumniClaim(accountId: string) {

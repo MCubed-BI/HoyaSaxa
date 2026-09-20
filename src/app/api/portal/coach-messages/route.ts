@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { isMissingDatabaseConfig } from "@/lib/db";
+import { canPostSgarlataOrCoachBoard } from "@/lib/platform-roles";
 import { createCoachMessage } from "@/lib/portal-queries";
-import { canPostCoachMessage } from "@/lib/roles";
 import { safeNextPath } from "@/lib/safe-next";
 import { getCurrentViewer } from "@/lib/viewer";
 
 export async function POST(request: Request) {
   const viewer = await getCurrentViewer();
   if (!viewer) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!canPostCoachMessage(viewer.role)) {
+  if (!canPostSgarlataOrCoachBoard(viewer.platformRole)) {
     return NextResponse.redirect(new URL("/message", request.url), { status: 303 });
   }
 

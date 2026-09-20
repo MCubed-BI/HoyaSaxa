@@ -20,15 +20,15 @@ export default async function LockerHomePage() {
         <PageHeader
           eyebrow={viewer.roleLabel}
           title={`Welcome back, ${viewer.label}.`}
-          description="Home, For You, and Newsflash. Directory, Events, and Giving stay with their lanes — the cards below just link over."
+          description="Home, For You, and Board. Directory, Events, and Giving stay with their lanes — the cards below just link over."
           actions={
             <>
               <Button asChild>
                 <Link href="/feed">Open For You</Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/newsflash">
-                  {viewer.canPostNewsflash ? "Write a Newsflash" : "Read Newsflash"}
+                <Link href="/board">
+                  {viewer.canPostNewsflash ? "Write a Board note" : "Read Board"}
                 </Link>
               </Button>
             </>

@@ -72,6 +72,8 @@ export function isLockerSignOutPath(pathname: string) {
     startsWithPath(pathname, "/giving") ||
     startsWithPath(pathname, "/feed") ||
     startsWithPath(pathname, "/newsflash") ||
+    startsWithPath(pathname, "/board") ||
+    startsWithPath(pathname, "/brothers") ||
     startsWithPath(pathname, "/home")
   );
 }

@@ -10,6 +10,8 @@ export type NavKey =
   | "messages"
   | "feed"
   | "newsflash"
+  | "board"
+  | "brothers"
   | "profile"
   | "reports"
   | "blast"
@@ -35,7 +37,7 @@ export function navItemsForRole(role: Role): NavItem[] {
     { href: "/find-my-alum", label: "Find My Alum", key: "find-my-alum" },
     { href: "/events", label: "Events", key: "events" },
     { href: "/messages", label: "Messages", key: "messages" },
-    { href: "/newsflash", label: "Newsflash", key: "newsflash" },
+    { href: "/board", label: "Board", key: "board" },
     { href: "/giving", label: "Give", key: "giving" },
   ];
 
@@ -67,14 +69,14 @@ export function portalNavItems(): NavItem[] {
 export function portalSecondaryItems(): NavItem[] {
   return [
     { href: "/feed", label: "For You", key: "feed" },
-    { href: "/newsflash", label: "Newsflash", key: "newsflash" },
+    { href: "/board", label: "Board", key: "board" },
   ];
 }
 
 export function portalMoreItems(role: Role): NavItem[] {
   const items: NavItem[] = [
     { href: "/feed", label: "For You", key: "feed" },
-    { href: "/newsflash", label: "Newsflash", key: "newsflash" },
+    { href: "/board", label: "Board", key: "board" },
     { href: "/directory", label: "Profile", key: "profile" },
     { href: "/find-my-alum", label: "Find My Alum", key: "find-my-alum" },
     { href: "/me", label: "My record", key: "me" },

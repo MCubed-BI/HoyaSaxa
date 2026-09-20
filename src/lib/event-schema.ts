@@ -30,6 +30,17 @@ export async function ensureEventTables() {
   await sql.query(`CREATE INDEX IF NOT EXISTS idx_events_starts_at ON events (starts_at)`);
   await sql.query(`CREATE INDEX IF NOT EXISTS idx_events_created_by ON events (created_by)`);
   await sql.query(`CREATE INDEX IF NOT EXISTS idx_event_rsvps_attendee ON event_rsvps (attendee_key)`);
+  await sql.query(`
+    CREATE TABLE IF NOT EXISTS event_checkins (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      event_id uuid NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+      alumni_id uuid,
+      attendee_key text,
+      checked_in_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await sql.query(`CREATE INDEX IF NOT EXISTS idx_event_checkins_alumni ON event_checkins (alumni_id)`);
+  await sql.query(`CREATE INDEX IF NOT EXISTS idx_event_checkins_event ON event_checkins (event_id)`);
 }
 
 export async function seedDemoEventsIfEmpty() {

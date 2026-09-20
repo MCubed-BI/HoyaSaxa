@@ -4,7 +4,7 @@ import { portalNavItems, portalSecondaryItems, type NavKey } from "@/lib/nav";
 import type { LockerViewer } from "@/lib/locker-viewer";
 
 function fromForNav(current?: NavKey) {
-  if (current === "newsflash") return "/newsflash";
+  if (current === "newsflash" || current === "board") return "/board";
   if (current === "feed") return "/feed";
   if (current === "portal-directory" || current === "profile") return "/directory";
   if (current === "blast") return "/portal/blast";

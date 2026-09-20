@@ -4,11 +4,13 @@ import { FeedPostCard } from "@/components/locker-cards";
 import { LockerHeader } from "@/components/locker-header";
 import { Notice, PageHeader, PageMain, PageShell, pillClass } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
+import { FEED_SECTIONS, feedSectionLabel, parseFeedSectionParam } from "@/lib/feed-sections";
 import {
   FEED_TABS,
   feedTabLabel,
   feedTabStub,
   filterFeedPosts,
+  filterFeedPostsBySection,
   isFeedTab,
   type FeedTab,
 } from "@/lib/locker-data";
@@ -30,8 +32,9 @@ export default async function ForYouFeedPage({
   const viewer = await requireLockerViewer();
   const params = await searchParams;
   const tab = tabFromParams(params.tab);
+  const section = parseFeedSectionParam(params.section);
   const data = await loadLockerHome();
-  const posts = filterFeedPosts(data.feed, tab);
+  const posts = section ? filterFeedPostsBySection(data.feed, section) : filterFeedPosts(data.feed, tab);
 
   return (
     <PageShell>
@@ -40,15 +43,27 @@ export default async function ForYouFeedPage({
         <PageHeader
           eyebrow="Feed"
           title="For You"
-          description="Official Newsflash plus alumni posts. Teammates and Following are stubs until roster links and a follow graph exist."
+          description="Canonical sections: Brothers, Board, From Sgarlata. Newsflash is an alias of Board. Teammates and Following stay stubs."
         />
+
+        <div className="flex flex-wrap gap-2">
+          {FEED_SECTIONS.map((item) => (
+            <Link
+              key={item}
+              href={item === "sgarlata" ? "/messages/sgarlata" : `/feed?section=${item}`}
+              className={pillClass(section === item)}
+            >
+              {feedSectionLabel(item)}
+            </Link>
+          ))}
+        </div>
 
         <div className="flex flex-wrap gap-2">
           {FEED_TABS.map((item) => (
             <Link
               key={item}
               href={item === "for-you" ? "/feed" : `/feed?tab=${item}`}
-              className={pillClass(tab === item)}
+              className={pillClass(!section && tab === item)}
             >
               {feedTabLabel(item)}
             </Link>
@@ -60,7 +75,10 @@ export default async function ForYouFeedPage({
         {viewer.canPostBrothers ? <BrothersComposer /> : null}
 
         {posts.length === 0 ? (
-          <StatusCard title={feedTabLabel(tab)} body={feedTabStub(tab)} />
+          <StatusCard
+            title={section ? feedSectionLabel(section) : feedTabLabel(tab)}
+            body={section ? "Nothing in this section yet." : feedTabStub(tab)}
+          />
         ) : (
           <div className="space-y-3">
             {posts.map((post) => (

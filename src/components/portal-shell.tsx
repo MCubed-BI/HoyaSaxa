@@ -43,7 +43,7 @@ function MoreLinks({ items, role }: { items: ReturnType<typeof portalMoreItems>;
           {item.label}
         </Link>
       ))}
-      {role === "board" ? <span>Board can publish Newsflash</span> : null}
+      {role === "board" ? <span>Board can publish Board notes</span> : null}
     </div>
   );
 }

@@ -106,6 +106,7 @@ export function canPostCoachMessage(role: Role) {
   return isAdminRole(role);
 }
 
+/** Legacy Role helper. Prefer `canPostToFeedSection(platformRole, "board")`. */
 export function canPostNewsflash(role: Role) {
   return isAdminRole(role) || role === "board";
 }

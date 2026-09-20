@@ -86,6 +86,21 @@ describe("roles", () => {
       true,
     );
     assert.equal(
+      allowRequest(
+        {
+          role: "alum",
+          mode: "admin",
+          source: "alum-session",
+          label: "Mike",
+          alumniId: "c8fc1d9c-d5a7-445d-8e59-b2bddd53d136",
+          verifiedHoya: true,
+        },
+        "/api/messages/channels/sgarlata/posts",
+        "POST",
+      ),
+      true,
+    );
+    assert.equal(
       allowRequest({ role: "board", mode: "board", source: "alum-session", label: "Board", alumniId: null, verifiedHoya: false }, "/messages/sgarlata", "GET"),
       true,
     );
@@ -141,6 +156,10 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/message"), true);
     assert.equal(isAlumAllowedPath("/api/portal/newsflash"), true);
     assert.equal(isAlumAllowedPath("/api/locker/feed"), true);
+    assert.equal(isAlumAllowedPath("/board"), true);
+    assert.equal(isAlumAllowedPath("/api/feed"), true);
+    assert.equal(isAlumAllowedPath("/api/badges"), true);
+    assert.equal(loginPathFor("/board"), "/home/login");
     assert.equal(isAlumAllowedPath("/blast"), false);
     assert.equal(isPublicPath("/home/login"), true);
     assert.equal(isPublicPath("/api/logout"), true);

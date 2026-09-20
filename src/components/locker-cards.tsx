@@ -26,10 +26,10 @@ export function QuickActions({ canOpenStaffDirectory }: { canOpenStaffDirectory:
       body: "Upcoming / Past / My Events stub until the Events lane lands.",
     },
     {
-      href: "/newsflash",
-      title: "News",
+      href: "/board",
+      title: "Board",
       icon: "newsflash",
-      body: "Lars Newsflash — board writes, alumni read.",
+      body: "Board section — board and admin write, alumni read. /newsflash redirects here.",
     },
     {
       href: "/portal/giving",
@@ -78,8 +78,8 @@ export function UpcomingEventCard({ event }: { event: UpcomingEvent }) {
           {event.source === "events"
             ? "Events lane"
             : event.source === "newsflash"
-              ? "Newsflash date"
-              : "Demo until Events/Newsflash dates exist"}
+              ? "Board date"
+              : "Demo until Events/Board dates exist"}
         </p>
         <Link href={event.href} className="inline-flex text-sm underline underline-offset-2">
           Open details
@@ -113,8 +113,8 @@ export function FeedPostCard({ post }: { post: FeedPost }) {
     <Card>
       <CardHeader>
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-          {post.author_role === "official" ? "Official" : post.audience === "brothers" ? "Brothers" : "Alumni"}
-          {post.source === "newsflash" ? " · Newsflash" : ""} · {post.author_label}
+          {post.author_role === "official" ? "Official" : post.audience === "brothers" || post.section === "brothers" ? "Brothers" : "Alumni"}
+          {post.section === "board" || post.source === "newsflash" ? " · Board" : post.section === "sgarlata" ? " · Sgarlata" : post.section === "brothers" ? " · Brothers" : ""} · {post.author_label}
         </p>
         {post.title ? <CardTitle className="text-navy">{post.title}</CardTitle> : null}
       </CardHeader>

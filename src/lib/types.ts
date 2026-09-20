@@ -19,6 +19,8 @@ export type AlumniListItem = {
   email_primary: string | null;
   phone_primary: string | null;
   address_primary: string | null;
+  football_photo_url?: string | null;
+  linkedin_photo_url?: string | null;
 };
 
 export type AlumniEmail = {

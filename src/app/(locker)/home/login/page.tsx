@@ -26,7 +26,7 @@ export default async function LockerLoginPage({
   return (
     <AuthShell
       title="Alumni portal"
-      subtitle="Admin seed (Lars, Sgarlata, Mike) see/post all. Board can post everything except From Sgarlata. Alumni can edit self and post Brothers on For You."
+      subtitle="Admin seed (Lars, Sgarlata, Mike) see/post all, including From Sgarlata. Board can post everything except Sgarlata compose. Alumni edit self and post Brothers. /newsflash redirects to /board."
     >
       <form action="/api/locker/login" method="post" className="space-y-4">
         <input type="hidden" name="next" value={safeNextPath(params.next)} />

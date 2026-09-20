@@ -21,6 +21,8 @@ import {
   type CookieJar,
 } from "@/lib/alum-session";
 import { COACH_ROLE, SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
+import { readPlatformRole } from "@/lib/platform-session";
+import type { PlatformRole } from "@/lib/platform-roles";
 
 export { ALUM_ROLE, ALUM_SESSION_COOKIE, ALUMNI_SESSION_COOKIE, BOARD_ROLE, getAlumSession, isAlumLoggedIn } from "@/lib/alum-session";
 export { COACH_ROLE, SESSION_COOKIE } from "@/lib/auth";
@@ -33,6 +35,9 @@ export type SessionInfo = {
   roles: SessionRole[];
   alum: boolean;
   coach: boolean;
+  /** Myspace / feed stack. Additive — existing clients can ignore. */
+  platformRole: PlatformRole | null;
+  admin: boolean;
 };
 
 function cookieValue(cookies: CookieJar, name: string) {
@@ -47,11 +52,14 @@ export function readSessionInfo(cookies: CookieJar): SessionInfo {
   const roles: SessionRole[] = [];
   if (isAlumLoggedIn(cookies)) roles.push(ALUM_ROLE);
   if (isCoachLoggedIn(cookies)) roles.push(COACH_ROLE);
+  const platformRole = readPlatformRole(cookies);
   return {
     role: roles[0] ?? null,
     roles,
     alum: roles.includes(ALUM_ROLE),
     coach: roles.includes(COACH_ROLE),
+    platformRole,
+    admin: platformRole === "admin",
   };
 }
 
