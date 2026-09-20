@@ -1,5 +1,6 @@
 import { attendancePersonFromActor } from "@/lib/event-attendance";
 import { isEventCategory, type EventActor, type EventCategory } from "@/lib/event-auth";
+import { buildEventFilterSql, type EventListFilters } from "@/lib/event-filters";
 import { ensureEventTables, seedDemoEventsIfEmpty } from "@/lib/event-schema";
 import type { EventListItem, EventListResult, EventTab } from "@/lib/event-types";
 import { getSql } from "@/lib/db";
@@ -39,10 +40,16 @@ function mapEventRow(row: Record<string, unknown>, username: string): EventListI
   };
 }
 
-export async function listEvents(tab: EventTab, actor: EventActor): Promise<EventListResult> {
+export async function listEvents(
+  tab: EventTab,
+  actor: EventActor,
+  filters: Pick<EventListFilters, "q" | "categories"> = { q: "", categories: [] },
+): Promise<EventListResult> {
   await readyEventStore();
   const username = actor.username;
   const personKey = attendancePersonFromActor(actor).personKey;
+  const listExtra = buildEventFilterSql(4, { q: filters.q ?? "", categories: filters.categories ?? [] });
+  const countExtra = buildEventFilterSql(2, { q: filters.q ?? "", categories: filters.categories ?? [] });
 
   const [rows, counts] = await Promise.all([
     query<Record<string, unknown>[]>(
@@ -78,11 +85,12 @@ export async function listEvents(tab: EventTab, actor: EventActor): Promise<Even
               )
             )
           END
+          ${listExtra.sql}
         ORDER BY
           CASE WHEN $2 = 'past' THEN e.starts_at END DESC NULLS LAST,
           CASE WHEN $2 <> 'past' THEN e.starts_at END ASC NULLS LAST
       `,
-      [username, tab, personKey],
+      [username, tab, personKey, ...listExtra.params],
     ),
     query<Record<string, unknown>[]>(
       `
@@ -95,9 +103,11 @@ export async function listEvents(tab: EventTab, actor: EventActor): Promise<Even
                  SELECT event_id FROM event_rsvps WHERE lower(attendee_key) = lower($1)
                )
           )::int AS mine_count
-        FROM events
+        FROM events e
+        WHERE TRUE
+          ${countExtra.sql}
       `,
-      [username],
+      [username, ...countExtra.params],
     ),
   ]);
 

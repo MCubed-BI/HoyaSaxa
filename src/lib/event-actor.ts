@@ -3,6 +3,7 @@ import { isPreviewAlumSession, parseAlumSessionToken } from "@/lib/alum-session"
 import { SESSION_COOKIE } from "@/lib/auth";
 import { getEventActorFromToken, type EventActor } from "@/lib/event-auth";
 import { HOYA_ALUM_SESSION_COOKIE, readHoyaAlumSession } from "@/lib/hoya-alum-session";
+import { resolvePlatformRole } from "@/lib/platform-roles";
 
 /** Staff `ga_session` first, then contract or locker `hoya_alum_session`. */
 export function eventActorFromTokens(input: {
@@ -19,6 +20,14 @@ export function eventActorFromTokens(input: {
     return {
       username: label,
       role: contract.role,
+      platformRole: resolvePlatformRole({
+        sessionRole: contract.role,
+        source: "hoya_alum_session",
+        email: contract.email,
+        alumniId: alumId,
+        username: label,
+        name: contract.name,
+      }),
       alumId,
       userId: alumId ?? label,
     };
@@ -29,6 +38,12 @@ export function eventActorFromTokens(input: {
     return {
       username: locker.label,
       role: locker.role,
+      platformRole: resolvePlatformRole({
+        sessionRole: locker.role,
+        source: "hoya_alum_session",
+        username: locker.label,
+        name: locker.label,
+      }),
       alumId: null,
       userId: locker.label,
     };
