@@ -1,3 +1,4 @@
+import { collectAthleteEmails } from "@/lib/athlete-emails";
 import { ensureAlumniPhotoColumns } from "@/lib/alumni-photos";
 import { athletePhotoSlots, primaryPhotoUrl } from "@/lib/athlete-photo-slots";
 import { getDatabaseUrl, getSql, isMissingDatabaseConfig } from "@/lib/db";
@@ -281,22 +282,42 @@ async function queryRosterById(id: string): Promise<LockerPersonDetail | null> {
   if (!row) return null;
 
   const person = mapRosterRow(row);
-  const [rosterYearRows, linkedinUrl] = await Promise.all([
+  const [rosterYearRows, linkedinUrl, emails] = await Promise.all([
     sql.query(`SELECT year, position, class FROM alumni_roster_years WHERE alumni_id = $1 ORDER BY year`, [id]),
     person.linkedinUrl ? Promise.resolve(person.linkedinUrl) : siblingLinkedinProfileUrl(person),
+    loadAthleteEmails(id),
   ]);
   const rosterYears = rosterYearRows as Array<{
     year: number;
     position: string | null;
     class: string | null;
   }>;
-  const resolved = { ...person, linkedinUrl };
+  const resolved = { ...person, linkedinUrl, emails };
   return {
     ...resolved,
     rosterYears,
     photos: athletePhotoSlots(resolved),
     qa: emptyLockerQa(),
   };
+}
+
+async function loadAthleteEmails(alumniId: string) {
+  try {
+    const sql = getSql();
+    const [primaryRows, extraRows] = await Promise.all([
+      sql.query(`SELECT email_primary FROM alumni WHERE id = $1 LIMIT 1`, [alumniId]),
+      sql.query(`SELECT email FROM alumni_emails WHERE alumni_id = $1 ORDER BY id`, [alumniId]),
+    ]);
+    const primary = Array.isArray(primaryRows)
+      ? (primaryRows[0] as { email_primary?: string | null } | undefined)
+      : ((primaryRows as { rows?: Array<{ email_primary?: string | null }> }).rows?.[0] ?? undefined);
+    const extras = Array.isArray(extraRows)
+      ? extraRows
+      : ((extraRows as { rows?: Array<{ email?: string | null }> }).rows ?? []);
+    return collectAthleteEmails(primary?.email_primary, extras as Array<{ email?: string | null }>);
+  } catch {
+    return [];
+  }
 }
 
 type LinkedinSiblingRow = LinkedinProfileFields & {
