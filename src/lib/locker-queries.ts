@@ -333,7 +333,7 @@ function activityFromContent(newsflash: NewsflashPost[], feed: FeedPost[]): Acti
     ...newsflash.map((post) => ({
       id: `newsflash-${post.id}`,
       title: post.title,
-      body: `Newsflash · ${post.author_label || "Board"}`,
+      body: `Board · ${post.author_label || "Board"}`,
       when: post.created_at,
       kind: "newsflash" as const,
     })),

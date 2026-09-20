@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { cn } from "cn";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 
 export function BrandMark({
   href,
-  title = "HoyaSaxa",
+  title = PRODUCT_DISPLAY_NAME,
   eyebrow = "Georgetown Football",
   inverted = false,
   compact = false,

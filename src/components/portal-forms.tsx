@@ -36,7 +36,7 @@ export function NewsflashForm({ next = "/board" }: { next?: string }) {
         <Label htmlFor="body">Details</Label>
         <Textarea id="body" name="body" required rows={5} />
       </div>
-      <Button type="submit">Publish newsflash</Button>
+      <Button type="submit">Publish to Board</Button>
     </form>
   );
 }

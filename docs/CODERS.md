@@ -74,7 +74,13 @@ Canonical keys: **`brothers` | `board` | `sgarlata`**.
 
 `locker_feed_posts.section` is additive. `newsflash_posts` still store Board notes.
 
-Do not build the full Myspace composer here — wire the section enum and enforcement.
+Do not rebuild these keys. Coder 2 For You (`/feed`) stacks Myspace UI on them:
+
+- Shell `for-you`, identity `for-you__identity`, sections `for-you__brothers` / `for-you__board` / `for-you__sgarlata`
+- Cards `for-you-card`
+- Headings **From Your Brothers** / **From Your Board** / **From Sgarlata**
+- Posts via `GET`/`POST /api/feed/posts` (`section` must be `brothers` \| `board` \| `sgarlata`)
+- `/newsflash` → `/board` (do not retarget)
 
 ---
 

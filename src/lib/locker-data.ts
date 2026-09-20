@@ -19,6 +19,7 @@ export type FeedPost = {
   created_at: string;
   source: "newsflash" | "feed";
   section?: FeedSection;
+  media_url?: string | null;
 };
 
 export type UpcomingEvent = {

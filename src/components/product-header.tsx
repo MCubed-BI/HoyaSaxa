@@ -6,11 +6,12 @@ import { BrandMark } from "@/components/brand";
 import { NavIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { type NavItem, type NavKey } from "@/lib/nav";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 import { cn } from "cn";
 
 function shortLabel(item: NavItem) {
   if (item.key === "find-my-alum") return "Map";
-  if (item.key === "newsflash") return "News";
+  if (item.key === "board") return "Board";
   if (item.key === "alum") return "Portal";
   return item.label;
 }
@@ -52,7 +53,7 @@ export function ProductHeader({
         </div>
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <div className="flex items-center gap-3 py-2.5">
-            <BrandMark href={homeHref} compact />
+            <BrandMark href={homeHref} compact title={PRODUCT_DISPLAY_NAME} />
             {!stacked && desktopItems.length > 0 ? (
               <nav className="hidden min-w-0 flex-1 items-center justify-end gap-0.5 md:flex" aria-label="Primary">
                 {desktopItems.map((item) => (
