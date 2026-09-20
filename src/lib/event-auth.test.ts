@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { canCreateEvents, canOverrideEventCheckIn, parseUsernameList, resolveEventRole } from "@/lib/event-auth";
-import { eventListHref, parseEventCategoryFilter } from "@/lib/event-types";
 
 const originalBoard = process.env.HOYA_BOARD_USERNAMES;
 const originalAlum = process.env.HOYA_ALUM_USERNAMES;
@@ -50,11 +49,4 @@ test("board list wins over alum list", () => {
   process.env.HOYA_BOARD_USERNAMES = "Lars";
   process.env.HOYA_ALUM_USERNAMES = "Lars";
   assert.equal(resolveEventRole("Lars", "Hoyas"), "board");
-});
-
-test("event list filters by type while keeping date tabs", () => {
-  assert.equal(parseEventCategoryFilter("Social"), "Social");
-  assert.equal(parseEventCategoryFilter("nope"), null);
-  assert.equal(eventListHref("upcoming"), "/events");
-  assert.equal(eventListHref("past", "Game"), "/events?tab=past&category=Game");
 });

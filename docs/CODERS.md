@@ -49,7 +49,7 @@ Staff tools (Data Sync, Twilio blast, reports) still require `ga_session`. Platf
 
 Admin grants Board from `/admin` or an athlete profile (`POST /api/admin/board`). Persist on `staff_roles.alumni_id`. See [admin-roles.md](admin-roles.md).
 
-Events (not For You sections): Admin / Board / Alum can post. `/events` filters by date tab and type.
+Events (not For You sections): Admin / Board / Alum can post. `/events` is filterable via existing Upcoming / Past / My Events tabs. Richer type/search filters stay with the events UI lane.
 
 `src/proxy.ts` still uses the existing cookie gates. New paths `/board`, `/brothers`, `/api/feed`, `/api/badges` are alum-allowlisted.
 

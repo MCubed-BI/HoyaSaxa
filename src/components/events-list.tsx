@@ -3,9 +3,9 @@ import { PageHeader, pillClass } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EVENT_CATEGORIES, canCreateEvents, type EventActor, type EventCategory } from "@/lib/event-auth";
+import { canCreateEvents, type EventActor } from "@/lib/event-auth";
 import { formatEventWhen } from "@/lib/event-datetime";
-import { eventListHref, type EventListItem, type EventTab } from "@/lib/event-types";
+import type { EventListItem, EventTab } from "@/lib/event-types";
 
 const TABS: { id: EventTab; label: string }[] = [
   { id: "upcoming", label: "Upcoming" },
@@ -13,8 +13,8 @@ const TABS: { id: EventTab; label: string }[] = [
   { id: "mine", label: "My Events" },
 ];
 
-function tabHref(tab: EventTab, category?: EventCategory | null) {
-  return eventListHref(tab, category);
+function tabHref(tab: EventTab) {
+  return tab === "upcoming" ? "/events" : `/events?tab=${tab}`;
 }
 
 export function EventsList({
@@ -26,7 +26,6 @@ export function EventsList({
   mineCount,
   created,
   forbidden,
-  category,
 }: {
   actor: EventActor;
   tab: EventTab;
@@ -36,7 +35,6 @@ export function EventsList({
   mineCount: number;
   created?: boolean;
   forbidden?: boolean;
-  category?: EventCategory | null;
 }) {
   const counts: Record<EventTab, number> = {
     upcoming: upcomingCount,
@@ -56,7 +54,7 @@ export function EventsList({
       <PageHeader
         eyebrow="Program"
         title="Events"
-        description="Filter by upcoming/past/mine and by type. Anyone signed in (Admin, Board, or Alum) can post an event."
+        description="Upcoming, past, and events you created or added. Anyone signed in (Admin, Board, or Alum) can post an event."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
@@ -81,45 +79,21 @@ export function EventsList({
         <p className="text-sm text-destructive">Sign in as Alum, Board, or Admin to create an event.</p>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <nav className="flex flex-wrap gap-2" aria-label="Event lists">
-          {TABS.map((item) => {
-            const active = item.id === tab;
-            return (
-              <Link
-                key={item.id}
-                href={tabHref(item.id, category)}
-                aria-current={active ? "page" : undefined}
-                className={pillClass(active)}
-              >
-                {item.label} ({counts[item.id]})
-              </Link>
-            );
-          })}
-        </nav>
-        <form method="get" className="flex items-center gap-2">
-          {tab !== "upcoming" ? <input type="hidden" name="tab" value={tab} /> : null}
-          <label htmlFor="category" className="text-sm text-muted-foreground">
-            Type
-          </label>
-          <select
-            id="category"
-            name="category"
-            defaultValue={category ?? ""}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
-          >
-            <option value="">All types</option>
-            {EVENT_CATEGORIES.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="text-sm font-medium text-navy underline-offset-4 hover:underline">
-            Filter
-          </button>
-        </form>
-      </div>
+      <nav className="flex flex-wrap gap-2" aria-label="Event lists">
+        {TABS.map((item) => {
+          const active = item.id === tab;
+          return (
+            <Link
+              key={item.id}
+              href={tabHref(item.id)}
+              aria-current={active ? "page" : undefined}
+              className={pillClass(active)}
+            >
+              {item.label} ({counts[item.id]})
+            </Link>
+          );
+        })}
+      </nav>
 
       {rows.length === 0 ? (
         <StatusCard title="No events in this list" body={emptyCopy} />
@@ -151,7 +125,7 @@ export function EventsList({
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <form action={`/api/events/${event.id}/rsvp`} method="post">
-                      <input type="hidden" name="next" value={tabHref(tab, category)} />
+                      <input type="hidden" name="next" value={tabHref(tab)} />
                       <Button type="submit" variant="outline" size="sm">
                         {event.rsvped ? "Remove from My Events" : "Add to My Events"}
                       </Button>

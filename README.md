@@ -194,8 +194,8 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/home` — Welcome hero, Directory/Events/News/Giving, upcoming event, recent activity
 - `/feed` — For You (Myspace identity rail + Brothers / Board / Sgarlata). Keys stay `brothers` | `board` | `sgarlata`
 - `/board` — Board section (admin + board publish, alumni read). `/newsflash` redirects here
-- `/events` — Upcoming / Past / My Events (date, title, category, location, thumbnail)
-- `/events/new` — Create Event (coach and board only)
+- `/events` — Upcoming / Past / My Events (filterable date tabs; title, category, location, thumbnail)
+- `/events/new` — Create Event (Admin, Board, or Alum)
 - `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
 - `/directory` — Hoya Directory (search + All/Athletes/Alumni/Coaches/Staff). Requires `ga_session`, `hoya_alum_session`, or the claim session. Anonymous visitors are sent to `/login`. Emails stay hidden on these cards.
 - `/athletes/[id]` — public athlete profile (Overview/Stats/Photos/Career/Q&A). Likely-duplicate panel: Merge duplicate is unchanged; **Not me** permanently hides that pair for the viewing claimed alum (`account:{id}`) or staff admin (`admin:{username}`). The other scope can still see it.
@@ -228,11 +228,12 @@ The app uses existing Neon tables `alumni_accounts`, `alumni_claims`, and `alumn
 
 ## Events
 
-`+ Create Event` and `POST /api/events` allow **coach** and **board** only.
+`+ Create Event` and `POST /api/events` allow **Admin**, **Board**, and **Alum**. Events are not For You sections — posting an event is not Sgarlata compose.
 
-- Shared staff login (`COACH_USERNAME`, default `Hoyas`) is **coach** and can create.
-- Locker `hoya_alum_session` with role **board** (`HOYA_BOARD_USERNAMES`, default Lars) can create.
-- Locker **alum** and unauthenticated users cannot create. `/events/new` redirects to `/events?error=forbidden`.
+- Shared staff login (`COACH_USERNAME`, default `Hoyas`) is Admin (`coach` event role) and can create.
+- Locker `hoya_alum_session` with role **board** (or an Admin Board grant) can create.
+- Claimed / locker **alum** can create. Unauthenticated users cannot. `/events/new` redirects to `/events?error=forbidden`.
+- The list is filterable: Upcoming / Past / My Events tabs (date + audience). Type/search filters are owned by the events UI lane.
 - My Events is the current viewer’s created rows plus **Add to My Events**.
 - Home’s upcoming-event card reads the next `events.starts_at` row when this table exists.
 
