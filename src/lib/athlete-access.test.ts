@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { actorCanEditAthlete, actorCanMergeAthlete } from "./athlete-access";
+import { actorCanEditAthlete, actorCanMergeAthlete, canEditAthletePhotos } from "./athlete-access";
 import { canEditAlumniRecord } from "./platform-roles";
 
 describe("athlete edit and merge gates", () => {
@@ -10,6 +10,29 @@ describe("athlete edit and merge gates", () => {
     assert.equal(canEditAlumniRecord("board", "target", "target"), true);
     assert.equal(canEditAlumniRecord("alum", "other", "target"), false);
     assert.equal(canEditAlumniRecord("board", null, "target"), false);
+  });
+
+  it("lets claimed alum save own photos without ga_session; admin still can", () => {
+    assert.equal(
+      canEditAthletePhotos({ role: "alum", actorAlumniId: "aaa", targetAlumniId: "aaa" }),
+      true,
+    );
+    assert.equal(
+      canEditAthletePhotos({ role: "board", actorAlumniId: "aaa", targetAlumniId: "aaa" }),
+      true,
+    );
+    assert.equal(
+      canEditAthletePhotos({ role: "alum", actorAlumniId: "aaa", targetAlumniId: "bbb" }),
+      false,
+    );
+    assert.equal(
+      canEditAthletePhotos({ role: "admin", actorAlumniId: null, targetAlumniId: "bbb" }),
+      true,
+    );
+    assert.equal(
+      canEditAthletePhotos({ role: "alum", actorAlumniId: null, targetAlumniId: "bbb", claimedSelf: true }),
+      true,
+    );
   });
 
   it("lets admin or claimed-self edit and merge", () => {

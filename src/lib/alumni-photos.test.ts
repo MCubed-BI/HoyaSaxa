@@ -23,9 +23,12 @@ describe("alumni photo fields", () => {
     });
   });
 
-  it("allows claimed self or admin only", () => {
+  it("allows claimed self or admin only — no ga_session required", () => {
     assert.doesNotThrow(() =>
       assertCanEditAlumniPhotos({ role: "alum", actorAlumniId: "aaa", targetAlumniId: "aaa" }),
+    );
+    assert.doesNotThrow(() =>
+      assertCanEditAlumniPhotos({ role: "board", actorAlumniId: "aaa", targetAlumniId: "aaa" }),
     );
     assert.doesNotThrow(() => assertCanEditAlumniPhotos({ role: "admin", actorAlumniId: null, targetAlumniId: "bbb" }));
     assert.throws(
