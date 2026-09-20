@@ -62,7 +62,7 @@ describe("event check-in rules", () => {
     assert.equal(canOverrideEventCheckIn("coach"), true);
     assert.equal(canOverrideEventCheckIn("board"), true);
     assert.equal(canOverrideEventCheckIn("alum"), false);
-    assert.equal(canCreateEvents("alum"), false);
+    assert.equal(canCreateEvents("alum"), true);
   });
 
   it("ranks lifetime counts with ties sharing the min rank", () => {

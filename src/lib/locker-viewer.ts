@@ -2,8 +2,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isVerifiedHoyaIdentity } from "@/lib/access";
 import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
-import { ALUM_SESSION_COOKIE, readAlumSession } from "@/lib/alum-session";
+import { ALUM_SESSION_COOKIE, isPreviewAlumSession, readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
+import { getDatabaseUrl } from "@/lib/db";
 import { canPostToFeedSection } from "@/lib/feed-sections";
 import {
   HOYA_ALUM_SESSION_COOKIE,
@@ -13,8 +14,9 @@ import {
 } from "@/lib/hoya-alum-session";
 import { viewerLabelFromAccountId } from "@/lib/messages-auth";
 import { identityFromViewer } from "@/lib/platform-session";
-import { resolvePlatformRole, type PlatformRole } from "@/lib/platform-roles";
+import { platformRoleLabel, resolvePlatformRole, type PlatformRole } from "@/lib/platform-roles";
 import { resolveRoleFromEnv, type AccessMode } from "@/lib/roles";
+import { lookupAssignedRole } from "@/lib/staff-roles";
 
 export type LockerViewer = {
   role: LockerRole | "coach";
@@ -38,9 +40,10 @@ function lockerCapabilities(input: {
   username?: string | null;
   verifiedHoya?: boolean;
   sessionRole?: AccessMode | "owner" | "coach" | "alum" | "board";
+  assignedRole?: string | null;
 }) {
-  const platformRole = resolvePlatformRole(
-    identityFromViewer({
+  const platformRole = resolvePlatformRole({
+    ...identityFromViewer({
       role: input.sessionRole ?? (input.role === "coach" ? "coach" : input.role),
       source: input.source,
       email: input.email,
@@ -48,7 +51,8 @@ function lockerCapabilities(input: {
       username: input.username ?? input.label,
       label: input.label,
     }),
-  );
+    assignedRole: input.assignedRole,
+  });
   return {
     platformRole,
     canPostNewsflash: canPostToFeedSection(platformRole, "board"),
@@ -56,8 +60,22 @@ function lockerCapabilities(input: {
     canPostSgarlata: canPostToFeedSection(platformRole, "sgarlata"),
     verifiedHoya: Boolean(input.verifiedHoya),
     mode: platformRole,
-    roleLabel: lockerRoleLabel(input.role),
+    roleLabel: platformRole === "board" || platformRole === "admin" ? platformRoleLabel(platformRole) : lockerRoleLabel(input.role),
   };
+}
+
+async function assignedRoleFor(input: {
+  username?: string | null;
+  email?: string | null;
+  alumniId?: string | null;
+  name?: string | null;
+}) {
+  if (!getDatabaseUrl()) return null;
+  try {
+    return await lookupAssignedRole(input);
+  } catch {
+    return null;
+  }
 }
 
 export async function getLockerViewer(): Promise<LockerViewer | null> {
@@ -65,7 +83,14 @@ export async function getLockerViewer(): Promise<LockerViewer | null> {
   const token = jar.get(HOYA_ALUM_SESSION_COOKIE)?.value ?? jar.get(ALUM_SESSION_COOKIE)?.value;
   const contract = readAlumSession(token);
   if (contract) {
+    const alumniId = isPreviewAlumSession(contract) ? null : contract.alumniId;
     const label = contract.name || contract.email || lockerRoleLabel(contract.role);
+    const assignedRole = await assignedRoleFor({
+      alumniId,
+      email: contract.email,
+      name: contract.name,
+      username: contract.name,
+    });
     return {
       role: contract.role,
       label,
@@ -75,8 +100,9 @@ export async function getLockerViewer(): Promise<LockerViewer | null> {
         label,
         source: "hoya_alum_session",
         email: contract.email,
-        alumniId: contract.alumniId,
+        alumniId,
         verifiedHoya: isVerifiedHoyaIdentity(contract),
+        assignedRole,
       }),
     };
   }

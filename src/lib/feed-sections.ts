@@ -6,8 +6,8 @@
  *
  * Who can post:
  *   - brothers — alum, board, admin
- *   - board    — board, admin  (Newsflash writes land here)
- *   - sgarlata — admin only (coach session / ADMIN_EMAILS / seed / staff_roles)
+ *   - board    — board, admin  (Message from the Board / Newsflash writes)
+ *   - sgarlata — admin only (every For You section for admin)
  */
 import {
   canPostBoardSection,

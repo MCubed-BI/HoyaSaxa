@@ -15,6 +15,11 @@ export async function readyEventStore() {
   await seedDemoEventsIfEmpty();
 }
 
+function eventRoleFromRow(value: unknown): EventListItem["created_by_role"] {
+  if (value === "board" || value === "alum" || value === "coach") return value;
+  return "coach";
+}
+
 function mapEventRow(row: Record<string, unknown>, username: string): EventListItem {
   const category = isEventCategory(String(row.category)) ? (row.category as EventCategory) : "Other";
   const createdBy = String(row.created_by ?? "");
@@ -27,17 +32,22 @@ function mapEventRow(row: Record<string, unknown>, username: string): EventListI
     thumbnail_url: typeof row.thumbnail_url === "string" ? row.thumbnail_url : null,
     description: typeof row.description === "string" ? row.description : null,
     created_by: createdBy,
-    created_by_role: row.created_by_role === "board" ? "board" : "coach",
+    created_by_role: eventRoleFromRow(row.created_by_role),
     created_by_me: createdBy.toLowerCase() === username.toLowerCase(),
     rsvped: Boolean(row.rsvped),
     checked_in: Boolean(row.checked_in),
   };
 }
 
-export async function listEvents(tab: EventTab, actor: EventActor): Promise<EventListResult> {
+export async function listEvents(
+  tab: EventTab,
+  actor: EventActor,
+  filters: { category?: EventCategory | null } = {},
+): Promise<EventListResult> {
   await readyEventStore();
   const username = actor.username;
   const personKey = attendancePersonFromActor(actor).personKey;
+  const category = filters.category ?? null;
 
   const [rows, counts] = await Promise.all([
     query<Record<string, unknown>[]>(
@@ -73,26 +83,30 @@ export async function listEvents(tab: EventTab, actor: EventActor): Promise<Even
               )
             )
           END
+          AND ($4::text IS NULL OR e.category = $4)
         ORDER BY
           CASE WHEN $2 = 'past' THEN e.starts_at END DESC NULLS LAST,
           CASE WHEN $2 <> 'past' THEN e.starts_at END ASC NULLS LAST
       `,
-      [username, tab, personKey],
+      [username, tab, personKey, category],
     ),
     query<Record<string, unknown>[]>(
       `
         SELECT
-          count(*) FILTER (WHERE starts_at >= now())::int AS upcoming_count,
-          count(*) FILTER (WHERE starts_at < now())::int AS past_count,
+          count(*) FILTER (WHERE starts_at >= now() AND ($2::text IS NULL OR category = $2))::int AS upcoming_count,
+          count(*) FILTER (WHERE starts_at < now() AND ($2::text IS NULL OR category = $2))::int AS past_count,
           count(*) FILTER (
-            WHERE lower(created_by) = lower($1)
-               OR id IN (
-                 SELECT event_id FROM event_rsvps WHERE lower(attendee_key) = lower($1)
-               )
+            WHERE ($2::text IS NULL OR category = $2)
+              AND (
+                lower(created_by) = lower($1)
+                OR id IN (
+                  SELECT event_id FROM event_rsvps WHERE lower(attendee_key) = lower($1)
+                )
+              )
           )::int AS mine_count
         FROM events
       `,
-      [username],
+      [username, category],
     ),
   ]);
 

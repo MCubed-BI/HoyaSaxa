@@ -23,9 +23,9 @@ export default async function CreateEventPage({
     <EventsChrome locker={locker}>
       <PageMain width="form">
         <PageHeader
-          eyebrow="Coach / board"
+          eyebrow="Events"
           title="New event"
-          description="Only coach and board staff can create events. Times are Eastern."
+          description="Admin, Board, and Alum can post events. Times are Eastern. This is not From Sgarlata."
         />
         <CreateEventForm error={params.error} />
       </PageMain>

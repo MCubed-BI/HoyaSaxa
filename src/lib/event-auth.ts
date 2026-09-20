@@ -27,19 +27,10 @@ export type EventActor = {
 /**
  * Create Event auth gate
  * ----------------------
- * Allowed: `coach` and `board`.
- * Denied: `alum` (and unauthenticated).
+ * Allowed: Admin (`coach` session), Board, and Alum.
+ * Denied: unauthenticated only.
  *
- * The seeded app has a single shared `ga_session` staff login
- * (`COACH_USERNAME`, default Hoyas). That session is treated as **coach**,
- * so Create Event is visible to the current staff login.
- *
- * Optional env lists (already used by Home / Newsflash):
- * - `HOYA_BOARD_USERNAMES` — those usernames resolve to board (can create)
- * - `HOYA_ALUM_USERNAMES` — those usernames resolve to alum (cannot create)
- *
- * A locker `hoya_alum_session` with role `board` can create. Role `alum` cannot.
- * This module does not change Register myself / claim or the portal shell.
+ * Events are not For You feed sections. Sgarlata compose stays admin-only.
  */
 export function parseUsernameList(value: string | undefined | null) {
   if (!value) return [];
@@ -74,7 +65,7 @@ export function resolveEventRole(
 }
 
 export function canCreateEvents(role: EventRole | null | undefined) {
-  return role === "coach" || role === "board";
+  return role === "coach" || role === "board" || role === "alum";
 }
 
 /** Staff can check someone else in and restamp an existing row. Alum cannot. */

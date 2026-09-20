@@ -24,7 +24,7 @@ Additive portal tables (created if missing): `staff_roles`, `coach_messages`, `n
 
 2. Set `DATABASE_URL` to the Neon pooled connection string. Do not commit it.
 
-3. Coach login is required before any alumni data is shown.
+3. Alum or Admin login is required before any alumni data is shown.
 
    | Variable | Local / demo default | Production |
    | --- | --- | --- |
@@ -53,9 +53,9 @@ Three product modes, enforced in `src/proxy.ts` and write APIs (not UI-only). Co
 
 | Mode | How it is assigned | What they can do |
 | --- | --- | --- |
-| **Admin** | Coach gate `ga_session`. `COACH_USERNAME` (default `Hoyas`) plus `HOYA_ADMIN_USERNAMES` / `HOYA_OWNER_USERNAMES` / `staff_roles`. Seed: **Lars**, **Sgarlata**, **Mike**, **Michael**, **Michael Kasten** | See/post all, including From Sgarlata / Message from Head Coach |
-| **Board** | `hoya_alum_session` `role=board` (`HOYA_BOARD_USERNAMES`, default preview `Board`) | See/post locker + portal except Sgarlata / coach compose (403 on those POSTs) |
-| **Alum** | Claim/login `hoya_alum_session` `role=alum`, or preview `Alum` | Edit self, post Brothers on For You, search directory. **Verified Hoya** after a successful claim/login |
+| **Admin** | Admin login `ga_session`. `COACH_USERNAME` (default `Hoyas`) plus `HOYA_ADMIN_USERNAMES` / `HOYA_OWNER_USERNAMES` / `staff_roles`. Seed: **Lars**, **Sgarlata**, **Mike**, **Michael**, **Michael Kasten** | See/post all For You sections, including From Sgarlata |
+| **Board** | Cookie `role=board`, `HOYA_BOARD_USERNAMES`, or Admin **Board member** toggle (`staff_roles`) | Alum capabilities + Message from the Board. No Sgarlata compose |
+| **Alum** | Claim/login `hoya_alum_session` `role=alum`, or preview `Alum` | Full Alum Mode: Brothers on For You, Directory, /me photos, events. **Verified Hoya** after a successful claim/login |
 
 Add Admins with `HOYA_ADMIN_USERNAMES` or `INSERT INTO staff_roles` — short runbook: [docs/admin-roles.md](docs/admin-roles.md).
 
@@ -186,7 +186,7 @@ Claim / register pages are owned by another lane and are not touched here.
 
 Alum chrome uses existing CRM styles (function over polish). Primary nav is **Home · Directory · Events · Giving · Messages**.
 
-- `/login` — staff gate (`ga_session` for owner/coach; `Alum`/`Lars` mint `hoya_alum_session`)
+- `/login` — Admin login (`ga_session` for owner/coach; alum preview usernames mint `hoya_alum_session`)
 - `/register` — alumni claim (last name + graduating class)
 - `/alumni-login` — alumni email/password login
 - `/me` — edit claimed records or merge a duplicate. **Not me** on Merge accounts permanently hides that pair for the claimed login (`alumni_duplicate_dismissals`).

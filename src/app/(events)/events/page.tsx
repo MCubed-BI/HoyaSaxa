@@ -4,7 +4,7 @@ import { PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { getEventActor } from "@/lib/event-actor";
 import { listEvents } from "@/lib/event-queries";
-import { parseEventTab } from "@/lib/event-types";
+import { parseEventCategoryFilter, parseEventTab } from "@/lib/event-types";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { getLockerViewer } from "@/lib/locker-viewer";
 
@@ -17,6 +17,7 @@ export default async function EventsPage({
 }) {
   const params = await searchParams;
   const tab = parseEventTab(params.tab);
+  const category = parseEventCategoryFilter(params.category);
   const [actor, locker] = await Promise.all([getEventActor(), getLockerViewer()]);
 
   if (!actor) {
@@ -30,7 +31,7 @@ export default async function EventsPage({
   }
 
   try {
-    const result = await listEvents(tab, actor);
+    const result = await listEvents(tab, actor, { category });
     return (
       <EventsChrome locker={locker}>
         <PageMain>
@@ -43,6 +44,7 @@ export default async function EventsPage({
             mineCount={result.mineCount}
             created={params.created === "1"}
             forbidden={params.error === "forbidden"}
+            category={category}
           />
         </PageMain>
       </EventsChrome>

@@ -13,8 +13,8 @@ export const metadata: Metadata = {
 };
 
 function safeNextPath(value: string | undefined) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/me";
-  if (value === "/login" || value.startsWith("/api/")) return "/me";
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/home";
+  if (value === "/login" || value.startsWith("/api/")) return "/home";
   return value;
 }
 
@@ -30,7 +30,7 @@ export default async function AlumniLoginPage({
   }
 
   return (
-    <AuthShell title="Alumni login" subtitle="Sign in to edit your records or merge duplicate roster rows.">
+    <AuthShell title="Alumni login" subtitle="Alum or Admin only. Sign in to open Alum Mode — For You, Directory, and your record.">
       <form action="/api/alumni/login" method="post" className="space-y-4">
         <input type="hidden" name="next" value={safeNextPath(params.next)} />
         <div className="space-y-1.5">

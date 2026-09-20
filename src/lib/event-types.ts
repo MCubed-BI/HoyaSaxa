@@ -1,4 +1,4 @@
-import type { EventCategory, EventRole } from "@/lib/event-auth";
+import { isEventCategory, type EventCategory, type EventRole } from "@/lib/event-auth";
 
 export type EventTab = "upcoming" | "past" | "mine";
 
@@ -29,4 +29,17 @@ export function parseEventTab(value: string | string[] | undefined): EventTab {
   const raw = Array.isArray(value) ? value[0] : value;
   if (raw === "past" || raw === "mine") return raw;
   return "upcoming";
+}
+
+export function parseEventCategoryFilter(value: string | string[] | undefined): EventCategory | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return isEventCategory(raw) ? raw : null;
+}
+
+export function eventListHref(tab: EventTab, category?: EventCategory | null) {
+  const params = new URLSearchParams();
+  if (tab !== "upcoming") params.set("tab", tab);
+  if (category) params.set("category", category);
+  const query = params.toString();
+  return query ? `/events?${query}` : "/events";
 }

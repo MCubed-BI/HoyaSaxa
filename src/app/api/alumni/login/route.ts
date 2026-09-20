@@ -4,8 +4,8 @@ import { alumSessionIdentityForAccount, authenticateAlumni } from "@/lib/alumni-
 import { setAlumSessionCookies } from "@/lib/session";
 
 function safeNextPath(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/me";
-  if (value === "/login" || value.startsWith("/api/")) return "/me";
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/home";
+  if (value === "/login" || value.startsWith("/api/")) return "/home";
   return value;
 }
 

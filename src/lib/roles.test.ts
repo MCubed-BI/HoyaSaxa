@@ -136,6 +136,14 @@ describe("roles", () => {
       navItemsForRole("owner").some((item) => item.href === "/find-my-alum"),
       true,
     );
+    assert.equal(
+      navItemsForRole("owner").some((item) => item.href === "/admin" && item.label === "Admin"),
+      true,
+    );
+    assert.equal(
+      portalMoreItems("owner").some((item) => item.label === "Admin portal"),
+      true,
+    );
     assert.equal(homePathForRole("alum"), "/portal");
     assert.equal(homePathForRole("board"), "/portal");
     assert.equal(homePathForRole("owner"), "/");
@@ -167,7 +175,7 @@ describe("portal paths", () => {
     assert.equal(isPublicPath("/directory"), false);
     assert.equal(isPublicPath("/athletes/demo"), false);
     assert.equal(isAlumAllowedPath("/api/blast"), true);
-    assert.equal(loginPathFor("/directory"), "/login");
+    assert.equal(loginPathFor("/directory"), "/home/login");
     assert.equal(isAlumAllowedPath("/home"), true);
     assert.equal(isAlumAllowedPath("/feed"), true);
     assert.equal(isAlumAllowedPath("/messages"), true);
@@ -178,6 +186,8 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/board"), true);
     assert.equal(isAlumAllowedPath("/api/feed"), true);
     assert.equal(isAlumAllowedPath("/api/badges"), true);
+    assert.equal(isAlumAllowedPath("/admin"), true);
+    assert.equal(isAlumAllowedPath("/api/admin"), true);
     assert.equal(loginPathFor("/board"), "/home/login");
     assert.equal(isAlumAllowedPath("/events"), true);
     assert.equal(isAlumAllowedPath("/events/check-in"), true);

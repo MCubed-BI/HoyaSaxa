@@ -11,6 +11,7 @@ function fromForNav(current?: NavKey) {
   if (current === "events") return "/events";
   if (current === "giving") return "/giving";
   if (current === "messages") return "/messages";
+  if (current === "admin") return "/admin";
   return "/home";
 }
 

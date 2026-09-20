@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function RegisterPage() {
   const jar = await cookies();
   if (isAlumLoggedIn(jar)) {
-    redirect("/me");
+    redirect("/home");
   }
 
   return (

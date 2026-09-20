@@ -2,8 +2,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AlumniMePanel } from "@/components/alumni-me-panel";
+import { LockerHeader } from "@/components/locker-header";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
-import { ProductHeader } from "@/components/product-header";
 import { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
@@ -11,11 +11,13 @@ import { Button } from "@/components/ui/button";
 import { loadAlumniMeState } from "@/lib/alumni-claim";
 import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { isMissingDatabaseConfig } from "@/lib/db";
+import { getLockerViewer } from "@/lib/locker-viewer";
 
 export const dynamic = "force-dynamic";
 
 export default async function MePage() {
   const jar = await cookies();
+  const viewer = await getLockerViewer();
   let state: Awaited<ReturnType<typeof loadAlumniMeState>>;
   try {
     state = await loadAlumniMeState(jar);
@@ -45,23 +47,11 @@ export default async function MePage() {
 
     return (
       <PageShell>
-        <ProductHeader
-          homeHref="/me"
-          items={[]}
-          roleLabel="Alumni record"
-          mobileNav="none"
-          signOutAction="/api/alumni/logout"
-          showSignOut
-          trailing={
-            <Button asChild variant="ghost" className="h-8 px-2.5 text-muted-foreground">
-              <Link href="/register">Register another</Link>
-            </Button>
-          }
-        />
+        <LockerHeader current="me" viewer={viewer} />
         <PageMain width="record">
           <PageHeader
             title="My alumni record"
-            description="Alumni can edit their own contact record or merge a duplicate roster row. This login does not open the coach directory."
+            description="Alum Mode: edit your photos and contact record, search the Directory, and post Brothers on For You. A successful claim shows Verified Hoya."
             actions={records.length > 0 ? <VerifiedHoyaBadge /> : undefined}
           />
           {records.length === 0 ? (
