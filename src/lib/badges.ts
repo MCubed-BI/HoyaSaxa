@@ -12,6 +12,7 @@
  *
  * Coder 4 / 5: import `@/lib/badge-api` (HoyaBadge + consume helpers).
  */
+import { isPreviewAlumniId } from "@/lib/alum-preview";
 import {
   attendanceLeadersFromCoder4Feed,
   type EventBadgeFeed,
@@ -197,6 +198,20 @@ export async function grantBadge(alumniId: string, type: BadgeType) {
     [alumniId, type],
   )) as BadgeGrant[];
   return rows[0] ?? null;
+}
+
+/**
+ * Claim / alumni login grant. Preview Alum (no real roster id) is session-only —
+ * chrome still shows Verified Hoya via `isVerifiedHoyaIdentity`.
+ */
+export async function grantVerifiedHoyaForAlumSession(alumniId: string | null | undefined) {
+  const id = alumniId?.trim() ?? "";
+  if (!id || isPreviewAlumniId(id)) return null;
+  try {
+    return await grantVerifiedHoya(id);
+  } catch {
+    return null;
+  }
 }
 
 /** Claim / login contract: every claimed roster row becomes a Verified Hoya. */
@@ -469,11 +484,12 @@ export async function listPublicBadges(
       ? computeEventTopBadge(alumniId, { totals: options.attendanceTotals })
       : computeEventTopBadge(alumniId),
   ]);
+  const claimed = await loadClaimedIds(uuidAlumniIds([alumniId]));
   return assemblePublicBadges({
     stored,
     donorTier: donor?.tier ?? null,
     eventTier: eventTop?.tier ?? null,
-    verified: stored.some((badge) => badge.type === "verified_hoya"),
+    verified: stored.some((badge) => badge.type === "verified_hoya") || claimed.has(alumniId),
   });
 }
 
@@ -503,7 +519,7 @@ async function listStoredBadgesMany(alumniIds: string[]): Promise<Map<string, Pu
 
 async function loadClaimedIds(alumniIds: string[]): Promise<Set<string>> {
   const claimed = new Set<string>();
-  if (!alumniIds.length || !(await tableExists("alumni_claims"))) return claimed;
+  if (!alumniIds.length || !getDatabaseUrl() || !(await tableExists("alumni_claims"))) return claimed;
   const sql = getSql();
   const rows = (await sql.query(
     `SELECT DISTINCT alumni_id::text AS id FROM alumni_claims WHERE alumni_id = ANY($1::uuid[])`,

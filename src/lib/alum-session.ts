@@ -25,7 +25,10 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { PREVIEW_ALUMNI_ID, isPreviewAlumniId } from "@/lib/alum-preview";
 import { getCoachCredentials } from "@/lib/auth";
+
+export { PREVIEW_ALUMNI_ID, isPreviewAlumniId } from "@/lib/alum-preview";
 
 export const ALUM_SESSION_COOKIE = "hoya_alum_session";
 export const alumSessionCookieName = ALUM_SESSION_COOKIE;
@@ -51,8 +54,6 @@ export type AlumSessionPayload = AlumSession;
 export type CookieJar = {
   get(name: string): { value: string } | undefined;
 };
-
-const PREVIEW_ALUMNI_ID = "00000000-0000-0000-0000-000000000000";
 
 function hmac(secret: string, value: string) {
   return createHmac("sha256", secret).update(value).digest("hex");
@@ -212,7 +213,7 @@ export async function requireAlumRole(...roles: AlumRole[]) {
 }
 
 export function isPreviewAlumSession(session: AlumSession) {
-  return session.alumniId === PREVIEW_ALUMNI_ID;
+  return isPreviewAlumniId(session.alumniId);
 }
 
 /** Portal/auth-boundary: true only when `hoya_alum_session` verifies as role `alum`. */

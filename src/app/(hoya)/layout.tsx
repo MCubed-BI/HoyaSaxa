@@ -13,6 +13,7 @@ export default async function HoyaLayout({ children }: { children: React.ReactNo
         roleLabel={locker?.roleLabel}
         viewerLabel={locker?.label}
         canEmailClassmates={locker?.role !== "coach"}
+        verifiedHoya={locker?.verifiedHoya}
       />
       <SelectionProvider>{children}</SelectionProvider>
     </div>
