@@ -71,6 +71,7 @@ describe("locker paths", () => {
   it("keeps locker login public and locker surfaces allowlisted", () => {
     assert.equal(isPublicPath("/home/login"), true);
     assert.equal(isPublicPath("/api/locker/login"), true);
+    assert.equal(isPublicPath("/manifest.webmanifest"), true);
     assert.equal(isPublicPath("/directory"), false);
     assert.equal(isPublicPath("/athletes/abc"), false);
     assert.equal(isPublicPath("/home"), false);

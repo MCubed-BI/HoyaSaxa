@@ -166,6 +166,7 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/sync"), false);
     assert.equal(isAlumAllowedPath("/blast"), false);
     assert.equal(isPublicPath("/home/login"), true);
+    assert.equal(isPublicPath("/manifest.webmanifest"), true);
     assert.equal(isPublicPath("/api/logout"), true);
     assert.equal(isPublicPath("/api/locker/logout"), true);
     assert.equal(loginPathFor("/portal"), "/alumni-login");
