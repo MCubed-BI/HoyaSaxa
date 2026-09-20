@@ -212,6 +212,7 @@ export function lockerStubById(id: string): LockerPersonDetail | null {
       : []),
     photos: extra?.photos ?? EMPTY_PHOTOS,
     qa: extra?.qa ?? EMPTY_QA,
+    emails: [],
   };
 }
 

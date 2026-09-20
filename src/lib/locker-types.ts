@@ -70,6 +70,8 @@ export type LockerPersonDetail = LockerPerson & {
   rosterYears: LockerRosterYear[];
   photos: LockerPhotoSlot[];
   qa: LockerQaItem[];
+  /** Signed-in athlete profile only. Never attach to directory list cards. */
+  emails: string[];
 };
 
 export type LockerDirectoryResult = {

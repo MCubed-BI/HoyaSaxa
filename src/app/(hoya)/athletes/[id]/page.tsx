@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AthleteEmailField } from "@/components/athlete-emails";
 import { AthleteMergePanel } from "@/components/athlete-merge-panel";
 import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { HoyaAvatar } from "@/components/hoya-avatar";
+import { LinkedInProfileField } from "@/components/linkedin-profile-link";
 import { PageMain, pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,6 +103,8 @@ export default async function AthleteProfilePage({
               {person.sport ? <Badge variant="outline">{person.sport}</Badge> : null}
             </div>
             <HoyaBadgeRow badges={badges} />
+            <AthleteEmailField emails={person.emails} showEmpty={false} />
+            <LinkedInProfileField url={person.linkedinUrl} showEmpty={false} />
             {actor.canEdit ? (
               <div className="pt-2">
                 <AthletePhotoEditor alumniId={person.id} slots={photos} />
@@ -143,16 +147,8 @@ export default async function AthleteProfilePage({
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Location</p>
               <p className="mt-1">{city || "Not listed"}</p>
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">LinkedIn</p>
-              {person.linkedinUrl ? (
-                <a href={person.linkedinUrl} target="_blank" rel="noreferrer" className="mt-1 block text-navy hover:underline">
-                  {person.linkedinUrl.replace(/^https?:\/\/(www\.)?/, "")}
-                </a>
-              ) : (
-                <p className="mt-1 text-muted-foreground">Not listed</p>
-              )}
-            </div>
+            <AthleteEmailField emails={person.emails} />
+            <LinkedInProfileField url={person.linkedinUrl} />
           </CardContent>
         </Card>
       ) : null}
@@ -205,6 +201,8 @@ export default async function AthleteProfilePage({
           <CardContent className="space-y-3 text-sm">
             <p>{jobLabel(person.companyName, person.jobTitle) || "Career shell — title and company will show here."}</p>
             {person.industry ? <p className="text-muted-foreground">{person.industry}</p> : null}
+            <AthleteEmailField emails={person.emails} />
+            <LinkedInProfileField url={person.linkedinUrl} />
           </CardContent>
         </Card>
       ) : null}
