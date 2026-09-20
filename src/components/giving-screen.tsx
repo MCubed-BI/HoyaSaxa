@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Timestamp } from "@/components/timestamp";
 import { formatNumber } from "@/lib/format";
+import { HoyaBadgeRow } from "@/components/hoya-badges";
 import {
   IMPACT_AMOUNT_DOLLARS,
   formatPledgeDollars,
@@ -184,7 +185,10 @@ export function GivingScreen({
               <ul className="space-y-2">
                 {summary.leaders.map((row) => (
                   <li key={row.donor_label} className="flex justify-between gap-3 border-b py-2 last:border-0">
-                    <span>{row.donor_label}</span>
+                    <div className="min-w-0 space-y-1">
+                      <span>{row.donor_label}</span>
+                      {row.badge ? <HoyaBadgeRow badges={[row.badge]} /> : null}
+                    </div>
                     <span>
                       {formatPledgeDollars(row.amount_cents)} · {row.pledge_count}
                     </span>

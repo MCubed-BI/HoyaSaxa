@@ -70,6 +70,28 @@ function sgarlataMatch(alumni: AlumniIdentity[]) {
   return rob.length === 1 ? normalizeAlumniId(rob[0]!.id) : "";
 }
 
+export function isAnonymousDonorLabel(label: string | null | undefined) {
+  const text = label?.trim() ?? "";
+  return !text || ANON.test(text);
+}
+
+/** Stable cohort key when a pledge label does not uniquely match a roster id. */
+export function unmatchedDonorKey(label: string | null | undefined) {
+  const text = label?.trim().toLowerCase() ?? "";
+  if (!text || ANON.test(text)) return "label:anonymous";
+  return `label:${text}`;
+}
+
+/**
+ * Rank key for a pledge: roster uuid when resolvable, else a label key so the
+ * gift still occupies a percentile slot. Never drops real giving from the cohort.
+ */
+export function donorCohortKey(label: string | null | undefined, alumni: AlumniIdentity[] = []): string {
+  if (label && isAlumniUuid(label)) return normalizeAlumniId(label);
+  const resolved = resolveAlumniIdFromLabel(label ?? "", alumni);
+  return resolved || unmatchedDonorKey(label);
+}
+
 export function resolveAlumniIdFromLabel(label: string, alumni: AlumniIdentity[] = []): string {
   const text = label.trim();
   if (!text || ANON.test(text)) return "";
@@ -151,7 +173,7 @@ export async function loadAlumniNameIndex(): Promise<AlumniIdentity[]> {
 }
 
 export function addCentsByKey(totals: Map<string, number>, key: string, cents: number) {
-  const id = normalizeAlumniId(key);
+  const id = normalizeAlumniId(key) || key.trim();
   const amount = Number(cents) || 0;
   if (!id || amount <= 0) return;
   totals.set(id, (totals.get(id) ?? 0) + amount);
