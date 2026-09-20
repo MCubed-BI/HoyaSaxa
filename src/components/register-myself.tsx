@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ClaimPhotoFields } from "@/components/claim-photo-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { emptyClaimPhotos, hasClaimPhotoValues, photosFromClaimMatch, type ClaimPhotoValues } from "@/lib/claim-photos";
 import { displayName } from "@/lib/format";
 
 type Match = {
@@ -19,11 +21,19 @@ type Match = {
   seasons: string | null;
   claimed: boolean;
   claimed_by_me: boolean;
+  football_photo_url?: string | null;
+  linkedin_photo_url?: string | null;
 };
 
-export function RegisterMyself() {
+export function RegisterMyself({
+  initialStep = "roster",
+  claimedAlumniId = null,
+}: {
+  initialStep?: "roster" | "account" | "photos";
+  claimedAlumniId?: string | null;
+}) {
   const router = useRouter();
-  const [step, setStep] = useState<"roster" | "account">("roster");
+  const [step, setStep] = useState<"roster" | "account" | "photos">(initialStep);
   const [lastName, setLastName] = useState("");
   const [classYear, setClassYear] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -33,8 +43,46 @@ export function RegisterMyself() {
   const [selected, setSelected] = useState<string[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [photos, setPhotos] = useState<ClaimPhotoValues>(emptyClaimPhotos());
+  const [claimedIds, setClaimedIds] = useState<string[]>(claimedAlumniId ? [claimedAlumniId] : []);
   const [error, setError] = useState<string | null>(null);
+  const [photoMessage, setPhotoMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  const selectedMatch = useMemo(
+    () => matches.find((row) => selected.includes(row.id)) ?? matches[0] ?? null,
+    [matches, selected],
+  );
+
+  useEffect(() => {
+    if (step !== "photos") return;
+    const alumniId = claimedIds[0];
+    if (!alumniId) return;
+    let cancelled = false;
+    void fetch(`/api/alum/photos?alumniId=${encodeURIComponent(alumniId)}`)
+      .then(async (response) => {
+        const data = (await response.json()) as {
+          error?: string;
+          photos?: { football_photo_url?: string | null; linkedin_photo_url?: string | null };
+        };
+        if (!response.ok || cancelled || !data.photos) return;
+        setPhotos((current) => ({
+          football_photo_url: current.football_photo_url || data.photos?.football_photo_url?.trim() || "",
+          linkedin_photo_url: current.linkedin_photo_url || data.photos?.linkedin_photo_url?.trim() || "",
+        }));
+      })
+      .catch(() => {
+        // Existing URL still comes from the selected roster row.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [claimedIds, step]);
+
+  function applyMatchPhotos(rows: Match[], ids: string[]) {
+    const row = rows.find((item) => ids.includes(item.id)) ?? rows[0] ?? null;
+    setPhotos(photosFromClaimMatch(row));
+  }
 
   async function lookup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,11 +101,14 @@ export function RegisterMyself() {
       });
       const data = (await response.json()) as { error?: string; classYear?: string; matches?: Match[] };
       if (!response.ok) throw new Error(data.error ?? "Lookup failed");
+      const nextMatches = data.matches ?? [];
       setResolvedYear(data.classYear ?? null);
-      setMatches(data.matches ?? []);
-      const available = (data.matches ?? []).filter((row) => !row.claimed);
-      setSelected(available.length === 1 ? [available[0]!.id] : []);
-      setCreateIfMissing((data.matches ?? []).length === 0);
+      setMatches(nextMatches);
+      const available = nextMatches.filter((row) => !row.claimed);
+      const nextSelected = available.length === 1 ? [available[0]!.id] : [];
+      setSelected(nextSelected);
+      setCreateIfMissing(nextMatches.length === 0);
+      applyMatchPhotos(nextMatches, nextSelected);
       setStep("account");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lookup failed");
@@ -69,6 +120,7 @@ export function RegisterMyself() {
   async function register(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    setPhotoMessage(null);
     setPending(true);
     try {
       const response = await fetch("/api/alumni/register", {
@@ -82,17 +134,55 @@ export function RegisterMyself() {
           alumniIds: selected,
           firstName,
           createIfMissing: createIfMissing && selected.length === 0,
+          ...(hasClaimPhotoValues(photos) ? photos : {}),
         }),
       });
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as { error?: string; claimedIds?: string[] };
       if (!response.ok) throw new Error(data.error ?? "Registration failed");
-      router.push("/home");
-      router.refresh();
+      const nextIds = data.claimedIds?.filter(Boolean) ?? selected;
+      setClaimedIds(nextIds);
+      setStep("photos");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setPending(false);
     }
+  }
+
+  async function savePhotos() {
+    const ids = claimedIds.filter(Boolean);
+    if (ids.length === 0) {
+      setError("Claim a roster row before saving photos.");
+      return;
+    }
+    setError(null);
+    setPhotoMessage(null);
+    setPending(true);
+    try {
+      for (const alumniId of ids) {
+        const response = await fetch("/api/alum/photos", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            alumniId,
+            football_photo_url: photos.football_photo_url,
+            linkedin_photo_url: photos.linkedin_photo_url,
+          }),
+        });
+        const data = (await response.json()) as { error?: string };
+        if (!response.ok) throw new Error(data.error ?? "Save failed");
+      }
+      setPhotoMessage("Saved photos.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function finish() {
+    router.push("/home");
+    router.refresh();
   }
 
   if (step === "roster") {
@@ -122,7 +212,8 @@ export function RegisterMyself() {
         </div>
         {error ? <p className="text-sm text-destructive">{error}</p> : (
           <p className="text-sm text-muted-foreground">
-            Use the last name and class year from the football roster. Then create an alumni login to edit or merge your rows.
+            Use the last name and class year from the football roster. Then add or replace your photos and create an
+            alumni login.
           </p>
         )}
         <Button type="submit" className="w-full" disabled={pending}>
@@ -135,6 +226,28 @@ export function RegisterMyself() {
           </Link>
         </p>
       </form>
+    );
+  }
+
+  if (step === "photos") {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Your login is ready. Save roster and headshot photos now — you can upload a file or paste an image URL —
+          then finish registration.
+        </p>
+        <ClaimPhotoFields values={photos} onChange={setPhotos} disabled={pending} idPrefix="validate" />
+        {photoMessage ? <p className="text-sm text-navy">{photoMessage}</p> : null}
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" className="flex-1" disabled={pending} onClick={() => void savePhotos()}>
+            {pending ? "Saving…" : "Save photos"}
+          </Button>
+          <Button type="button" className="flex-1" disabled={pending} onClick={finish}>
+            Finish registration
+          </Button>
+        </div>
+      </div>
     );
   }
 
@@ -156,12 +269,23 @@ export function RegisterMyself() {
                 checked={selected.includes(row.id)}
                 disabled={row.claimed && !row.claimed_by_me}
                 onChange={(event) => {
-                  setSelected((current) =>
-                    event.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id),
-                  );
+                  const nextSelected = event.target.checked
+                    ? [...selected, row.id]
+                    : selected.filter((id) => id !== row.id);
+                  setSelected(nextSelected);
                   setCreateIfMissing(false);
+                  applyMatchPhotos(matches, nextSelected.length ? nextSelected : [row.id]);
                 }}
               />
+              {row.football_photo_url ? (
+                // Farmed GUHoyas roster photo from #25.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={row.football_photo_url}
+                  alt=""
+                  className="mt-0.5 h-12 w-10 shrink-0 rounded object-cover object-top ring-1 ring-navy/10"
+                />
+              ) : null}
               <span className="min-w-0">
                 <span className="block text-sm font-medium">{displayName(row)}</span>
                 <span className="block text-xs text-muted-foreground">
@@ -169,6 +293,7 @@ export function RegisterMyself() {
                     .filter(Boolean)
                     .join(" · ") || "Georgetown football"}
                   {row.claimed && !row.claimed_by_me ? " · already claimed" : ""}
+                  {row.football_photo_url ? " · roster photo on file" : ""}
                 </span>
               </span>
             </label>
@@ -208,6 +333,10 @@ export function RegisterMyself() {
           required
         />
       </div>
+      <ClaimPhotoFields values={photos} onChange={setPhotos} disabled={pending} idPrefix="register" />
+      {selectedMatch?.football_photo_url && !photos.football_photo_url ? (
+        <p className="text-xs text-muted-foreground">A GUHoyas roster photo is already on this row and can be replaced.</p>
+      ) : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex gap-2">
         <Button type="button" variant="outline" className="flex-1" onClick={() => setStep("roster")}>

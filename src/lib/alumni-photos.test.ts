@@ -8,12 +8,22 @@ import {
 } from "./alumni-photos";
 
 describe("alumni photo fields", () => {
-  it("accepts http(s) or site paths and rejects other schemes", () => {
+  it("accepts http(s), site paths, or uploaded image data URLs", () => {
     assert.equal(normalizePhotoUrl(" https://guhoyas.com/photo.jpg "), "https://guhoyas.com/photo.jpg");
     assert.equal(normalizePhotoUrl("/media/mike.jpg"), "/media/mike.jpg");
     assert.equal(normalizePhotoUrl(""), null);
     assert.equal(normalizePhotoUrl(null), null);
-    assert.throws(() => normalizePhotoUrl("javascript:alert(1)"), /http/);
+    assert.equal(
+      normalizePhotoUrl("data:image/png;base64,iVBORw0KGgo="),
+      "data:image/png;base64,iVBORw0KGgo=",
+    );
+    assert.throws(() => normalizePhotoUrl("javascript:alert(1)"), /http|uploaded/);
+    assert.throws(() => normalizePhotoUrl("data:text/html;base64,PHNjcmlwdD4="), /JPEG/);
+    assert.throws(() => normalizePhotoUrl("data:image/svg+xml;base64,PHN2Zz4="), /JPEG/);
+    assert.throws(
+      () => normalizePhotoUrl(`data:image/png;base64,${"A".repeat(2_100_000)}`),
+      /too large/,
+    );
   });
 
   it("parses only the additive photo columns", () => {

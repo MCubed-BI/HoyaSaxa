@@ -5,16 +5,22 @@ export function AuthShell({
   eyebrow,
   title,
   subtitle,
+  wide = false,
   children,
 }: {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
     <main className="flex flex-1 items-center justify-center bg-background px-4 py-16">
-      <div className="w-full max-w-[420px] overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-elevated)]">
+      <div
+        className={`w-full overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-elevated)] ${
+          wide ? "max-w-[520px]" : "max-w-[420px]"
+        }`}
+      >
         <div className="space-y-4 overflow-visible px-6 pt-7 sm:px-8">
           <BrandMark href="/" eyebrow={eyebrow} />
           <div>

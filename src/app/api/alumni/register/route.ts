@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { alumSessionIdentityForAccount, registerAlumniAccount } from "@/lib/alumni-claim";
+import { photoPatchFromRegisterBody } from "@/lib/claim-photos";
 import { setAlumSessionCookies } from "@/lib/session";
 
 export async function POST(request: Request) {
@@ -13,7 +14,10 @@ export async function POST(request: Request) {
       alumniIds?: string[];
       firstName?: string;
       createIfMissing?: boolean;
+      football_photo_url?: string;
+      linkedin_photo_url?: string;
     };
+    const photos = photoPatchFromRegisterBody(body);
     const result = await registerAlumniAccount({
       lastName: body.lastName ?? "",
       classYear: body.classYear ?? "",
@@ -22,6 +26,7 @@ export async function POST(request: Request) {
       alumniIds: Array.isArray(body.alumniIds) ? body.alumniIds : [],
       firstName: body.firstName,
       createIfMissing: Boolean(body.createIfMissing),
+      photos: Object.keys(photos).length > 0 ? photos : undefined,
     });
     const response = NextResponse.json({
       ok: true,
