@@ -3,7 +3,12 @@ import { toNameFields } from "@/lib/locker-classify";
 import type { FeedPost } from "@/lib/locker-data";
 import { athleteHref } from "@/lib/locker-paths";
 import type { LockerPerson } from "@/lib/locker-types";
-import { FEED_SECTIONS, canPostToFeedSection, type FeedSection } from "@/lib/feed-sections";
+import {
+  FEED_SECTIONS,
+  canPostToFeedSection,
+  canonicalizeFeedSection,
+  type FeedSection,
+} from "@/lib/feed-sections";
 import type { PlatformRole } from "@/lib/platform-roles";
 
 export { FEED_SECTIONS };
@@ -38,11 +43,41 @@ export function forYouComposableSections(role: PlatformRole): FeedSection[] {
   return FEED_SECTIONS.filter((section) => canPostToFeedSection(role, section));
 }
 
+export const FOR_YOU_FILTERS = ["all", "brothers", "board", "sgarlata"] as const;
+export type ForYouFilter = (typeof FOR_YOU_FILTERS)[number];
+
 /** Visible For You headings. Keys stay `brothers` | `board` | `sgarlata`. */
 export function forYouHeading(section: FeedSection) {
   if (section === "brothers") return "From Your Brothers";
   if (section === "board") return "From Your Board";
-  return "From Sgarlata";
+  return "From Your Headcoach";
+}
+
+export function forYouFilterLabel(filter: ForYouFilter) {
+  if (filter === "all") return "All";
+  if (filter === "brothers") return "Your Brothers";
+  if (filter === "board") return "Board";
+  return "From Your Headcoach";
+}
+
+export function forYouFilterAriaLabel(filter: ForYouFilter) {
+  if (filter === "sgarlata") return "From Your Headcoach (Sgarlata)";
+  return forYouFilterLabel(filter);
+}
+
+export function forYouFilterHref(filter: ForYouFilter) {
+  return filter === "all" ? "/feed" : `/feed?section=${filter}`;
+}
+
+export function parseForYouFilter(value: string | string[] | null | undefined): ForYouFilter {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw || raw.trim().toLowerCase() === "all") return "all";
+  const section = canonicalizeFeedSection(raw);
+  return section ?? "all";
+}
+
+export function forYouSectionsForFilter(filter: ForYouFilter): FeedSection[] {
+  return filter === "all" ? [...FEED_SECTIONS] : [filter];
 }
 
 export function forYouEmptyCopy(section: FeedSection) {

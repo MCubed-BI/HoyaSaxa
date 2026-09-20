@@ -5,7 +5,8 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { NavIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { type NavItem, type NavKey } from "@/lib/nav";
+import { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";
+import { headerShowsUpdateMe, type NavItem, type NavKey } from "@/lib/nav";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 import { cn } from "cn";
 
@@ -28,6 +29,8 @@ export function ProductHeader({
   signOutFrom,
   mobileNav = "scroll",
   trailing,
+  verifiedHoya = false,
+  updateMeHref = "/me",
 }: {
   homeHref: string;
   items: NavItem[];
@@ -40,10 +43,14 @@ export function ProductHeader({
   signOutFrom?: string;
   mobileNav?: "none" | "scroll" | "tabs";
   trailing?: ReactNode;
+  verifiedHoya?: boolean;
+  updateMeHref?: string;
 }) {
   const desktopItems = [...items, ...secondaryItems];
   const tabItems = items.slice(0, 5);
   const stacked = mobileNav === "scroll" && desktopItems.length > 0;
+  const showUpdateMe = headerShowsUpdateMe(verifiedHoya, current);
+  const hasIdentity = Boolean(roleLabel || viewerLabel || verifiedHoya || trailing || showUpdateMe);
 
   return (
     <>
@@ -57,7 +64,10 @@ export function ProductHeader({
               <BrandMark href={homeHref} compact title={PRODUCT_DISPLAY_NAME} />
             </div>
             {!stacked && desktopItems.length > 0 ? (
-              <nav className="hidden min-w-0 flex-1 items-center justify-end gap-0.5 md:flex" aria-label="Primary">
+              <nav
+                className="hidden min-w-0 flex-1 flex-wrap items-center justify-end gap-0.5 md:flex"
+                aria-label="Primary"
+              >
                 {desktopItems.map((item) => (
                   <NavLink key={`${item.key}-${item.href}`} item={item} current={current} />
                 ))}
@@ -65,24 +75,36 @@ export function ProductHeader({
             ) : (
               <div className="min-w-0 flex-1" />
             )}
-            <div className="flex shrink-0 items-center gap-2">
+            {showSignOut ? (
+              <form action={signOutAction} method="post" className="shrink-0">
+                {signOutFrom ? <input type="hidden" name="from" value={signOutFrom} /> : null}
+                <Button type="submit" variant="ghost" className="h-8 px-2.5 text-muted-foreground hover:text-foreground">
+                  Sign out
+                </Button>
+              </form>
+            ) : null}
+          </div>
+          {hasIdentity ? (
+            <div
+              className="flex flex-wrap items-center gap-2 border-t py-2"
+              data-header-identity
+              aria-label="Signed-in identity"
+            >
               {roleLabel ? (
-                <span className="hidden max-w-44 truncate rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground sm:inline">
+                <span className="max-w-full truncate rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
                   {roleLabel}
                   {viewerLabel ? ` · ${viewerLabel}` : ""}
                 </span>
               ) : null}
-              {trailing}
-              {showSignOut ? (
-                <form action={signOutAction} method="post">
-                  {signOutFrom ? <input type="hidden" name="from" value={signOutFrom} /> : null}
-                  <Button type="submit" variant="ghost" className="h-8 px-2.5 text-muted-foreground hover:text-foreground">
-                    Sign out
-                  </Button>
-                </form>
+              {verifiedHoya ? <VerifiedHoyaBadge /> : null}
+              {showUpdateMe ? (
+                <Button asChild size="sm" className="h-7 px-2.5" data-update-me>
+                  <Link href={updateMeHref}>Update Me</Link>
+                </Button>
               ) : null}
+              {trailing}
             </div>
-          </div>
+          ) : null}
           {stacked ? (
             <nav className="-mx-1 flex items-center gap-0.5 overflow-x-auto border-t py-1.5" aria-label="Primary">
               {desktopItems.map((item) => (

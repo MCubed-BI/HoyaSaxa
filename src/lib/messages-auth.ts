@@ -5,6 +5,7 @@ import {
 } from "@/lib/alumni-auth";
 import { readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername, isValidSessionToken } from "@/lib/auth";
+import { isVerifiedHoyaIdentity } from "@/lib/access";
 import { canPostToFeedSection } from "@/lib/feed-sections";
 import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
 import { resolvePlatformRole } from "@/lib/platform-roles";
@@ -17,6 +18,7 @@ export type MessageViewer = {
   label: string;
   viewerKey: string;
   canPost: boolean;
+  verifiedHoya?: boolean;
 };
 
 const PUBLIC_PATHS = [
@@ -97,6 +99,7 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       label: staffUsername || "Staff",
       viewerKey: staffUsername ? `staff:${staffUsername.toLowerCase()}` : "staff",
       canPost: canPostCoachMessage(role),
+      verifiedHoya: false,
     };
   }
 
@@ -115,6 +118,7 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       label: contract.name || contract.email || "Alumnus",
       viewerKey: `alum:contract:${contract.alumniId}`,
       canPost: canPostToFeedSection(platformRole, "sgarlata"),
+      verifiedHoya: isVerifiedHoyaIdentity(contract),
     };
   }
 
@@ -125,6 +129,7 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       label: viewerLabelFromAccountId(alum.accountId),
       viewerKey: `alum:${alum.accountId}`,
       canPost: false,
+      verifiedHoya: !alum.accountId.startsWith("locker:"),
     };
   }
 
@@ -141,6 +146,7 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       label: locker.label,
       viewerKey: `alum:home:${locker.role}:${locker.label.toLowerCase()}`,
       canPost: canPostToFeedSection(platformRole, "sgarlata"),
+      verifiedHoya: isVerifiedHoyaIdentity({ role: locker.role }),
     };
   }
 

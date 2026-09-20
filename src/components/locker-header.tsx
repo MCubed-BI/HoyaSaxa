@@ -1,5 +1,4 @@
 import { ProductHeader } from "@/components/product-header";
-import { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";
 import { portalNavItems, portalSecondaryItems, type NavKey } from "@/lib/nav";
 import type { LockerViewer } from "@/lib/locker-viewer";
 
@@ -33,7 +32,7 @@ export function LockerHeader({
       current={current}
       roleLabel={viewer?.roleLabel}
       viewerLabel={viewer?.label}
-      trailing={viewer?.verifiedHoya ? <VerifiedHoyaBadge /> : undefined}
+      verifiedHoya={viewer?.verifiedHoya}
       showSignOut={Boolean(viewer)}
       signOutFrom={fromForNav(current)}
       mobileNav="tabs"

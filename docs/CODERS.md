@@ -82,7 +82,8 @@ Do not rebuild these keys. Coder 2 For You (`/feed`) stacks Myspace UI on them:
 
 - Shell `for-you`, identity `for-you__identity`, sections `for-you__brothers` / `for-you__board` / `for-you__sgarlata`
 - Cards `for-you-card`
-- Headings **From Your Brothers** / **From Your Board** / **From Sgarlata**
+- Headings **From Your Brothers** / **From Your Board** / **From Your Headcoach**
+- Filter chips All / Your Brothers / Board / From Your Headcoach (`/feed?section=`)
 - Posts via `GET`/`POST /api/feed/posts` (`section` must be `brothers` \| `board` \| `sgarlata`)
 - Compose ACL is `canPostToFeedSection` (not coach-only): claimed `hoya_alum_session` `role=alum` posts **Brothers** only; board also posts **Board**; Sgarlata stays admin
 - `/newsflash` → `/board` (do not retarget)

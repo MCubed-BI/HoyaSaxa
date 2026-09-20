@@ -17,6 +17,7 @@ describe("feed sections", () => {
     assert.equal(canonicalizeFeedSection("newsflash"), "board");
     assert.equal(canonicalizeFeedSection("NEWS"), "board");
     assert.equal(canonicalizeFeedSection("from-sgarlata"), "sgarlata");
+    assert.equal(canonicalizeFeedSection("headcoach"), "sgarlata");
     assert.equal(canonicalizeFeedSection("brother"), "brothers");
     assert.equal(canonicalizeFeedSection("unknown"), null);
     assert.equal(feedSectionFromLegacySource("newsflash"), "board");

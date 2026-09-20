@@ -13,7 +13,7 @@ export type AthleteTab = "overview" | "stats" | "photos" | "career" | "qa";
 
 export const ATHLETE_TABS: Array<{ id: AthleteTab; label: string }> = [
   { id: "overview", label: "Overview" },
-  { id: "stats", label: "Stats" },
+  { id: "stats", label: "Years Active" },
   { id: "photos", label: "Photos" },
   { id: "career", label: "Career" },
   { id: "qa", label: "Q&A" },

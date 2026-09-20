@@ -6,7 +6,12 @@ export default async function MessagesLayout({ children }: { children: React.Rea
   const viewer = await requireMessageViewer();
   return (
     <PageShell>
-      <AppHeader current="messages" shell={viewer.kind} viewerLabel={viewer.label} />
+      <AppHeader
+        current="messages"
+        shell={viewer.kind}
+        viewerLabel={viewer.label}
+        verifiedHoya={viewer.verifiedHoya}
+      />
       {children}
     </PageShell>
   );

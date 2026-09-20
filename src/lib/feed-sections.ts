@@ -42,7 +42,9 @@ export function canonicalizeFeedSection(value: string | null | undefined): FeedS
   if (!value) return null;
   const key = value.trim().toLowerCase();
   if (key === "newsflash" || key === "news" || key === "lars") return "board";
-  if (key === "from-sgarlata" || key === "coach" || key === "message") return "sgarlata";
+  if (key === "from-sgarlata" || key === "coach" || key === "headcoach" || key === "head-coach" || key === "message") {
+    return "sgarlata";
+  }
   if (key === "brother" || key === "alumni" || key === "teammates") return "brothers";
   if (isFeedSection(key)) return key;
   return null;

@@ -21,11 +21,13 @@ export function AppHeader({
   role,
   viewerLabel,
   shell,
+  verifiedHoya,
 }: {
   current?: NavKey;
   role?: Role;
   viewerLabel?: string;
   shell?: "staff" | "alum";
+  verifiedHoya?: boolean;
 }) {
   const resolvedRole = role ?? (shell === "alum" ? "alum" : "owner");
   const count = useOptionalSelectionCount();
@@ -43,6 +45,7 @@ export function AppHeader({
       current={current}
       roleLabel={roleLabel(resolvedRole)}
       viewerLabel={viewerLabel}
+      verifiedHoya={Boolean(verifiedHoya)}
       showSignOut
       signOutFrom={fromForNav(current, resolvedRole)}
       mobileNav={isAlumShell ? "tabs" : "scroll"}

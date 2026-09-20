@@ -22,13 +22,13 @@ const COPY: Record<FeedSection, { submit: string; title?: string; placeholder: s
   },
 };
 
-export function ForYouComposer({ section }: { section: FeedSection }) {
+export function ForYouComposer({ section, next }: { section: FeedSection; next?: string }) {
   const copy = COPY[section];
 
   return (
     <form action="/api/feed/posts" method="post" className="for-you__composer space-y-2.5">
       <input type="hidden" name="section" value={section} />
-      <input type="hidden" name="next" value={`/feed#${section}`} />
+      <input type="hidden" name="next" value={next || `/feed?section=${section}`} />
       {copy.title ? (
         <div className="space-y-1">
           <Label htmlFor={`${section}-title`} className="text-xs">
