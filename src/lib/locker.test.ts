@@ -11,7 +11,7 @@ import {
 } from "./locker-classify";
 import { athleteHref, directoryHref, isLockerPublicPath, parseAthleteTab, parseDirectoryPill } from "./locker-paths";
 import { ALUM_SESSION_COOKIE_ALIASES, HOYA_ALUM_SESSION_COOKIE, hasAlumSessionCookie } from "./locker-session";
-import { lockerStubPeople } from "./locker-stubs";
+import { emptyLockerPhotos, lockerStubPeople } from "./locker-stubs";
 
 describe("classifyLockerKind", () => {
   const now = new Date("2026-09-18T00:00:00Z");
@@ -64,6 +64,16 @@ describe("directory pills and search", () => {
     assert.equal(athleteHref("abc"), "/athletes/abc");
     assert.equal(athleteHref("abc", "Q&A"), "/athletes/abc?tab=qa");
     assert.equal(parseAthleteTab("photos"), "photos");
+  });
+
+  it("exposes football roster and current photo slots", () => {
+    const slots = emptyLockerPhotos();
+    assert.deepEqual(
+      slots.map((slot) => slot.id),
+      ["roster", "headshot"],
+    );
+    assert.equal(slots[0]?.caption, "Football roster photo");
+    assert.equal(slots[1]?.caption, "Current LinkedIn / headshot");
   });
 });
 

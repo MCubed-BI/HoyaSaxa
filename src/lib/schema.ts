@@ -236,9 +236,7 @@ export const alumniClaims = pgTable("alumni_claims", {
 
 export const alumniRecordMerges = pgTable("alumni_record_merges", {
   id: uuid("id").primaryKey().defaultRandom(),
-  accountId: uuid("account_id")
-    .notNull()
-    .references(() => alumniAccounts.id, { onDelete: "cascade" }),
+  accountId: uuid("account_id").references(() => alumniAccounts.id, { onDelete: "cascade" }),
   keeperAlumniId: uuid("keeper_alumni_id")
     .notNull()
     .references(() => alumni.id, { onDelete: "cascade" }),

@@ -1,28 +1,37 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { accountIdFromCookies, claimAdditionalRecord, mergeAlumniRecords } from "@/lib/alumni-claim";
+import { claimAdditionalRecord, mergeAlumniPair } from "@/lib/alumni-claim";
+import { getAthleteActor } from "@/lib/athlete-access";
 import { isMissingDatabaseConfig } from "@/lib/db";
 
 export async function POST(request: Request) {
   try {
-    const jar = await cookies();
-    const accountId = await accountIdFromCookies(jar);
-    if (!accountId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = (await request.json()) as {
       action?: "claim" | "merge";
       alumniId?: string;
       keeperId?: string;
       sourceId?: string;
     };
+
     if (body.action === "claim") {
       if (!body.alumniId) return NextResponse.json({ error: "Missing alumniId" }, { status: 400 });
-      await claimAdditionalRecord(accountId, body.alumniId);
+      const actor = await getAthleteActor(body.alumniId);
+      if (!actor.accountId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      await claimAdditionalRecord(actor.accountId, body.alumniId);
       return NextResponse.json({ ok: true });
     }
+
     if (!body.keeperId || !body.sourceId) {
       return NextResponse.json({ error: "Choose a record to keep and a record to merge." }, { status: 400 });
     }
-    await mergeAlumniRecords(accountId, body.keeperId, body.sourceId);
+    const actor = await getAthleteActor(body.keeperId);
+    if (!actor.canMerge) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    await mergeAlumniPair({
+      keeperId: body.keeperId,
+      sourceId: body.sourceId,
+      accountId: actor.accountId,
+      asAdmin: actor.isAdmin,
+      sessionAlumniId: actor.sessionAlumniId,
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {

@@ -60,6 +60,8 @@ export type LockerPerson = {
   seasons: string | null;
   latestRosterYear: number | null;
   photoUrl: string | null;
+  footballPhotoUrl: string | null;
+  linkedinPhotoUrl: string | null;
   about: string | null;
   source: LockerSource;
 };

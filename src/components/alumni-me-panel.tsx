@@ -67,6 +67,17 @@ export function AlumniMePanel({
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Save failed");
+      const photos = await fetch("/api/alum/photos", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          alumniId: active.id,
+          football_photo_url: String(form.get("football_photo_url") ?? ""),
+          linkedin_photo_url: String(form.get("linkedin_photo_url") ?? ""),
+        }),
+      });
+      const photoData = (await photos.json()) as { error?: string };
+      if (!photos.ok) throw new Error(photoData.error ?? "Save failed");
       setMessage("Saved your record.");
       router.refresh();
     } catch (err) {
@@ -178,6 +189,8 @@ export function AlumniMePanel({
             <Field label="Title" name="job_title" defaultValue={active.job_title} />
             <Field label="Industry" name="industry" defaultValue={active.industry} />
             <Field label="LinkedIn" name="linkedin_url" defaultValue={active.linkedin_url} />
+            <Field label="Football roster photo URL" name="football_photo_url" defaultValue={active.football_photo_url} />
+            <Field label="Current LinkedIn / headshot URL" name="linkedin_photo_url" defaultValue={active.linkedin_photo_url} />
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="headline">Headline</Label>
               <Input id="headline" name="headline" defaultValue={active.headline ?? ""} />

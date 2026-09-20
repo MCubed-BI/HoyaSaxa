@@ -1,3 +1,5 @@
+import { ensureAlumniPhotoColumns } from "@/lib/alumni-photos";
+import { athletePhotoSlots, primaryPhotoUrl } from "@/lib/athlete-photo-slots";
 import { getDatabaseUrl, getSql, isMissingDatabaseConfig } from "@/lib/db";
 import {
   classLabel,
@@ -8,7 +10,7 @@ import {
   paginateItems,
 } from "@/lib/locker-classify";
 import { parseDirectoryPill } from "@/lib/locker-paths";
-import { emptyLockerPhotos, emptyLockerQa, isLockerStubId, lockerStubById, lockerStubPeople } from "@/lib/locker-stubs";
+import { emptyLockerQa, isLockerStubId, lockerStubById, lockerStubPeople } from "@/lib/locker-stubs";
 import type { DirectoryPill, LockerDirectoryResult, LockerPerson, LockerPersonDetail } from "@/lib/locker-types";
 
 export const LOCKER_PAGE_SIZE = 24;
@@ -31,6 +33,8 @@ const PUBLIC_COLUMNS = `
   a.industry,
   a.linkedin_url,
   a.headline,
+  a.football_photo_url,
+  a.linkedin_photo_url,
   (
     SELECT MAX(r.year) FROM alumni_roster_years r WHERE r.alumni_id = a.id
   ) AS latest_roster_year,
@@ -61,6 +65,8 @@ type RosterRow = {
   industry: string | null;
   linkedin_url: string | null;
   headline: string | null;
+  football_photo_url: string | null;
+  linkedin_photo_url: string | null;
   latest_roster_year: number | null;
   latest_roster_class: string | null;
 };
@@ -103,7 +109,12 @@ function mapRosterRow(row: RosterRow): LockerPerson {
     industry: cleanCell(row.industry),
     seasons: cleanCell(row.seasons),
     latestRosterYear: row.latest_roster_year,
-    photoUrl: null,
+    footballPhotoUrl: cleanCell(row.football_photo_url),
+    linkedinPhotoUrl: cleanCell(row.linkedin_photo_url),
+    photoUrl: primaryPhotoUrl({
+      football_photo_url: cleanCell(row.football_photo_url),
+      linkedin_photo_url: cleanCell(row.linkedin_photo_url),
+    }),
     about: null,
     source: "roster",
   };
@@ -182,6 +193,7 @@ function buildRosterWhere(q: string, role: DirectoryPill) {
 }
 
 async function queryRosterPage(q: string, role: DirectoryPill, offset: number, limit: number) {
+  await ensureAlumniPhotoColumns();
   const sql = getSql();
   const { whereSql, params } = buildRosterWhere(q, role);
   const countQuery = `SELECT COUNT(*)::int AS total FROM alumni a ${whereSql}`;
@@ -258,6 +270,7 @@ export async function searchLockerDirectory(input: {
 
 async function queryRosterById(id: string): Promise<LockerPersonDetail | null> {
   if (!getDatabaseUrl()) return null;
+  await ensureAlumniPhotoColumns();
   const sql = getSql();
   const people = (await sql.query(
     `SELECT ${PUBLIC_COLUMNS} FROM alumni a WHERE a.id = $1 LIMIT 1`,
@@ -275,7 +288,7 @@ async function queryRosterById(id: string): Promise<LockerPersonDetail | null> {
   return {
     ...person,
     rosterYears,
-    photos: emptyLockerPhotos(),
+    photos: athletePhotoSlots(person),
     qa: emptyLockerQa(),
   };
 }

@@ -1,14 +1,10 @@
+import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
 import { classLabel, classifyLockerKind, composeAbout } from "@/lib/locker-classify";
 import type { LockerKind, LockerPerson, LockerPersonDetail, LockerPhotoSlot, LockerQaItem } from "@/lib/locker-types";
 
 const SPORT = "Football";
 
-const EMPTY_PHOTOS: LockerPhotoSlot[] = [
-  { id: "slot-1", caption: "Game day", url: null },
-  { id: "slot-2", caption: "Locker room", url: null },
-  { id: "slot-3", caption: "Practice", url: null },
-  { id: "slot-4", caption: "Senior day", url: null },
-];
+const EMPTY_PHOTOS: LockerPhotoSlot[] = athletePhotoSlots({});
 
 const EMPTY_QA: LockerQaItem[] = [
   { id: "why-gu", question: "Why Georgetown?", answer: null },
@@ -62,6 +58,8 @@ function person(input: {
     industry: input.industry ?? null,
     seasons: input.seasons ?? null,
     latestRosterYear: input.latestRosterYear ?? null,
+    footballPhotoUrl: null,
+    linkedinPhotoUrl: null,
     photoUrl: null,
     about: composeAbout({
       firstName: input.firstName,
