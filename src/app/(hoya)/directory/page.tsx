@@ -1,6 +1,7 @@
 import { HoyaDirectory } from "@/components/hoya-directory";
 import { PageHeader, PageMain } from "@/components/page-chrome";
 import { ErrorState } from "@/components/ui/error-state";
+import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { parseDirectoryPill, parseLockerPage } from "@/lib/locker-paths";
 import { searchLockerDirectory } from "@/lib/locker-directory";
@@ -30,6 +31,7 @@ export default async function DirectoryPage({
 
   try {
     const result = await searchLockerDirectory({ q, role, page });
+    const badgesById = await listPublicBadgesManyFromFeed(result.rows.map((row) => row.id));
     return (
       <PageMain width="record">
         <PageHeader
@@ -45,6 +47,7 @@ export default async function DirectoryPage({
           page={result.page}
           pageSize={result.pageSize}
           usingSample={result.usingSample}
+          badgesById={badgesById}
         />
       </PageMain>
     );

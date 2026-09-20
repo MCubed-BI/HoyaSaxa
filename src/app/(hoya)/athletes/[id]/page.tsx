@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HoyaAvatar } from "@/components/hoya-avatar";
+import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { PageMain, pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isPreviewAlumSession, readAlumSessionFromCookies } from "@/lib/alum-session";
+import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { displayName, jobLabel, positionLabel } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
 import { getLockerPersonById } from "@/lib/locker-directory";
@@ -40,6 +43,11 @@ export default async function AthleteProfilePage({
 
   const tab = parseAthleteTab(firstParam(query.tab));
   const city = publicCity(person);
+  const session = await readAlumSessionFromCookies();
+  const viewingOwnClaim =
+    session && !isPreviewAlumSession(session) && session.alumniId === person.id ? [person.id] : [];
+  const badgesById = await listPublicBadgesManyFromFeed([person.id], { verifiedAlumniIds: viewingOwnClaim });
+  const badges = badgesById[person.id] ?? [];
 
   return (
     <PageMain width="narrow">
@@ -61,6 +69,7 @@ export default async function AthleteProfilePage({
               ) : null}
               {person.sport ? <Badge variant="outline">{person.sport}</Badge> : null}
             </div>
+            <HoyaBadgeRow badges={badges} />
           </div>
         </CardContent>
       </Card>

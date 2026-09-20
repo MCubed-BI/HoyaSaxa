@@ -7,8 +7,17 @@
  *   - event_top_platinum | event_top_gold | event_top_silver | event_top_bronze
  *
  * Donor rank uses giving_pledges / fundraising_pledges when those tables exist.
- * Event rank uses event_checkins once Coder 5 lands attendance (stub returns empty).
+ * Event / Top Tailgate bands consume GET /api/events/attendance/feed ranks.
+ * This file never INSERTs event_checkins. Pages load via badges-attendance.ts.
+ *
+ * Coder 4 / 5: import `@/lib/badge-api` (HoyaBadge + consume helpers).
  */
+import {
+  attendanceLeadersFromCoder4Feed,
+  type EventBadgeFeed,
+  type EventBadgeFeedRow,
+  type EventBadgeTotals,
+} from "@/lib/badge-event-feed";
 import { getDatabaseUrl, getSql } from "@/lib/db";
 
 export const BADGE_TYPES = [
@@ -89,6 +98,36 @@ export function donorBadgeType(tier: BadgeTier): BadgeType {
 
 export function eventTopBadgeType(tier: BadgeTier): BadgeType {
   return `event_top_${tier}`;
+}
+
+/**
+ * Coder 4 owns rank + percentile. Prefer their percentile; else rank/cohortSize.
+ * Does not use attendanceCount (that would re-rank). Returns null below Bronze.
+ */
+export function eventTierFromCoder4Feed(input: {
+  rank?: number | null;
+  percentile?: number | null;
+  cohortSize?: number | null;
+}): BadgeTier | null {
+  if (input.percentile != null && Number.isFinite(Number(input.percentile))) {
+    return tierFromPercentile(Number(input.percentile));
+  }
+  if (input.rank != null && input.cohortSize != null) {
+    return tierFromPercentile(percentileFromRank(Number(input.rank), Number(input.cohortSize)));
+  }
+  return null;
+}
+
+export function eventBadgeFromCoder4Totals(totals: EventBadgeTotals | null | undefined): PublicBadge | null {
+  if (!totals) return null;
+  const tier = eventTierFromCoder4Feed(totals);
+  return tier ? toPublicBadge(eventTopBadgeType(tier)) : null;
+}
+
+export function eventBadgeFromCoder4Row(row: EventBadgeFeedRow | null | undefined): PublicBadge | null {
+  if (!row) return null;
+  const tier = eventTierFromCoder4Feed(row);
+  return tier ? toPublicBadge(eventTopBadgeType(tier)) : null;
 }
 
 export function tierFromPercentile(percentile: number): BadgeTier | null {
@@ -272,20 +311,105 @@ export async function computeDonorBadge(alumniId: string): Promise<PublicBadge |
 
 type EventCount = { key: string; checkins: number };
 
-async function loadEventAttendance(): Promise<{ ready: boolean; rows: EventCount[] }> {
-  if (!(await tableExists("event_checkins"))) {
-    return { ready: false, rows: [] };
-  }
+export function eventSlugFromTitle(title: string, eventId: string) {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  const suffix = eventId.replace(/-/g, "").slice(0, 8);
+  return slug ? `${slug}-${suffix}` : eventId;
+}
+
+function rankByAttendanceCount<T extends { attendanceCount: number }>(rows: T[]) {
+  const sorted = [...rows].sort((a, b) => b.attendanceCount - a.attendanceCount);
+  const cohortSize = sorted.length;
+  let lastCount = Number.NaN;
+  let lastRank = 0;
+  return sorted.map((row, index) => {
+    const rank = row.attendanceCount === lastCount ? lastRank : index + 1;
+    lastCount = row.attendanceCount;
+    lastRank = rank;
+    return {
+      ...row,
+      rank,
+      percentile: percentileFromRank(rank, cohortSize),
+      cohortSize,
+    };
+  });
+}
+
+/**
+ * Consume-only Coder 4 feed shape from `event_checkins`.
+ * Same fields as `listEventCheckinFeed` / `GET /api/events/attendance/feed`.
+ * Never INSERT. Lifetime ranks are computed here only until PR #15 is on the tree;
+ * pass `attendanceLeaders` to skip this and use Coder 4's ranks.
+ */
+export async function consumeEventCheckinFeed(input?: { alumId?: string }): Promise<EventBadgeFeed> {
+  const empty: EventBadgeFeed = { rows: [], leaders: [] };
+  if (!getDatabaseUrl() || !(await tableExists("event_checkins"))) return empty;
   const sql = getSql();
-  const rows = (await sql.query(
+  const hasEvents = await tableExists("events");
+  const join = hasEvents ? "LEFT JOIN events e ON e.id = a.event_id" : "";
+  const titleExpr = hasEvents ? "e.title" : "NULL";
+  const records = (await sql.query(
     `
-    SELECT alumni_id::text AS key, COUNT(*)::int AS checkins
-    FROM event_checkins
-    WHERE alumni_id IS NOT NULL
-    GROUP BY alumni_id
+    SELECT
+      a.event_id::text AS event_id,
+      a.alumni_id::text AS alum_id,
+      COALESCE(a.alumni_id::text, a.attendee_key) AS user_id,
+      a.checked_in_at,
+      ${titleExpr} AS event_title
+    FROM event_checkins a
+    ${join}
+    WHERE a.alumni_id IS NOT NULL
+    ORDER BY a.checked_in_at DESC
+    LIMIT 1000
     `,
-  )) as Array<{ key: string; checkins: number }>;
-  return { ready: rows.length > 0, rows };
+  )) as Array<{
+    event_id: string;
+    alum_id: string | null;
+    user_id: string;
+    checked_in_at: string | Date;
+    event_title: string | null;
+  }>;
+
+  const counts = new Map<string, { alumId: string; userId: string; attendanceCount: number }>();
+  for (const row of records) {
+    const alumId = row.alum_id?.trim();
+    if (!alumId) continue;
+    const prev = counts.get(alumId);
+    counts.set(alumId, {
+      alumId,
+      userId: row.user_id || alumId,
+      attendanceCount: (prev?.attendanceCount ?? 0) + 1,
+    });
+  }
+  const leaders = rankByAttendanceCount([...counts.values()]);
+  const byAlum = new Map(leaders.map((row) => [row.alumId, row]));
+  const rows: EventBadgeFeedRow[] = [];
+  for (const row of records) {
+    const alumId = row.alum_id?.trim() || null;
+    if (!alumId) continue;
+    if (input?.alumId && alumId !== input.alumId) continue;
+    const lifetime = byAlum.get(alumId);
+    const title = row.event_title?.trim() ?? "";
+    const eventId = row.event_id;
+    const checkedInAt = row.checked_in_at instanceof Date ? row.checked_in_at.toISOString() : String(row.checked_in_at);
+    rows.push({
+      eventId,
+      eventSlug: eventSlugFromTitle(title, eventId),
+      eventTitle: title || undefined,
+      alumId,
+      userId: row.user_id || alumId,
+      checkedInAt,
+      attendanceCount: lifetime?.attendanceCount ?? 1,
+      rank: lifetime?.rank ?? 0,
+      percentile: lifetime?.percentile ?? 0,
+      cohortSize: lifetime?.cohortSize,
+    });
+  }
+  return { rows, leaders };
 }
 
 export function eventTierForAlumniId(alumniId: string, rows: EventCount[]): BadgeTier | null {
@@ -297,27 +421,145 @@ export function eventTierForAlumniId(alumniId: string, rows: EventCount[]): Badg
   return tierFromPercentile(percentileFromRank(rank, scored.length));
 }
 
-export async function computeEventTopBadge(alumniId: string): Promise<PublicBadge | null> {
+export async function computeEventTopBadge(
+  alumniId: string,
+  coder4?: { totals?: EventBadgeTotals | null },
+): Promise<PublicBadge | null> {
+  if (coder4 && "totals" in coder4) {
+    return eventBadgeFromCoder4Totals(coder4.totals);
+  }
   if (!getDatabaseUrl() || !alumniId.trim()) return null;
   try {
-    const attendance = await loadEventAttendance();
-    if (!attendance.ready) return null;
-    const tier = eventTierForAlumniId(alumniId, attendance.rows);
-    return tier ? toPublicBadge(eventTopBadgeType(tier)) : null;
+    const feed = await consumeEventCheckinFeed({ alumId: alumniId });
+    const totals = attendanceLeadersFromCoder4Feed(feed).find((row) => row.alumId === alumniId);
+    return eventBadgeFromCoder4Totals(totals);
   } catch {
     return null;
   }
 }
 
-export async function listPublicBadges(alumniId: string): Promise<PublicBadge[]> {
-  const stored = await listStoredBadges(alumniId);
-  const [donor, eventTop] = await Promise.all([computeDonorBadge(alumniId), computeEventTopBadge(alumniId)]);
+export function assemblePublicBadges(input: {
+  stored?: PublicBadge[];
+  donorTier?: BadgeTier | null;
+  eventTier?: BadgeTier | null;
+  verified?: boolean;
+}): PublicBadge[] {
   const byType = new Map<BadgeType, PublicBadge>();
-  for (const badge of stored) byType.set(badge.type, badge);
-  if (donor) byType.set(donor.type, donor);
-  if (eventTop) byType.set(eventTop.type, eventTop);
-  if (!byType.has("verified_hoya") && stored.some((badge) => badge.type === "verified_hoya")) {
-    byType.set("verified_hoya", toPublicBadge("verified_hoya"));
+  for (const badge of input.stored ?? []) byType.set(badge.type, badge);
+  if (input.verified) byType.set("verified_hoya", toPublicBadge("verified_hoya"));
+  if (input.donorTier) {
+    const type = donorBadgeType(input.donorTier);
+    byType.set(type, toPublicBadge(type));
+  }
+  if (input.eventTier) {
+    const type = eventTopBadgeType(input.eventTier);
+    byType.set(type, toPublicBadge(type));
   }
   return publicBadgesJson([...byType.values()]);
+}
+
+export async function listPublicBadges(
+  alumniId: string,
+  options?: { attendanceTotals?: EventBadgeTotals | null },
+): Promise<PublicBadge[]> {
+  const stored = await listStoredBadges(alumniId);
+  const [donor, eventTop] = await Promise.all([
+    computeDonorBadge(alumniId),
+    options && "attendanceTotals" in options
+      ? computeEventTopBadge(alumniId, { totals: options.attendanceTotals })
+      : computeEventTopBadge(alumniId),
+  ]);
+  return assemblePublicBadges({
+    stored,
+    donorTier: donor?.tier ?? null,
+    eventTier: eventTop?.tier ?? null,
+    verified: stored.some((badge) => badge.type === "verified_hoya"),
+  });
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function uuidAlumniIds(ids: string[]) {
+  return [...new Set(ids.filter((id) => UUID_RE.test(id)))];
+}
+
+async function listStoredBadgesMany(alumniIds: string[]): Promise<Map<string, PublicBadge[]>> {
+  const out = new Map<string, PublicBadge[]>();
+  if (!alumniIds.length || !getDatabaseUrl()) return out;
+  await ensureAlumBadgesTable();
+  const sql = getSql();
+  const rows = (await sql.query(
+    `SELECT alumni_id::text AS id, badge_type AS type FROM alum_badges WHERE alumni_id = ANY($1::uuid[])`,
+    [alumniIds],
+  )) as Array<{ id: string; type: string }>;
+  for (const row of rows) {
+    if (!isBadgeType(row.type)) continue;
+    const list = out.get(row.id) ?? [];
+    list.push(toPublicBadge(row.type));
+    out.set(row.id, list);
+  }
+  return out;
+}
+
+async function loadClaimedIds(alumniIds: string[]): Promise<Set<string>> {
+  const claimed = new Set<string>();
+  if (!alumniIds.length || !(await tableExists("alumni_claims"))) return claimed;
+  const sql = getSql();
+  const rows = (await sql.query(
+    `SELECT DISTINCT alumni_id::text AS id FROM alumni_claims WHERE alumni_id = ANY($1::uuid[])`,
+    [alumniIds],
+  )) as Array<{ id: string }>;
+  for (const row of rows) {
+    if (row.id) claimed.add(row.id);
+  }
+  return claimed;
+}
+
+/**
+ * Directory/profile batch read. One donor + check-in scan, then per-id assemble.
+ * Never returns gift totals. Extra `verifiedAlumniIds` mark claimed / logged-in rows.
+ *
+ * When `attendanceLeaders` is passed (Coder 4 `listEventCheckinFeed` / GET feed),
+ * those ranks win. Omit it to use `consumeEventCheckinFeed` (SELECT-only).
+ */
+export async function listPublicBadgesMany(
+  alumniIds: string[],
+  options: { verifiedAlumniIds?: string[]; attendanceLeaders?: EventBadgeTotals[] } = {},
+): Promise<Record<string, PublicBadge[]>> {
+  const ids = [...new Set(alumniIds.filter(Boolean))];
+  const out: Record<string, PublicBadge[]> = Object.fromEntries(ids.map((id) => [id, []]));
+  if (!ids.length || !getDatabaseUrl()) return out;
+
+  const uuidIds = uuidAlumniIds(ids);
+  try {
+    const [storedById, totals, feed, claimed] = await Promise.all([
+      listStoredBadgesMany(uuidIds),
+      loadDonorTotals(),
+      options.attendanceLeaders
+        ? Promise.resolve({ rows: [], leaders: options.attendanceLeaders })
+        : consumeEventCheckinFeed(),
+      loadClaimedIds(uuidIds),
+    ]);
+    const leadersByAlum = new Map(
+      attendanceLeadersFromCoder4Feed(feed)
+        .filter((row) => row.alumId)
+        .map((row) => [row.alumId, row]),
+    );
+    const extraVerified = new Set(options.verifiedAlumniIds ?? []);
+    for (const id of ids) {
+      const stored = storedById.get(id) ?? [];
+      out[id] = assemblePublicBadges({
+        stored,
+        donorTier: donorTierForAlumniId(id, totals),
+        eventTier: eventTierFromCoder4Feed(leadersByAlum.get(id) ?? {}),
+        verified:
+          extraVerified.has(id) ||
+          claimed.has(id) ||
+          stored.some((badge) => badge.type === "verified_hoya"),
+      });
+    }
+    return out;
+  } catch {
+    return out;
+  }
 }

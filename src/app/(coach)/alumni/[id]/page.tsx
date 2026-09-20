@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { PageMain, PageShell } from "@/components/page-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { listPublicBadgesFromFeed } from "@/lib/badges-attendance";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import {
   classYearLabel,
@@ -41,6 +43,7 @@ export default async function AlumniDetailPage({
   try {
     const person = await getAlumniById(id);
     if (!person) notFound();
+    const badges = await listPublicBadgesFromFeed(person.id);
 
     const emails = [
       ...(person.email_primary ? [{ email: person.email_primary, label: "Primary" }] : []),
@@ -87,6 +90,7 @@ export default async function AlumniDetailPage({
                   ) : null}
                   {person.industry ? <Badge variant="outline">{person.industry}</Badge> : null}
                 </div>
+                <HoyaBadgeRow badges={badges} />
               </div>
             </CardContent>
           </Card>

@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Button } from "@/components/ui/button";
 import { accountIdFromCookies, findSameLastNameCandidates, getAccountById, getClaimedRecords } from "@/lib/alumni-claim";
+import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { isMissingDatabaseConfig } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,10 @@ export default async function MePage() {
           records.map((row) => row.id),
         )
       : [];
+    const badgesById = await listPublicBadgesManyFromFeed(
+      records.map((row) => row.id),
+      { verifiedAlumniIds: records.map((row) => row.id) },
+    );
 
     return (
       <PageShell>
@@ -64,7 +69,12 @@ export default async function MePage() {
               }
             />
           ) : (
-            <AlumniMePanel email={account.email} records={records} mergeCandidates={mergeCandidates} />
+            <AlumniMePanel
+              email={account.email}
+              records={records}
+              mergeCandidates={mergeCandidates}
+              badgesById={badgesById}
+            />
           )}
         </PageMain>
       </PageShell>

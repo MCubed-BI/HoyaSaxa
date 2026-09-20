@@ -88,31 +88,55 @@ Do not rebuild these keys. Coder 2 For You (`/feed`) stacks Myspace UI on them:
 
 Types: `verified_hoya`, `donor_platinum|gold|silver|bronze`, `event_top_*` (same percentiles).
 
-| Tier | Percentile |
-| --- | ---: |
-| platinum | ≥ 99 |
-| gold | ≥ 90 |
-| silver | ≥ 75 |
-| bronze | ≥ 50 |
+| Tier | Band | Percentile |
+| --- | --- | ---: |
+| platinum | Top 1% | ≥ 99 |
+| gold | Top 10% | ≥ 90 |
+| silver | Top 25% | ≥ 75 |
+| bronze | Top 50% | ≥ 50 |
 
-**Never expose donor `$` / `amount_cents` in badge UI or `/api/badges`.** Use `PublicBadge` / `HoyaBadge` / `HoyaBadgeRow`.
+**Never expose donor `$` / `amount_cents` in badge UI, profile, or `/api/badges`.** Use `PublicBadge` / `HoyaBadge` / `HoyaBadgeRow`. Do not add a second chip component.
 
-- Verified Hoya is granted on claim / alumni login (`grantVerifiedHoya`).
-- Donor rank reads `fundraising_pledges.alumni_id` (and `giving_pledges.alumni_id` if that column exists).
-- Event rank reads `event_checkins` once Coder 5 writes rows; until then the helper returns no event badge.
+- Verified Hoya is granted on claim / alumni login (`grantVerifiedHoya`). Directory/profile also treat `alumni_claims` as verified.
+- Donor rank reads `fundraising_pledges.alumni_id` (and `giving_pledges.alumni_id` if that column exists). Totals stay server-side.
+- **Event bands consume Coder 4 only** — they persist `event_checkins` and compute lifetime `attendanceCount` + `rank` / `percentile`. Coder 3 maps those to `event_top_*`. No dual-write.
 
-`GET /api/badges/:alumniId` → `{ alumniId, badges: PublicBadge[] }`.
+**Surfaces:** `/directory` cards + table, `/athletes/[id]`, `/me`, staff `/` cards, `/alumni/[id]`.
+
+**Badge component API** (`@/lib/badge-api`)
+
+```ts
+import { HoyaBadge, HoyaBadgeRow } from "@/components/hoya-badges";
+import {
+  listPublicBadges,
+  listPublicBadgesMany,
+  eventBadgeFromCoder4Totals,
+  attendanceLeadersFromCoder4Feed,
+  type EventBadgeFeedRow,
+  type EventBadgeTotals,
+} from "@/lib/badge-api";
+
+<HoyaBadge badge={badge} />            // PublicBadge | BadgeType
+<HoyaBadgeRow badges={badges} />
+
+const totals = await getAlumAttendanceTotals(alumId); // Coder 4
+const eventBadge = eventBadgeFromCoder4Totals(totals);
+const badgesById = await listPublicBadgesMany(ids, {
+  attendanceLeaders: attendanceLeadersFromCoder4Feed(feed),
+});
+```
+
+Coder 4 feed contract (consume-only): `eventId`, `eventSlug?`, `eventTitle?`, `alumId` / `userId`, `checkedInAt`, `attendanceCount`, `rank`, `percentile` (`cohortSize` optional). `GET /api/events/attendance/feed` and `?alumId=` → `{ alum, feed }` parse via `eventBadgeFeedFromCoder4Json`.
+
+- One person: `listPublicBadges(alumniId, { attendanceTotals })` or `GET /api/badges/:alumniId` → `{ alumniId, badges: PublicBadge[] }`
+- Directory: `listPublicBadgesMany(ids, { verifiedAlumniIds, attendanceLeaders })`
+- Profile + directory load `listPublicBadgesManyFromFeed` / `listPublicBadgesFromFeed` (`@/lib/badges-attendance`) — same payload as **`GET /api/events/attendance/feed`** and **`?alumId=`**. Consume only; never INSERT `event_checkins`.
 
 ---
 
-## Coder 4 — Athlete photos + profile edit
+## Coder 4 — Photos + check-in ranks
 
-Additive Neon columns on `alumni` (not NTE):
-
-- `football_photo_url`
-- `linkedin_photo_url`
-
-**Edit only claimed self or admin.**
+**Photos** — additive Neon columns on `alumni` (not NTE): `football_photo_url`, `linkedin_photo_url`. Edit only claimed self or admin.
 
 - `POST /api/alum/photos` `{ alumniId, football_photo_url, linkedin_photo_url }`
 - `GET /api/alum/photos?alumniId=`
@@ -120,15 +144,12 @@ Additive Neon columns on `alumni` (not NTE):
 
 Ensure: `ensureAlumniPhotoColumns()`. Helpers: `src/lib/alumni-photos.ts`.
 
----
+**Check-in + ranks (PR #15)** — Coder 4 owns `event_checkins` persistence and lifetime ranks. Coder 3 consumes `eventId`, `alumId` / `userId`, `checkedInAt`, `attendanceCount`, `rank` / `percentile` for event badge bands only. **No dual-write.** RSVP is not attendance.
 
-## Coder 5 — Events check-in (later)
-
-`event_checkins (event_id, alumni_id, attendee_key, checked_in_at)` is created with event tables.
-
-Do **not** ship a full check-in UI in the contracts PR. When attendance exists, `computeEventTopBadge` uses the same percentile tiers as donors.
-
-RSVP (`event_rsvps`) is not attendance.
+```ts
+import { listEventCheckinFeed, getAlumAttendanceTotals } from "@/lib/event-attendance-feed";
+import { eventBadgeFromCoder4Totals, listPublicBadgesMany } from "@/lib/badge-api";
+```
 
 ---
 

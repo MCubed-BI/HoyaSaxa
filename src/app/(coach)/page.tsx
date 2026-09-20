@@ -6,6 +6,7 @@ import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { SiteHeader } from "@/components/site-header";
+import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { alumniFilterChips, hasActiveFilters, parseAlumniFilters, parsePage } from "@/lib/filters";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { searchAlumni } from "@/lib/queries";
@@ -37,6 +38,8 @@ export default async function DirectoryPage({
         ? error.message
         : "The directory could not be loaded.";
   }
+
+  const badgesById = result ? await listPublicBadgesManyFromFeed(result.rows.map((row) => row.id)) : {};
 
   return (
     <PageShell>
@@ -76,6 +79,7 @@ export default async function DirectoryPage({
                   page={result.page}
                   pageSize={result.pageSize}
                   filters={filters}
+                  badgesById={badgesById}
                 />
                 {canUseBlast(viewer.role) ? (
                   <BlastBar
