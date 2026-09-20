@@ -5,6 +5,8 @@ import {
   parseClassYearInput,
 } from "@/lib/alumni-class-year";
 import { hashAlumniPassword, isValidEmail, verifyAlumniPassword } from "@/lib/alumni-auth";
+import { isLikelyDuplicate } from "@/lib/alumni-duplicates";
+import { ensureAlumniPhotoColumns } from "@/lib/alumni-photos";
 import { grantVerifiedHoya } from "@/lib/badges";
 import { ALUM_ROLE, ALUM_SESSION_COOKIE, parseAlumSessionToken, type AlumRole, type CookieJar } from "@/lib/alum-session";
 import type { AlumniDetail, AlumniListItem } from "@/lib/types";
@@ -43,7 +45,9 @@ const LIST_COLUMNS = `
   a.headline,
   a.email_primary,
   a.phone_primary,
-  a.address_primary
+  a.address_primary,
+  a.football_photo_url,
+  a.linkedin_photo_url
 `;
 
 let ensured = false;
@@ -51,6 +55,7 @@ let ensured = false;
 export async function ensureAlumniAuthTables() {
   if (ensured) return;
   const sql = getSql();
+  await ensureAlumniPhotoColumns();
   await sql.query(`
     CREATE TABLE IF NOT EXISTS alumni_accounts (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -79,12 +84,13 @@ export async function ensureAlumniAuthTables() {
   await sql.query(`
     CREATE TABLE IF NOT EXISTS alumni_record_merges (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      account_id uuid NOT NULL REFERENCES alumni_accounts(id) ON DELETE CASCADE,
+      account_id uuid REFERENCES alumni_accounts(id) ON DELETE CASCADE,
       keeper_alumni_id uuid NOT NULL REFERENCES alumni(id) ON DELETE CASCADE,
       merged_alumni_id uuid,
       created_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  await sql.query(`ALTER TABLE alumni_record_merges ALTER COLUMN account_id DROP NOT NULL`);
   ensured = true;
 }
 
@@ -166,6 +172,29 @@ export async function findSameLastNameCandidates(lastName: string, accountId: st
     `,
     [lastName, accountId, exclude],
   );
+}
+
+export async function findLikelyDuplicateCandidates(
+  person: Pick<AlumniListItem, "id" | "first_name" | "last_name" | "preferred_name" | "full_name">,
+  accountId?: string | null,
+) {
+  await ensureAlumniAuthTables();
+  const lastName = person.last_name?.trim();
+  if (!lastName) return [];
+  const rows = await query<ClaimMatch[]>(
+    `
+    SELECT ${LIST_COLUMNS},
+      EXISTS (SELECT 1 FROM alumni_claims c WHERE c.alumni_id = a.id) AS claimed,
+      EXISTS (SELECT 1 FROM alumni_claims c WHERE c.alumni_id = a.id AND c.account_id = $2) AS claimed_by_me
+    FROM alumni a
+    WHERE lower(btrim(a.last_name)) = lower(btrim($1))
+      AND a.id <> $3
+    ORDER BY a.class_year DESC NULLS LAST, lower(coalesce(a.first_name, ''))
+    LIMIT 40
+    `,
+    [lastName, accountId ?? "00000000-0000-0000-0000-000000000000", person.id],
+  );
+  return rows.filter((row) => isLikelyDuplicate(person, row));
 }
 
 export async function getAccountByEmail(email: string) {
@@ -418,33 +447,59 @@ function pickFilled(keeper: string | null, source: string | null) {
   return next || null;
 }
 
-export async function mergeAlumniRecords(accountId: string, keeperId: string, sourceId: string) {
-  await ensureAlumniAuthTables();
-  if (keeperId === sourceId) throw new Error("Choose two different records to merge.");
-
-  const claimed = await getClaimedRecords(accountId);
-  const keeper = claimed.find((row) => row.id === keeperId);
-  if (!keeper) throw new Error("Keep the record you already claimed.");
-
-  const sourceRows = await query<ClaimMatch[]>(
+async function loadMergeRow(alumniId: string, accountId?: string | null) {
+  const rows = await query<ClaimMatch[]>(
     `
     SELECT ${LIST_COLUMNS},
       EXISTS (SELECT 1 FROM alumni_claims c WHERE c.alumni_id = a.id) AS claimed,
       EXISTS (SELECT 1 FROM alumni_claims c WHERE c.alumni_id = a.id AND c.account_id = $2) AS claimed_by_me
     FROM alumni a WHERE a.id = $1 LIMIT 1
     `,
-    [sourceId, accountId],
+    [alumniId, accountId ?? "00000000-0000-0000-0000-000000000000"],
   );
-  const source = sourceRows[0];
-  if (!source) throw new Error("The record to merge was not found.");
-  if (source.last_name.trim().toLowerCase() !== keeper.last_name.trim().toLowerCase()) {
-    throw new Error("You can only merge rows that share the same roster last name.");
-  }
-  if (source.claimed && !source.claimed_by_me) {
-    throw new Error("That roster row is claimed by another alumni login.");
+  return rows[0] ?? null;
+}
+
+export async function mergeAlumniRecords(
+  accountId: string,
+  keeperId: string,
+  sourceId: string,
+): Promise<void> {
+  await mergeAlumniPair({ accountId, keeperId, sourceId, asAdmin: false });
+}
+
+export async function mergeAlumniPair(input: {
+  keeperId: string;
+  sourceId: string;
+  accountId?: string | null;
+  asAdmin?: boolean;
+  sessionAlumniId?: string | null;
+}) {
+  await ensureAlumniAuthTables();
+  const { keeperId, sourceId, accountId = null, asAdmin = false, sessionAlumniId = null } = input;
+  if (keeperId === sourceId) throw new Error("Choose two different records to merge.");
+
+  const keeper = await loadMergeRow(keeperId, accountId);
+  const source = await loadMergeRow(sourceId, accountId);
+  if (!keeper || !source) throw new Error("The record to merge was not found.");
+  if (!isLikelyDuplicate(keeper, source) && keeper.last_name.trim().toLowerCase() !== source.last_name.trim().toLowerCase()) {
+    throw new Error("Those rows do not look like the same person.");
   }
 
-  if (!source.claimed_by_me) {
+  const ownsKeeper = Boolean(
+    asAdmin || keeper.claimed_by_me || (sessionAlumniId && sessionAlumniId === keeperId),
+  );
+  if (!ownsKeeper) {
+    throw new Error("Keep the record you already claimed.");
+  }
+  if (!asAdmin && source.claimed && !source.claimed_by_me) {
+    throw new Error("That roster row is claimed by another alumni login.");
+  }
+  if (!asAdmin && keeper.last_name.trim().toLowerCase() !== source.last_name.trim().toLowerCase()) {
+    throw new Error("You can only merge rows that share the same roster last name.");
+  }
+
+  if (accountId && !source.claimed_by_me) {
     await query(`INSERT INTO alumni_claims (account_id, alumni_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [
       accountId,
       sourceId,
@@ -472,7 +527,9 @@ export async function mergeAlumniRecords(accountId: string, keeperId: string, so
       email_primary = COALESCE(NULLIF(btrim(email_primary), ''), $17),
       phone_primary = COALESCE(NULLIF(btrim(phone_primary), ''), $18),
       address_primary = COALESCE(NULLIF(btrim(address_primary), ''), $19),
-      source_flags = COALESCE(source_flags, '{}'::jsonb) || jsonb_build_object('merged_from', $20::text),
+      football_photo_url = COALESCE(NULLIF(btrim(football_photo_url), ''), $20),
+      linkedin_photo_url = COALESCE(NULLIF(btrim(linkedin_photo_url), ''), $21),
+      source_flags = COALESCE(source_flags, '{}'::jsonb) || jsonb_build_object('merged_from', $22::text),
       updated_at = now()
     WHERE id = $1
     `,
@@ -496,6 +553,8 @@ export async function mergeAlumniRecords(accountId: string, keeperId: string, so
       pickFilled(keeper.email_primary, source.email_primary),
       pickFilled(keeper.phone_primary, source.phone_primary),
       pickFilled(keeper.address_primary, source.address_primary),
+      pickFilled(keeper.football_photo_url ?? null, source.football_photo_url ?? null),
+      pickFilled(keeper.linkedin_photo_url ?? null, source.linkedin_photo_url ?? null),
       sourceId,
     ],
   );
@@ -510,6 +569,16 @@ export async function mergeAlumniRecords(accountId: string, keeperId: string, so
         SELECT 1 FROM alumni_emails k
         WHERE k.alumni_id = $1 AND lower(k.email) = lower(e.email)
       )
+    UNION
+    SELECT $1, btrim(a.email_primary), 'merged'
+    FROM alumni a
+    WHERE a.id = $2
+      AND a.email_primary IS NOT NULL AND btrim(a.email_primary) <> ''
+      AND NOT EXISTS (
+        SELECT 1 FROM alumni_emails k
+        WHERE k.alumni_id = $1 AND lower(k.email) = lower(btrim(a.email_primary))
+      )
+      AND lower(btrim(COALESCE((SELECT email_primary FROM alumni k WHERE k.id = $1), ''))) <> lower(btrim(a.email_primary))
     `,
     [keeperId, sourceId],
   );
@@ -523,6 +592,16 @@ export async function mergeAlumniRecords(accountId: string, keeperId: string, so
         SELECT 1 FROM alumni_phones k
         WHERE k.alumni_id = $1 AND k.phone = p.phone
       )
+    UNION
+    SELECT $1, btrim(a.phone_primary), 'merged'
+    FROM alumni a
+    WHERE a.id = $2
+      AND a.phone_primary IS NOT NULL AND btrim(a.phone_primary) <> ''
+      AND NOT EXISTS (
+        SELECT 1 FROM alumni_phones k
+        WHERE k.alumni_id = $1 AND k.phone = btrim(a.phone_primary)
+      )
+      AND btrim(COALESCE((SELECT phone_primary FROM alumni k WHERE k.id = $1), '')) <> btrim(a.phone_primary)
     `,
     [keeperId, sourceId],
   );
@@ -544,6 +623,16 @@ export async function mergeAlumniRecords(accountId: string, keeperId: string, so
   await query(
     `INSERT INTO alumni_record_merges (account_id, keeper_alumni_id, merged_alumni_id) VALUES ($1, $2, $3)`,
     [accountId, keeperId, sourceId],
+  );
+  await query(
+    `
+    UPDATE alumni_claims SET alumni_id = $1
+    WHERE alumni_id = $2
+      AND NOT EXISTS (
+        SELECT 1 FROM alumni_claims k WHERE k.account_id = alumni_claims.account_id AND k.alumni_id = $1
+      )
+    `,
+    [keeperId, sourceId],
   );
   await query(`DELETE FROM alumni_claims WHERE alumni_id = $1`, [sourceId]);
   await query(`DELETE FROM alumni WHERE id = $1`, [sourceId]);

@@ -8,6 +8,7 @@ import {
   isAlumAllowedPath,
   isDataSyncPath,
   isPublicPath,
+  isStaffAlumniMutationPath,
   loginPathFor as portalLoginPathFor,
 } from "@/lib/portal-paths";
 import { isCoachLoggedIn } from "@/lib/session";
@@ -57,6 +58,9 @@ export function proxy(request: NextRequest) {
 
   if (isAlumniClaimPath(pathname)) {
     if (isAlumLoggedIn(request.cookies)) {
+      return NextResponse.next();
+    }
+    if (isCoachLoggedIn(request.cookies) && isStaffAlumniMutationPath(pathname)) {
       return NextResponse.next();
     }
     if (pathname.startsWith("/api/")) {

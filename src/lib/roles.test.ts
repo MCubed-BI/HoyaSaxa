@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import { navItemsForRole, portalMoreItems } from "./nav";
-import { isAlumAllowedPath, isPublicPath, loginPathFor } from "./portal-paths";
+import { isAlumAllowedPath, isPublicPath, isStaffAlumniMutationPath, loginPathFor } from "./portal-paths";
 import { toPublicAlumniCard } from "./portal-queries";
 import { allowRequest, isCoachComposePath } from "./access";
 import {
@@ -140,6 +140,10 @@ describe("portal paths", () => {
     assert.equal(isPublicPath("/alumni-login"), true);
     assert.equal(isPublicPath("/register"), true);
     assert.equal(isPublicPath("/api/alumni/login"), true);
+    assert.equal(isStaffAlumniMutationPath("/api/alumni/update"), false);
+    assert.equal(isStaffAlumniMutationPath("/api/alumni/merge"), true);
+    assert.equal(isStaffAlumniMutationPath("/api/alumni/register"), false);
+    assert.equal(isStaffAlumniMutationPath("/api/alumni/lookup"), false);
     assert.equal(isPublicPath("/api/session"), true);
     assert.equal(isAlumAllowedPath("/alum"), true);
     assert.equal(isAlumAllowedPath("/portal"), true);

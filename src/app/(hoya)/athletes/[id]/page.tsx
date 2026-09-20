@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AthleteMergePanel } from "@/components/athlete-merge-panel";
+import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { HoyaAvatar } from "@/components/hoya-avatar";
 import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { PageMain, pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isPreviewAlumSession, readAlumSessionFromCookies } from "@/lib/alum-session";
+import { findLikelyDuplicateCandidates } from "@/lib/alumni-claim";
+import { getAthleteActor } from "@/lib/athlete-access";
+import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
 import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { displayName, jobLabel, positionLabel } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
@@ -43,11 +48,30 @@ export default async function AthleteProfilePage({
 
   const tab = parseAthleteTab(firstParam(query.tab));
   const city = publicCity(person);
+  const name = displayName(toNameFields(person));
+  const photos = athletePhotoSlots(person);
+  const actor = await getAthleteActor(person.id);
   const session = await readAlumSessionFromCookies();
   const viewingOwnClaim =
     session && !isPreviewAlumSession(session) && session.alumniId === person.id ? [person.id] : [];
   const badgesById = await listPublicBadgesManyFromFeed([person.id], { verifiedAlumniIds: viewingOwnClaim });
   const badges = badgesById[person.id] ?? [];
+  const duplicates =
+    actor.canMerge && !person.id.startsWith("locker-")
+      ? await findLikelyDuplicateCandidates(
+          {
+            id: person.id,
+            first_name: person.firstName,
+            last_name: person.lastName,
+            preferred_name: person.preferredName,
+            full_name: person.fullName,
+          },
+          actor.accountId,
+        )
+      : [];
+  const visibleDuplicates = actor.isAdmin
+    ? duplicates
+    : duplicates.filter((row) => !row.claimed || row.claimed_by_me);
 
   return (
     <PageMain width="narrow">
@@ -56,13 +80,20 @@ export default async function AthleteProfilePage({
       </Link>
 
       <Card>
-        <CardContent className="flex gap-4 py-6">
-          <HoyaAvatar person={person} size="lg" />
-          <div className="min-w-0 space-y-2">
-            <h1 className="font-heading text-3xl text-navy">{displayName(toNameFields(person))}</h1>
-            <p className="text-sm text-muted-foreground">
-              {[kindLabel(person.kind), person.classLabel, person.sport, city].filter(Boolean).join(" · ")}
-            </p>
+        <CardContent className="flex flex-col gap-5 py-6 sm:flex-row sm:items-start">
+          <div className="w-full max-w-xs shrink-0 sm:max-w-[14rem]">
+            <AthletePhotoPair slots={photos} />
+          </div>
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-start gap-3">
+              <HoyaAvatar person={person} size="lg" />
+              <div className="min-w-0">
+                <h1 className="font-heading text-3xl text-navy">{name}</h1>
+                <p className="text-sm text-muted-foreground">
+                  {[kindLabel(person.kind), person.classLabel, person.sport, city].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {positionLabel(person.position) ? (
                 <Badge variant="secondary">{positionLabel(person.position)}</Badge>
@@ -70,19 +101,24 @@ export default async function AthleteProfilePage({
               {person.sport ? <Badge variant="outline">{person.sport}</Badge> : null}
             </div>
             <HoyaBadgeRow badges={badges} />
+            {actor.canEdit ? (
+              <div className="pt-2">
+                <AthletePhotoEditor alumniId={person.id} slots={photos} />
+              </div>
+            ) : null}
           </div>
         </CardContent>
       </Card>
+
+      {actor.canMerge ? (
+        <AthleteMergePanel keeperId={person.id} keeperName={name} candidates={visibleDuplicates} />
+      ) : null}
 
       <nav className="flex flex-wrap gap-2" aria-label="Profile sections">
         {ATHLETE_TABS.map((item) => {
           const active = item.id === tab;
           return (
-            <Link
-              key={item.id}
-              href={athleteHref(person.id, item.id)}
-              className={pillClass(active)}
-            >
+            <Link key={item.id} href={athleteHref(person.id, item.id)} className={pillClass(active)}>
               {item.label}
             </Link>
           );
@@ -149,12 +185,14 @@ export default async function AthleteProfilePage({
           <CardHeader>
             <CardTitle>Photos</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
-            {person.photos.map((slot) => (
-              <div key={slot.id} className="rounded-lg border bg-muted/40 px-3 py-8 text-center text-sm text-muted-foreground">
-                {slot.url ? slot.caption : `${slot.caption} — empty`}
-              </div>
-            ))}
+          <CardContent className="space-y-4">
+            <AthletePhotoPair slots={photos} size="lg" />
+            {actor.canEdit ? <AthletePhotoEditor alumniId={person.id} slots={photos} /> : null}
+            {!actor.canEdit ? (
+              <p className="text-sm text-muted-foreground">
+                Roster and current photos can be edited by this player after a claim login, or by staff admin.
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}
