@@ -281,12 +281,15 @@ async function queryRosterById(id: string): Promise<LockerPersonDetail | null> {
   if (!row) return null;
 
   const person = mapRosterRow(row);
-  const [rosterYears, linkedinUrl] = await Promise.all([
-    sql.query(`SELECT year, position, class FROM alumni_roster_years WHERE alumni_id = $1 ORDER BY year`, [
-      id,
-    ]) as Promise<Array<{ year: number; position: string | null; class: string | null }>>,
+  const [rosterYearRows, linkedinUrl] = await Promise.all([
+    sql.query(`SELECT year, position, class FROM alumni_roster_years WHERE alumni_id = $1 ORDER BY year`, [id]),
     person.linkedinUrl ? Promise.resolve(person.linkedinUrl) : siblingLinkedinProfileUrl(person),
   ]);
+  const rosterYears = rosterYearRows as Array<{
+    year: number;
+    position: string | null;
+    class: string | null;
+  }>;
   const resolved = { ...person, linkedinUrl };
   return {
     ...resolved,
