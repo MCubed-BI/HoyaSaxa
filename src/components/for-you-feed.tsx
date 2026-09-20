@@ -3,15 +3,9 @@ import { ForYouCard } from "@/components/for-you-card";
 import { ForYouComposer } from "@/components/for-you-composer";
 import { HoyaAvatar } from "@/components/hoya-avatar";
 import { Notice } from "@/components/page-chrome";
-import { FEED_SECTIONS, type FeedSection } from "@/lib/feed-sections";
+import { FEED_SECTIONS, canPostToFeedSection, type FeedSection } from "@/lib/feed-sections";
 import { forYouEmptyCopy, forYouHeading, type ForYouCardPost, type ForYouIdentity } from "@/lib/for-you";
 import type { LockerViewer } from "@/lib/locker-viewer";
-
-function canPost(viewer: LockerViewer, section: FeedSection) {
-  if (section === "brothers") return viewer.canPostBrothers;
-  if (section === "board") return viewer.canPostNewsflash;
-  return viewer.canPostSgarlata;
-}
 
 function sectionClass(section: FeedSection) {
   if (section === "brothers") return "for-you__brothers";
@@ -31,7 +25,7 @@ function Section({
   return (
     <section id={section} className={sectionClass(section)}>
       <h2 className="for-you__section-label">{forYouHeading(section)}</h2>
-      {canPost(viewer, section) ? <ForYouComposer section={section} /> : null}
+      {canPostToFeedSection(viewer.platformRole, section) ? <ForYouComposer section={section} /> : null}
       {posts.length === 0 ? (
         <p className="for-you__empty">{forYouEmptyCopy(section)}</p>
       ) : (

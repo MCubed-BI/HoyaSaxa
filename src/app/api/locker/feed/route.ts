@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isMissingDatabaseConfig } from "@/lib/db";
+import { canPostToFeedSection } from "@/lib/feed-sections";
 import { createLockerFeedPost } from "@/lib/locker-queries";
 import { getLockerViewer } from "@/lib/locker-viewer";
 
@@ -8,7 +9,7 @@ export async function POST(request: Request) {
   if (!viewer) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!viewer.canPostBrothers) {
+  if (!canPostToFeedSection(viewer.platformRole, "brothers")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
