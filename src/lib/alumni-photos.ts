@@ -39,6 +39,17 @@ export function normalizePhotoUrl(value: unknown): string | null | undefined {
   return trimmed;
 }
 
+/** Prefer the farmed football headshot; fall back to a stored LinkedIn URL. Does not scrape LinkedIn. */
+export function preferredAlumniPhotoUrl(
+  photos: { football_photo_url?: string | null; linkedin_photo_url?: string | null } | null | undefined,
+): string | null {
+  const football = photos?.football_photo_url?.trim();
+  if (football) return football;
+  const linkedin = photos?.linkedin_photo_url?.trim();
+  if (linkedin) return linkedin;
+  return null;
+}
+
 export function parseAlumniPhotoPatch(input: Record<string, unknown> | AlumniPhotoPatch | null | undefined) {
   const patch: AlumniPhotoPatch = {};
   if (!input) return patch;

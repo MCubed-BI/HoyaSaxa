@@ -17,6 +17,7 @@ export type GuhoyasPlayer = {
   hometownHighSchool: string | null;
   previousSchool: string | null;
   year: number;
+  photoUrl: string | null;
 };
 
 export type GuhoyasYearRoster = {
@@ -33,6 +34,16 @@ export type GuhoyasFetchResult = {
   to: number;
 };
 
+export type GuhoyasPhotoMergeResult = {
+  sourced: number;
+  matched: number;
+  filled: number;
+  updated: number;
+  unchanged: number;
+  unmatched: number;
+  ambiguous: number;
+};
+
 export type GuhoyasMergeResult = {
   inserted: number;
   updated: number;
@@ -40,6 +51,7 @@ export type GuhoyasMergeResult = {
   uniquePlayers: number;
   yearsApplied: number[];
   failed: GuhoyasFetchResult["failed"];
+  photos: GuhoyasPhotoMergeResult;
 };
 
 export type SqlClient = {
@@ -96,6 +108,149 @@ function firstToken(name: string | null | undefined) {
 /** Match key: lower(last_name)|lower(first token of first_name) — same as workbook import. */
 export function guhoyasMatchKey(lastName: string, firstName: string | null) {
   return `${normalizeName(lastName)}|${normalizeName(firstToken(firstName))}`;
+}
+
+const PHOTO_HOSTS = /(^|\.)guhoyas\.com$/i;
+const SIDEARM_HOSTS = /(sidearmdev\.com|cloudfront\.net)$/i;
+
+/** Canonical https://guhoyas.com/images/... URL without resize query params. */
+export function canonicalizeGuhoyasPhotoUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  let value = raw.replace(/&amp;/g, "&").trim();
+  if (!value) return null;
+  if (/logo|responsive_2022|site\.png|doubleclick|scorecardresearch|team.?photo/i.test(value)) {
+    return null;
+  }
+  if (value.startsWith("//")) value = `https:${value}`;
+  if (value.startsWith("/")) value = `https://guhoyas.com${value}`;
+  if (!/^https?:\/\//i.test(value)) return null;
+  try {
+    const url = new URL(value);
+    url.protocol = "https:";
+    const host = url.hostname.replace(/^www\./i, "");
+    const inner = url.searchParams.get("url");
+    if (inner && SIDEARM_HOSTS.test(host)) {
+      return canonicalizeGuhoyasPhotoUrl(inner);
+    }
+    if (!PHOTO_HOSTS.test(host)) return null;
+    if (!/\/images\//i.test(url.pathname)) return null;
+    if (!/\.(jpe?g|png|webp|gif)$/i.test(url.pathname)) return null;
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function isGuhoyasPhotoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /guhoyas\.com\/images\//i.test(url) || /\/images\/\d{4}\/\d{1,2}\/\d{1,2}\//.test(url);
+}
+
+/** YYYYMMDD from /images/YYYY/M/D/, else rosterYear * 10000. Higher wins. */
+export function photoUrlSortKey(url: string | null | undefined, rosterYear?: number | null): number {
+  if (url) {
+    const match = url.match(/\/images\/(\d{4})\/(\d{1,2})\/(\d{1,2})\//);
+    if (match) {
+      return Number.parseInt(
+        `${match[1]}${match[2]!.padStart(2, "0")}${match[3]!.padStart(2, "0")}`,
+        10,
+      );
+    }
+  }
+  if (rosterYear && rosterYear > 0) return rosterYear * 10_000;
+  return 0;
+}
+
+/** Fill empty; replace a GUHoyas URL only when the incoming path date/year is newer. Never overwrite custom URLs. */
+export function shouldReplaceFootballPhoto(
+  existing: string | null | undefined,
+  incoming: string,
+  incomingYear?: number | null,
+  existingYear?: number | null,
+): boolean {
+  const current = existing?.trim() || null;
+  if (!current) return true;
+  if (!isGuhoyasPhotoUrl(current)) return false;
+  return photoUrlSortKey(incoming, incomingYear) > photoUrlSortKey(current, existingYear);
+}
+
+function extractLdImage(image: unknown): string | null {
+  if (!image) return null;
+  if (typeof image === "string") return image;
+  if (typeof image === "object" && image && "url" in image) {
+    const url = (image as { url?: unknown }).url;
+    return typeof url === "string" ? url : null;
+  }
+  return null;
+}
+
+function collectLdPeople(node: unknown, out: Array<Record<string, unknown>> = []): Array<Record<string, unknown>> {
+  if (!node) return out;
+  if (Array.isArray(node)) {
+    for (const item of node) collectLdPeople(item, out);
+    return out;
+  }
+  if (typeof node !== "object") return out;
+  const obj = node as Record<string, unknown>;
+  const type = obj["@type"];
+  const isPerson = type === "Person" || (Array.isArray(type) && type.includes("Person"));
+  if (isPerson) out.push(obj);
+  if (obj.item) collectLdPeople(obj.item, out);
+  if (obj.itemListElement) collectLdPeople(obj.itemListElement, out);
+  return out;
+}
+
+export function parseRosterPhotoMap(html: string): Map<string, { fullName: string; photoUrl: string }> {
+  const byKey = new Map<string, { fullName: string; photoUrl: string }>();
+
+  const remember = (fullNameRaw: string, rawUrl: string) => {
+    const fullName = clean(fullNameRaw);
+    const photoUrl = canonicalizeGuhoyasPhotoUrl(rawUrl);
+    if (!fullName || !photoUrl) return;
+    const { firstName, lastName } = splitFullName(fullName);
+    const key = guhoyasMatchKey(lastName, firstName);
+    const existing = byKey.get(key);
+    if (!existing || photoUrlSortKey(photoUrl) >= photoUrlSortKey(existing.photoUrl)) {
+      byKey.set(key, { fullName, photoUrl });
+    }
+  };
+
+  for (const match of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi)) {
+    try {
+      const data = JSON.parse(match[1] ?? "");
+      for (const person of collectLdPeople(data)) {
+        const name = typeof person.name === "string" ? person.name : null;
+        const imageUrl = extractLdImage(person.image);
+        if (name && imageUrl) remember(name, imageUrl);
+      }
+    } catch {
+      // Sidearm sometimes emits adjacent JSON-LD blobs; ignore a bad one.
+    }
+  }
+
+  for (const match of html.matchAll(
+    /<(?:img)[^>]*(?:data-src|src)="([^"]+)"[^>]*alt="([^"]+?)\s*-\s*View Profile"/gi,
+  )) {
+    remember(match[2] ?? "", match[1] ?? "");
+  }
+  for (const match of html.matchAll(
+    /alt="([^"]+?)\s*-\s*View Profile"[^>]*(?:data-src|src)="([^"]+)"/gi,
+  )) {
+    remember(match[1] ?? "", match[2] ?? "");
+  }
+
+  return byKey;
+}
+
+function attachRosterPhotos(players: GuhoyasPlayer[], html: string) {
+  const photos = parseRosterPhotoMap(html);
+  for (const player of players) {
+    if (player.photoUrl) continue;
+    const { firstName, lastName } = splitFullName(player.fullName);
+    player.photoUrl = photos.get(guhoyasMatchKey(lastName, firstName))?.photoUrl ?? null;
+  }
 }
 
 export function splitFullName(fullName: string): { firstName: string | null; lastName: string } {
@@ -194,9 +349,13 @@ export function parseRosterHtml(html: string, year: number): GuhoyasPlayer[] {
         hometownHighSchool: clean(cells[6]),
         previousSchool: clean(cells[7]),
         year,
+        photoUrl: null,
       });
     }
-    if (players.length > 0) return players;
+    if (players.length > 0) {
+      attachRosterPhotos(players, html);
+      return players;
+    }
   }
 
   const cardRe =
@@ -218,6 +377,9 @@ export function parseRosterHtml(html: string, year: number): GuhoyasPlayer[] {
     const home = block.match(/sidearm-roster-player-hometown[^>]*>\s*([^<]+)/i);
     const hs = block.match(/sidearm-roster-player-highschool[^>]*>\s*([^<]+)/i);
     const prev = block.match(/sidearm-roster-player-previous-school[^>]*>\s*([^<]+)/i);
+    const img =
+      block.match(/<(?:img)[^>]*(?:data-src|src)="([^"]+)"/i) ||
+      block.match(/(?:data-src|src)="([^"]+\/images\/[^"]+)"/i);
     const fullName = clean(name?.[1]);
     if (!fullName) continue;
     const hometown = clean(home?.[1]);
@@ -233,8 +395,10 @@ export function parseRosterHtml(html: string, year: number): GuhoyasPlayer[] {
       hometownHighSchool,
       previousSchool: clean(prev?.[1]),
       year,
+      photoUrl: canonicalizeGuhoyasPhotoUrl(img?.[1] ?? null),
     });
   }
+  attachRosterPhotos(players, html);
   return players;
 }
 
@@ -316,6 +480,8 @@ type AggPlayer = {
   latestYear: number;
   years: number[];
   rosterYears: Array<{ year: number; position: string | null; className: string | null }>;
+  photoUrl: string | null;
+  photoYear: number | null;
 };
 
 export function aggregateRosterPlayers(yearRosters: GuhoyasYearRoster[]): Map<string, AggPlayer> {
@@ -342,6 +508,8 @@ export function aggregateRosterPlayers(yearRosters: GuhoyasYearRoster[]): Map<st
           latestYear: blob.year,
           years: [blob.year],
           rosterYears: [rosterRow],
+          photoUrl: p.photoUrl,
+          photoYear: p.photoUrl ? blob.year : null,
         });
         continue;
       }
@@ -361,6 +529,13 @@ export function aggregateRosterPlayers(yearRosters: GuhoyasYearRoster[]): Map<st
         existing.fullName = p.fullName;
         existing.firstName = firstName;
         existing.lastName = lastName;
+      }
+      if (
+        p.photoUrl &&
+        shouldReplaceFootballPhoto(existing.photoUrl, p.photoUrl, blob.year, existing.photoYear)
+      ) {
+        existing.photoUrl = p.photoUrl;
+        existing.photoYear = blob.year;
       }
     }
   }
@@ -388,11 +563,98 @@ function mergeYearLists(a: unknown, b: number[]): number[] {
   return Array.from(new Set([...left, ...b])).sort((x, y) => x - y);
 }
 
+const EMPTY_PHOTO_MERGE: GuhoyasPhotoMergeResult = {
+  sourced: 0,
+  matched: 0,
+  filled: 0,
+  updated: 0,
+  unchanged: 0,
+  unmatched: 0,
+  ambiguous: 0,
+};
+
+type PhotoExistingRow = {
+  id: string;
+  first_name: string | null;
+  last_name: string;
+  football_photo_url: string | null;
+  source_flags: Record<string, unknown> | null;
+};
+
+function photoYearFromFlags(flags: Record<string, unknown> | null): number | null {
+  const raw = flags?.guhoyas_photo_year;
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+}
+
+/** Match farmed GUHoyas headshots onto alumni.football_photo_url. Never writes linkedin_photo_url. */
+export async function mergeFootballPhotosIntoAlumni(
+  sql: SqlClient,
+  yearRosters: GuhoyasYearRoster[],
+): Promise<GuhoyasPhotoMergeResult> {
+  const byKey = aggregateRosterPlayers(yearRosters);
+  const sourced = Array.from(byKey.values()).filter((player) => player.photoUrl);
+  if (sourced.length === 0) return { ...EMPTY_PHOTO_MERGE };
+
+  await sql.query(`ALTER TABLE alumni ADD COLUMN IF NOT EXISTS football_photo_url text`);
+
+  const existingRows = (await sql.query(
+    `SELECT id, first_name, last_name, football_photo_url, source_flags FROM alumni`,
+  )) as PhotoExistingRow[];
+
+  const existingByKey = new Map<string, PhotoExistingRow[]>();
+  for (const row of existingRows) {
+    const key = guhoyasMatchKey(row.last_name, row.first_name);
+    const list = existingByKey.get(key) ?? [];
+    list.push(row);
+    existingByKey.set(key, list);
+  }
+
+  const counts: GuhoyasPhotoMergeResult = { ...EMPTY_PHOTO_MERGE, sourced: sourced.length };
+
+  for (const player of sourced) {
+    const key = guhoyasMatchKey(player.lastName, player.firstName);
+    const matches = existingByKey.get(key) ?? [];
+    if (matches.length === 0) {
+      counts.unmatched += 1;
+      continue;
+    }
+    counts.matched += 1;
+    if (matches.length > 1) counts.ambiguous += 1;
+    const row = matches[0]!;
+    const incoming = player.photoUrl!;
+    const existingUrl = row.football_photo_url;
+    if (!shouldReplaceFootballPhoto(existingUrl, incoming, player.photoYear, photoYearFromFlags(asFlags(row.source_flags)))) {
+      counts.unchanged += 1;
+      continue;
+    }
+    const filled = !existingUrl?.trim();
+    const flags = {
+      ...asFlags(row.source_flags),
+      guhoyas_photo: true,
+      guhoyas_photo_year: player.photoYear ?? player.latestYear,
+    };
+    await sql.query(
+      `UPDATE alumni SET
+         football_photo_url = $1,
+         source_flags = COALESCE(source_flags, '{}'::jsonb) || $2::jsonb,
+         updated_at = now()
+       WHERE id = $3`,
+      [incoming, JSON.stringify(flags), row.id],
+    );
+    row.football_photo_url = incoming;
+    row.source_flags = flags;
+    if (filled) counts.filled += 1;
+    else counts.updated += 1;
+  }
+
+  return counts;
+}
+
 /** Upsert scraped roster players into alumni + alumni_roster_years. Does not touch emails/phones/linkedin. */
 export async function mergeRostersIntoAlumni(
   sql: SqlClient,
   yearRosters: GuhoyasYearRoster[],
-): Promise<Omit<GuhoyasMergeResult, "failed">> {
+): Promise<Omit<GuhoyasMergeResult, "failed" | "photos">> {
   const byKey = aggregateRosterPlayers(yearRosters);
   if (byKey.size === 0) {
     return { inserted: 0, updated: 0, rosterYears: 0, uniquePlayers: 0, yearsApplied: [] };
@@ -509,7 +771,7 @@ export async function mergeRostersIntoAlumni(
   };
 }
 
-/** Fetch year range then merge. Safe to call after Data Sync apply completes. */
+/** Fetch year range then merge roster rows and football headshots. Safe after Data Sync apply. */
 export async function fetchAndMergeGuhoyasRosters(
   sql: SqlClient,
   options?: { from?: number; to?: number; delayMs?: number },
@@ -523,8 +785,23 @@ export async function fetchAndMergeGuhoyasRosters(
       uniquePlayers: 0,
       yearsApplied: [],
       failed: fetched.failed,
+      photos: { ...EMPTY_PHOTO_MERGE },
     };
   }
   const merged = await mergeRostersIntoAlumni(sql, fetched.years);
-  return { ...merged, failed: fetched.failed };
+  const photos = await mergeFootballPhotosIntoAlumni(sql, fetched.years);
+  return { ...merged, failed: fetched.failed, photos };
+}
+
+/** Fetch year range and write football_photo_url only. Does not insert alumni or touch LinkedIn. */
+export async function fetchAndMergeGuhoyasPhotos(
+  sql: SqlClient,
+  options?: { from?: number; to?: number; delayMs?: number },
+): Promise<{ photos: GuhoyasPhotoMergeResult; failed: GuhoyasFetchResult["failed"]; from: number; to: number }> {
+  const fetched = await fetchGuhoyasRosters(options);
+  if (fetched.years.length === 0) {
+    return { photos: { ...EMPTY_PHOTO_MERGE }, failed: fetched.failed, from: fetched.from, to: fetched.to };
+  }
+  const photos = await mergeFootballPhotosIntoAlumni(sql, fetched.years);
+  return { photos, failed: fetched.failed, from: fetched.from, to: fetched.to };
 }

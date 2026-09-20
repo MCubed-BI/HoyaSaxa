@@ -32,7 +32,7 @@ export default async function SyncPage() {
         <PageHeader
           eyebrow="Admin"
           title="Data Sync"
-          description="Upload a workbook, preview who will be updated or added, then apply the staged batch to the live Neon alumni tables. Existing records are merged, not replaced."
+          description="Upload a workbook, preview who will be updated or added, then apply the staged batch to the live Neon alumni tables. Existing records are merged, not replaced. A successful apply also refreshes GUHoyas roster years and football headshots."
         />
         {errorMessage ? (
           <StatusCard title="Data Sync unavailable" body={errorMessage} />

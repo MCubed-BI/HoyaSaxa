@@ -112,7 +112,9 @@ Additive Neon columns on `alumni` (not NTE):
 - `GET /api/alum/photos?alumniId=`
 - Claimed-self `POST /api/alumni/update` also accepts those keys on `patch`
 
-Ensure: `ensureAlumniPhotoColumns()`. Helpers: `src/lib/alumni-photos.ts`.
+Ensure: `ensureAlumniPhotoColumns()`. Helpers: `src/lib/alumni-photos.ts` (`preferredAlumniPhotoUrl` prefers football, then a stored LinkedIn URL — no LinkedIn scrape).
+
+Public GUHoyas football headshots are farmed into `football_photo_url` on Data Sync apply (`src/lib/guhoyas-roster.ts`). Re-run: apply a Data Sync batch, or `npm run farm-photos`.
 
 ---
 

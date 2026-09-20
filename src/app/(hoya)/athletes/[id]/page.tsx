@@ -142,8 +142,14 @@ export default async function AthleteProfilePage({
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
             {person.photos.map((slot) => (
-              <div key={slot.id} className="rounded-lg border bg-muted/40 px-3 py-8 text-center text-sm text-muted-foreground">
-                {slot.url ? slot.caption : `${slot.caption} — empty`}
+              <div key={slot.id} className="overflow-hidden rounded-lg border bg-muted/40 text-center text-sm text-muted-foreground">
+                {slot.url ? (
+                  // Farmed GUHoyas headshots are remote; initials cover the empty case elsewhere.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={slot.url} alt={slot.caption} className="aspect-[4/5] w-full object-cover" />
+                ) : (
+                  <div className="px-3 py-8">{`${slot.caption} — empty`}</div>
+                )}
               </div>
             ))}
           </CardContent>
