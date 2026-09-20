@@ -6,4 +6,5 @@ test("locks the user-facing product name for chrome and metadata", () => {
   assert.equal(PRODUCT_DISPLAY_NAME, "Georgetown Football Alum Network");
   assert.equal(PRODUCT_NAME, PRODUCT_DISPLAY_NAME);
   assert.equal(APP_DISPLAY_NAME, PRODUCT_DISPLAY_NAME);
+  assert.equal(["Georgetown Football", "Alum Network"].join(" "), PRODUCT_DISPLAY_NAME);
 });

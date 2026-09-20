@@ -125,6 +125,25 @@
     box-shadow: var(--shadow-card);
   }
 
+  /* BrandMark wordmark — stacked wrap, no ellipsis. WD owns a fuller chrome pass after this. */
+  .brand-wordmark {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .brand-wordmark__line {
+    white-space: nowrap;
+  }
+
+  @media (min-width: 901px) {
+    .brand-wordmark--inline-wide {
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: baseline;
+      column-gap: 0.35em;
+    }
+  }
+
   /* For You hooks for Web Designer. Myspace = profile + stacked feeds, navy/charcoal/white. */
   .for-you {
     display: flex;
