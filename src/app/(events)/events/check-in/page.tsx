@@ -34,7 +34,7 @@ export default async function EventCheckInIndexPage() {
           <PageHeader
             eyebrow="Events"
             title="Check in"
-            description="Alum and staff can check in to an event. Repeat check-in is a no-op unless staff override. This is not Register myself."
+            description="Alum and staff can check in to an event. Repeat check-in is a no-op unless staff override."
             actions={
               <Button asChild variant="outline">
                 <Link href="/events/attendance">Attendance ranks</Link>

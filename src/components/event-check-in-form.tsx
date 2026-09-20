@@ -56,7 +56,7 @@ export function EventCheckInForm({
             <fieldset className="space-y-3 rounded-lg border p-3">
               <legend className="px-1 text-sm font-medium">Staff: check in someone else</legend>
               <p className="text-sm text-muted-foreground">
-                Use a claimed alumni id or a display name. Do not send anyone through Register myself from here.
+                Use a claimed alumni id or a display name for an existing person.
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
