@@ -5,6 +5,14 @@ import {
   parseClassYearInput,
 } from "@/lib/alumni-class-year";
 import { hashAlumniPassword, isValidEmail, readAlumniSessionFromCookies, verifyAlumniPassword } from "@/lib/alumni-auth";
+import {
+  duplicateDismissalActorKey,
+  ensureAlumniDuplicateDismissalTable,
+  excludeDismissedById,
+  listDismissedSourceIds,
+  lookupAccountId,
+  type DuplicateDismissalActor,
+} from "@/lib/alumni-duplicate-dismissals";
 import { isLikelyDuplicate } from "@/lib/alumni-duplicates";
 import { ensureAlumniPhotoColumns } from "@/lib/alumni-photos";
 import { grantVerifiedHoyaForAlumSession } from "@/lib/badges";
@@ -99,6 +107,7 @@ export async function ensureAlumniAuthTables() {
     )
   `);
   await sql.query(`ALTER TABLE alumni_record_merges ALTER COLUMN account_id DROP NOT NULL`);
+  await ensureAlumniDuplicateDismissalTable();
   ensured = true;
 }
 
@@ -163,7 +172,7 @@ export async function lookupRosterMatches(lastNameRaw: string, classYearRaw: str
 export async function findSameLastNameCandidates(lastName: string, accountId: string, excludeIds: string[]) {
   await ensureAlumniAuthTables();
   const exclude = excludeIds.length > 0 ? excludeIds : ["00000000-0000-0000-0000-000000000000"];
-  return query<ClaimMatch[]>(
+  const rows = await query<ClaimMatch[]>(
     `
     SELECT ${LIST_COLUMNS},
       EXISTS (SELECT 1 FROM alumni_claims c WHERE c.alumni_id = a.id) AS claimed,
@@ -180,15 +189,19 @@ export async function findSameLastNameCandidates(lastName: string, accountId: st
     `,
     [lastName, accountId, exclude],
   );
+  const actorKey = duplicateDismissalActorKey({ accountId });
+  if (!actorKey) return rows;
+  return excludeDismissedById(rows, await listDismissedSourceIds(actorKey, excludeIds));
 }
 
 export async function findLikelyDuplicateCandidates(
   person: Pick<AlumniListItem, "id" | "first_name" | "last_name" | "preferred_name" | "full_name">,
-  accountId?: string | null,
+  actor?: string | null | DuplicateDismissalActor,
 ) {
   await ensureAlumniAuthTables();
   const lastName = person.last_name?.trim();
   if (!lastName) return [];
+  const accountId = lookupAccountId(actor);
   const rows = await query<ClaimMatch[]>(
     `
     SELECT ${LIST_COLUMNS},
@@ -202,7 +215,10 @@ export async function findLikelyDuplicateCandidates(
     `,
     [lastName, accountId ?? "00000000-0000-0000-0000-000000000000", person.id],
   );
-  return rows.filter((row) => isLikelyDuplicate(person, row));
+  const likely = rows.filter((row) => isLikelyDuplicate(person, row));
+  const actorKey = typeof actor === "string" || !actor ? duplicateDismissalActorKey({ accountId }) : duplicateDismissalActorKey(actor);
+  if (!actorKey) return likely;
+  return excludeDismissedById(likely, await listDismissedSourceIds(actorKey, [person.id]));
 }
 
 export async function getAccountByEmail(email: string) {

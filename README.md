@@ -189,7 +189,7 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/login` — staff gate (`ga_session` for owner/coach; `Alum`/`Lars` mint `hoya_alum_session`)
 - `/register` — alumni claim (last name + graduating class)
 - `/alumni-login` — alumni email/password login
-- `/me` — edit claimed records or merge a duplicate
+- `/me` — edit claimed records or merge a duplicate. **Not me** on Merge accounts permanently hides that pair for the claimed login (`alumni_duplicate_dismissals`).
 - `/portal` — alum entry; redirects to `/home`
 - `/home` — Welcome hero, Directory/Events/News/Giving, upcoming event, recent activity
 - `/feed` — For You (Myspace identity rail + Brothers / Board / Sgarlata). Keys stay `brothers` | `board` | `sgarlata`
@@ -198,7 +198,7 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/events/new` — Create Event (coach and board only)
 - `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
 - `/directory` — Hoya Directory (search + All/Athletes/Alumni/Coaches/Staff). Requires `ga_session`, `hoya_alum_session`, or the claim session. Anonymous visitors are sent to `/login`. Emails stay hidden on these cards.
-- `/athletes/[id]` — public athlete profile (Overview/Stats/Photos/Career/Q&A)
+- `/athletes/[id]` — public athlete profile (Overview/Stats/Photos/Career/Q&A). Likely-duplicate panel: Merge duplicate is unchanged; **Not me** permanently hides that pair for the viewing claimed alum (`account:{id}`) or staff admin (`admin:{username}`). The other scope can still see it.
 - `/portal/directory` / `/portal/profile` — aliases to `/directory`
 - `/portal/events` / `/portal/giving` — aliases to `/events` and `/giving`
 - `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases (`/portal/newsflash` → `/board`)

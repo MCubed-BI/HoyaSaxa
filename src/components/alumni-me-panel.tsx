@@ -34,7 +34,15 @@ export function AlumniMePanel({
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+  const visibleCandidates = useMemo(
+    () => mergeCandidates.filter((row) => !hiddenIds.includes(row.id)),
+    [hiddenIds, mergeCandidates],
+  );
   const [sourceId, setSourceId] = useState(mergeCandidates[0]?.id ?? "");
+  const selectedSourceId = visibleCandidates.some((row) => row.id === sourceId)
+    ? sourceId
+    : (visibleCandidates[0]?.id ?? "");
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -88,7 +96,7 @@ export function AlumniMePanel({
   }
 
   async function runMerge(action: "claim" | "merge") {
-    if (!active || !sourceId) return;
+    if (!active || !selectedSourceId) return;
     setPending(true);
     setError(null);
     setMessage(null);
@@ -98,8 +106,8 @@ export function AlumniMePanel({
         headers: { "content-type": "application/json" },
         body: JSON.stringify(
           action === "claim"
-            ? { action: "claim", alumniId: sourceId }
-            : { action: "merge", keeperId: active.id, sourceId },
+            ? { action: "claim", alumniId: selectedSourceId }
+            : { action: "merge", keeperId: active.id, sourceId: selectedSourceId },
         ),
       });
       const data = (await response.json()) as { error?: string };
@@ -108,6 +116,29 @@ export function AlumniMePanel({
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Merge failed");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function dismissDuplicate() {
+    if (!active || !selectedSourceId) return;
+    setPending(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/alumni/dismiss-duplicate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ keeperId: active.id, sourceId: selectedSourceId }),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Could not dismiss that suggestion.");
+      setHiddenIds((current) => [...current, selectedSourceId]);
+      setMessage("Got it — we will not suggest that match again.");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not dismiss that suggestion.");
     } finally {
       setPending(false);
     }
@@ -141,11 +172,11 @@ export function AlumniMePanel({
           hint={active.class_year ? `Editing class of ${active.class_year}` : "Roster class stays on the player card"}
         />
         <Kpi
-          tone={mergeCandidates.length > 0 ? "alert" : "secondary"}
-          icon={mergeCandidates.length > 0 ? "alert" : "empty"}
+          tone={visibleCandidates.length > 0 ? "alert" : "secondary"}
+          icon={visibleCandidates.length > 0 ? "alert" : "empty"}
           label="Possible duplicates"
-          value={formatCount(mergeCandidates.length, "row")}
-          hint={mergeCandidates.length > 0 ? "Same last name — claim or merge below" : "No other unclaimed rows"}
+          value={formatCount(visibleCandidates.length, "row")}
+          hint={visibleCandidates.length > 0 ? "Same last name — claim, merge, or tap Not me" : "No other unclaimed rows"}
         />
       </KpiGrid>
 
@@ -217,7 +248,7 @@ export function AlumniMePanel({
           <CardTitle>Merge accounts</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {mergeCandidates.length === 0 ? (
+          {visibleCandidates.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No other unclaimed {active.last_name} rows are available to merge.
             </p>
@@ -225,15 +256,16 @@ export function AlumniMePanel({
             <>
               <p className="text-sm text-muted-foreground">
                 Duplicate roster rows with the same last name can be claimed or folded into {displayName(active)}.
+                Not me permanently hides that pair for this login.
               </p>
               <label className="block text-sm">
                 Other {active.last_name} row
                 <select
                   className="mt-1 w-full rounded-md border bg-background px-2 py-2"
-                  value={sourceId}
+                  value={selectedSourceId}
                   onChange={(event) => setSourceId(event.target.value)}
                 >
-                  {mergeCandidates.map((row) => (
+                  {visibleCandidates.map((row) => (
                     <option key={row.id} value={row.id}>
                       {displayName(row)}
                       {row.class_year ? ` · ${row.class_year}` : " · no class year"}
@@ -249,6 +281,9 @@ export function AlumniMePanel({
                 </Button>
                 <Button type="button" disabled={pending} onClick={() => runMerge("merge")}>
                   Merge into {displayName(active)}
+                </Button>
+                <Button type="button" variant="ghost" disabled={pending} onClick={dismissDuplicate}>
+                  Not me
                 </Button>
               </div>
             </>
