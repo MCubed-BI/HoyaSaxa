@@ -140,7 +140,7 @@ describe("portal paths", () => {
     assert.equal(isPublicPath("/alumni-login"), true);
     assert.equal(isPublicPath("/register"), true);
     assert.equal(isPublicPath("/api/alumni/login"), true);
-    assert.equal(isStaffAlumniMutationPath("/api/alumni/update"), true);
+    assert.equal(isStaffAlumniMutationPath("/api/alumni/update"), false);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/merge"), true);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/register"), false);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/lookup"), false);

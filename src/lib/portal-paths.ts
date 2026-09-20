@@ -64,9 +64,9 @@ export function isAlumAllowedPath(pathname: string) {
   return ALUM_ALLOWED_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-/** Staff admin may edit photos / merge on these claim-adjacent APIs only. */
+/** Staff admin may merge duplicates on this claim-adjacent API only. Photos use POST /api/alum/photos. */
 export function isStaffAlumniMutationPath(pathname: string) {
-  return pathname === "/api/alumni/update" || pathname === "/api/alumni/merge";
+  return pathname === "/api/alumni/merge";
 }
 
 export function isDataSyncPath(pathname: string) {
