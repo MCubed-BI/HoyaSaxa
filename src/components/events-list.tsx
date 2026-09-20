@@ -56,11 +56,19 @@ export function EventsList({
         title="Events"
         description="Upcoming, past, and events you created or added. Each row shows date, title, category, location, and thumbnail."
         actions={
-          canCreate ? (
-            <Button asChild>
-              <Link href="/events/new">Create Event</Link>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/events/check-in">Check in</Link>
             </Button>
-          ) : null
+            <Button asChild variant="outline">
+              <Link href="/events/attendance">Ranks</Link>
+            </Button>
+            {canCreate ? (
+              <Button asChild>
+                <Link href="/events/new">Create Event</Link>
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
@@ -115,12 +123,19 @@ export function EventsList({
                     {when.label}
                     {event.location ? ` · ${event.location}` : ""}
                   </p>
-                  <form action={`/api/events/${event.id}/rsvp`} method="post" className="mt-2">
-                    <input type="hidden" name="next" value={tabHref(tab)} />
-                    <Button type="submit" variant="outline" size="sm">
-                      {event.rsvped ? "Remove from My Events" : "Add to My Events"}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <form action={`/api/events/${event.id}/rsvp`} method="post">
+                      <input type="hidden" name="next" value={tabHref(tab)} />
+                      <Button type="submit" variant="outline" size="sm">
+                        {event.rsvped ? "Remove from My Events" : "Add to My Events"}
+                      </Button>
+                    </form>
+                    <Button asChild variant={event.checked_in ? "secondary" : "outline"} size="sm">
+                      <Link href={`/events/${event.id}/check-in`}>
+                        {event.checked_in ? "Checked in" : "Check in"}
+                      </Link>
                     </Button>
-                  </form>
+                  </div>
                 </div>
               </li>
             );

@@ -296,3 +296,18 @@ export const eventRsvps = pgTable("event_rsvps", {
   attendeeKey: text("attendee_key").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const eventAttendance = pgTable("event_attendance", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id")
+    .notNull()
+    .references(() => events.id, { onDelete: "cascade" }),
+  personKey: text("person_key").notNull(),
+  alumId: text("alum_id"),
+  userId: text("user_id").notNull(),
+  displayName: text("display_name").notNull(),
+  checkedInAt: timestamp("checked_in_at", { withTimezone: true }).notNull().defaultNow(),
+  checkedInBy: text("checked_in_by").notNull(),
+  checkedInByRole: text("checked_in_by_role").notNull(),
+  source: text("source").notNull().default("self"),
+});

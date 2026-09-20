@@ -14,6 +14,7 @@ export type EventListItem = {
   created_by_role: EventRole;
   created_by_me: boolean;
   rsvped: boolean;
+  checked_in: boolean;
 };
 
 export type EventListResult = {

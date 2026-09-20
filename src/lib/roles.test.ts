@@ -160,6 +160,10 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/api/feed"), true);
     assert.equal(isAlumAllowedPath("/api/badges"), true);
     assert.equal(loginPathFor("/board"), "/home/login");
+    assert.equal(isAlumAllowedPath("/events"), true);
+    assert.equal(isAlumAllowedPath("/events/check-in"), true);
+    assert.equal(isAlumAllowedPath("/api/events/attendance/feed"), true);
+    assert.equal(isAlumAllowedPath("/sync"), false);
     assert.equal(isAlumAllowedPath("/blast"), false);
     assert.equal(isPublicPath("/home/login"), true);
     assert.equal(isPublicPath("/api/logout"), true);
