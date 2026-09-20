@@ -21,6 +21,55 @@ import type {
 import { getSql } from "@/lib/db";
 import { fetchAndMergeGuhoyasRosters } from "@/lib/guhoyas-roster";
 
+function guhoyasRefreshNote(roster: Awaited<ReturnType<typeof fetchAndMergeGuhoyasRosters>>) {
+  const photos = roster.photos;
+  return (
+    `guhoyas: roster +${roster.inserted}/~${roster.updated} players` +
+    `; photos filled ${photos.filled}, updated ${photos.updated}, matched ${photos.matched}` +
+    (roster.failed.length > 0 ? `; ${roster.failed.length} year(s) skipped` : "")
+  );
+}
+
+async function refreshGuhoyasAfterApply(
+  sql: ReturnType<typeof getSql>,
+  batchId: string,
+): Promise<void> {
+  try {
+    const roster = await fetchAndMergeGuhoyasRosters(sql);
+    const note = guhoyasRefreshNote(roster);
+    await sql.query(
+      `UPDATE data_sync
+       SET preview = jsonb_set(
+             COALESCE(preview, '{}'::jsonb),
+             '{warnings}',
+             COALESCE(preview->'warnings', '[]'::jsonb) || $2::jsonb
+           ),
+           updated_at = now()
+       WHERE id = $1`,
+      [batchId, JSON.stringify([note])],
+    );
+    if (roster.failed.length > 0) {
+      await sql.query(
+        `UPDATE data_sync
+         SET errors = COALESCE(errors, '[]'::jsonb) || $2::jsonb,
+             updated_at = now()
+         WHERE id = $1`,
+        [batchId, JSON.stringify([`${roster.failed.length} GUHoyas year(s) skipped`])],
+      );
+    }
+  } catch (rosterError) {
+    const rosterMessage =
+      rosterError instanceof Error ? rosterError.message : "GUHoyas roster / photo merge failed";
+    await sql.query(
+      `UPDATE data_sync
+       SET errors = COALESCE(errors, '[]'::jsonb) || $2::jsonb,
+           updated_at = now()
+       WHERE id = $1`,
+      [batchId, JSON.stringify([`guhoyas_roster: ${rosterMessage}`])],
+    );
+  }
+}
+
 export type { DataSyncBatch, DataSyncPreview, DataSyncStatus } from "@/lib/data-sync-types";
 
 const BATCH_COLUMNS = `
@@ -183,9 +232,9 @@ export async function applyDataSyncBatch(id: string): Promise<{ batch: DataSyncB
       [id],
     )) as Record<string, unknown>[];
     try {
-      await fetchAndMergeGuhoyasRosters(sql);
+      await refreshGuhoyasAfterApply(sql, id);
     } catch {
-      // Workbook rows already applied; roster refresh is best-effort.
+      // Workbook rows already applied; roster / photo refresh is best-effort.
     }
     const refreshed = (await sql.query(
       `SELECT ${BATCH_COLUMNS} FROM data_sync WHERE id = $1`,
@@ -230,38 +279,10 @@ export async function applyDataSyncBatch(id: string): Promise<{ batch: DataSyncB
       ],
     )) as Record<string, unknown>[];
 
-    // After a full successful apply, re-scrape GUHoyas roster years into alumni.
+    // After a full successful apply, re-scrape GUHoyas roster years + football headshots.
     // Failures here do not roll back the workbook apply; they are logged on the batch.
     if (done) {
-      try {
-        const roster = await fetchAndMergeGuhoyasRosters(sql);
-        if (roster.failed.length > 0) {
-          await sql.query(
-            `UPDATE data_sync
-             SET errors = COALESCE(errors, '[]'::jsonb) || $2::jsonb,
-                 updated_at = now()
-             WHERE id = $1`,
-            [
-              id,
-              JSON.stringify([
-                `guhoyas_roster: merged ${roster.uniquePlayers} players ` +
-                  `(+${roster.inserted}/~${roster.updated}); ` +
-                  `${roster.failed.length} year(s) skipped`,
-              ]),
-            ],
-          );
-        }
-      } catch (rosterError) {
-        const rosterMessage =
-          rosterError instanceof Error ? rosterError.message : "GUHoyas roster merge failed";
-        await sql.query(
-          `UPDATE data_sync
-           SET errors = COALESCE(errors, '[]'::jsonb) || $2::jsonb,
-               updated_at = now()
-           WHERE id = $1`,
-          [id, JSON.stringify([`guhoyas_roster: ${rosterMessage}`])],
-        );
-      }
+      await refreshGuhoyasAfterApply(sql, id);
     }
 
     const refreshed = (await sql.query(

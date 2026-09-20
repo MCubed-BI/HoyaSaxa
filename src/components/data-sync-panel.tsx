@@ -184,8 +184,11 @@ export function DataSyncPanel({ initialBatches }: { initialBatches: DataSyncBatc
             ))}
 
             <p className="text-sm text-muted-foreground">
-              Apply fills blank alumni fields and merges emails, phones, and roster years. It does
-              not wipe the live directory. New unmatched names are inserted.
+              Apply fills blank alumni fields and merges emails, phones, and roster years. After a
+              successful apply it also re-fetches public GUHoyas football rosters and headshots into
+              <code> football_photo_url</code> (fill empty; update only if the source URL is newer).
+              LinkedIn photo fields are not scraped. It does not wipe the live directory. New
+              unmatched names are inserted.
             </p>
 
             {current.status !== "applied" ? (

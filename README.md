@@ -119,14 +119,30 @@ Rows upsert by LinkedIn URL, then primary email, then first + last name. Re-runn
 
 Every successful **Data Sync → Apply** also re-fetches public football rosters from
 [guhoyas.com](https://guhoyas.com/sports/football/roster) (years with a real archived
-table; currently **2003–current**) and upserts into `alumni` / `alumni_roster_years`.
+table; currently **2003–current**) and upserts into `alumni` / `alumni_roster_years`,
+then farms player headshots into `alumni.football_photo_url`.
 
 - Match key: `lower(last_name)|lower(first token of first_name)` (same as workbook import)
 - New roster-only players get `source_flags.guhoyas_roster` and `guhoyas_years`
+- Headshots: fill empty `football_photo_url`; replace an existing GUHoyas URL only when the source path date is newer. Custom / claimed URLs are left alone.
+- `linkedin_photo_url` is never written by this scrape (no LinkedIn farming)
 - Existing emails, phones, and LinkedIn URLs are never deleted
 - Optional env: `GUHOYAS_ROSTER_YEARS_FROM` / `GUHOYAS_ROSTER_YEARS_TO` (defaults: earliest available–current year)
+- Fetches are sequential with a ~350–400ms delay between years
 
-Library: `src/lib/guhoyas-roster.ts` (`fetchGuhoyasRosters`, `mergeRostersIntoAlumni`, `fetchAndMergeGuhoyasRosters`).
+Library: `src/lib/guhoyas-roster.ts` (`fetchGuhoyasRosters`, `mergeRostersIntoAlumni`, `mergeFootballPhotosIntoAlumni`, `fetchAndMergeGuhoyasRosters`).
+
+### Re-run football headshots
+
+1. **Preferred:** Data Sync → upload any workbook (or re-apply a staged batch) → **Apply to live alumni**. After the workbook merge finishes, the apply path re-fetches GUHoyas years and writes a `guhoyas: … photos filled / updated / matched` note on the batch preview.
+2. **Photos only** (no roster upsert):
+
+   ```bash
+   npm run farm-photos
+   npm run farm-photos -- --from 2024 --to 2026
+   ```
+
+   Requires `DATABASE_URL`. Prints JSON match / fill / update counts. Does not scrape LinkedIn.
 
 ## Home / For You / Board
 

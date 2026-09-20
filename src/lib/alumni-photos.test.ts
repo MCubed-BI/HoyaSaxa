@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { assertCanEditAlumniPhotos, normalizePhotoUrl, parseAlumniPhotoPatch } from "./alumni-photos";
+import {
+  assertCanEditAlumniPhotos,
+  normalizePhotoUrl,
+  parseAlumniPhotoPatch,
+  preferredAlumniPhotoUrl,
+} from "./alumni-photos";
 
 describe("alumni photo fields", () => {
   it("accepts http(s) or site paths and rejects other schemes", () => {
@@ -21,6 +26,21 @@ describe("alumni photo fields", () => {
       football_photo_url: "https://example.com/f.jpg",
       linkedin_photo_url: null,
     });
+  });
+
+  it("prefers football headshot and does not invent a LinkedIn scrape", () => {
+    assert.equal(
+      preferredAlumniPhotoUrl({
+        football_photo_url: " https://guhoyas.com/images/2024/8/23/a.jpg ",
+        linkedin_photo_url: "https://example.com/li.jpg",
+      }),
+      "https://guhoyas.com/images/2024/8/23/a.jpg",
+    );
+    assert.equal(
+      preferredAlumniPhotoUrl({ football_photo_url: null, linkedin_photo_url: "https://example.com/li.jpg" }),
+      "https://example.com/li.jpg",
+    );
+    assert.equal(preferredAlumniPhotoUrl({ football_photo_url: "", linkedin_photo_url: "" }), null);
   });
 
   it("allows claimed self or admin only — no ga_session required", () => {
