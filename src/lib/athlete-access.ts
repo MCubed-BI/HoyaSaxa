@@ -1,3 +1,4 @@
+import { getAccountByEmail } from "@/lib/alumni-claim";
 import { getSql } from "@/lib/db";
 import { canEditAlumniRecord, type PlatformRole } from "@/lib/platform-roles";
 import { getCurrentViewer } from "@/lib/viewer";
@@ -37,10 +38,18 @@ export async function getAthleteActor(alumniId: string): Promise<AthleteActor> {
   }
 
   const isAdmin = viewer.platformRole === "admin";
+  let accountId = viewer.accountId;
   let isClaimedSelf = Boolean(viewer.alumniId && viewer.alumniId === alumniId);
-  if (!isClaimedSelf && viewer.accountId) {
+  if (!isClaimedSelf && !accountId && viewer.email) {
     try {
-      const ids = await claimedAlumniIds(viewer.accountId);
+      accountId = (await getAccountByEmail(viewer.email))?.id ?? null;
+    } catch {
+      accountId = null;
+    }
+  }
+  if (!isClaimedSelf && accountId) {
+    try {
+      const ids = await claimedAlumniIds(accountId);
       isClaimedSelf = ids.includes(alumniId);
     } catch {
       isClaimedSelf = false;
@@ -53,7 +62,7 @@ export async function getAthleteActor(alumniId: string): Promise<AthleteActor> {
     isClaimedSelf,
     canEdit,
     canMerge: isAdmin || isClaimedSelf,
-    accountId: viewer.accountId,
+    accountId,
     sessionAlumniId: viewer.alumniId,
     label: viewer.label,
     platformRole: viewer.platformRole,

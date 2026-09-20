@@ -8,7 +8,7 @@ import { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Button } from "@/components/ui/button";
-import { accountIdFromCookies, findSameLastNameCandidates, getAccountById, getClaimedRecords } from "@/lib/alumni-claim";
+import { loadAlumniMeState } from "@/lib/alumni-claim";
 import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { isMissingDatabaseConfig } from "@/lib/db";
 
@@ -16,25 +16,32 @@ export const dynamic = "force-dynamic";
 
 export default async function MePage() {
   const jar = await cookies();
-  const accountId = await accountIdFromCookies(jar);
-  if (!accountId) redirect("/alumni-login?next=/me");
+  let state: Awaited<ReturnType<typeof loadAlumniMeState>>;
+  try {
+    state = await loadAlumniMeState(jar);
+  } catch (error) {
+    if (isMissingDatabaseConfig(error)) {
+      return (
+        <PageMain width="record">
+          <ErrorState title="Database is not configured" body="Set DATABASE_URL and reload." />
+        </PageMain>
+      );
+    }
+    throw error;
+  }
+  if (!state) redirect("/alumni-login?next=/me");
+
+  const { identity, account, records, mergeCandidates } = state;
+  const email = account?.email || identity.email || identity.name || "Alumnus";
 
   try {
-    const account = await getAccountById(accountId);
-    if (!account) redirect("/alumni-login?next=/me");
-    const records = await getClaimedRecords(accountId);
-    const lastName = records[0]?.last_name ?? "";
-    const mergeCandidates = lastName
-      ? await findSameLastNameCandidates(
-          lastName,
-          accountId,
-          records.map((row) => row.id),
-        )
-      : [];
-    const badgesById = await listPublicBadgesManyFromFeed(
-      records.map((row) => row.id),
-      { verifiedAlumniIds: records.map((row) => row.id) },
-    );
+    const badgesById =
+      records.length === 0
+        ? {}
+        : await listPublicBadgesManyFromFeed(
+            records.map((row) => row.id),
+            { verifiedAlumniIds: records.map((row) => row.id) },
+          );
 
     return (
       <PageShell>
@@ -70,7 +77,7 @@ export default async function MePage() {
             />
           ) : (
             <AlumniMePanel
-              email={account.email}
+              email={email}
               records={records}
               mergeCandidates={mergeCandidates}
               badgesById={badgesById}

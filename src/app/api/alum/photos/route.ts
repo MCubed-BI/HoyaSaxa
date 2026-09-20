@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
+import { getAthleteActor } from "@/lib/athlete-access";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import {
-  assertCanEditAlumniPhotos,
-  getAlumniPhotos,
-  parseAlumniPhotoPatch,
-  updateAlumniPhotos,
-} from "@/lib/alumni-photos";
+import { getAlumniPhotos, parseAlumniPhotoPatch, updateAlumniPhotos } from "@/lib/alumni-photos";
 import { getCurrentViewer } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
@@ -38,11 +34,13 @@ export async function POST(request: Request) {
   if (!alumniId) return NextResponse.json({ error: "Missing alumniId" }, { status: 400 });
 
   try {
-    assertCanEditAlumniPhotos({
-      role: viewer.platformRole,
-      actorAlumniId: viewer.alumniId,
-      targetAlumniId: alumniId,
-    });
+    const actor = await getAthleteActor(alumniId);
+    if (!actor.canEdit) {
+      return NextResponse.json(
+        { error: "Only the claimed alumnus or an admin can edit photo fields." },
+        { status: 403 },
+      );
+    }
     const photos = await updateAlumniPhotos(alumniId, parseAlumniPhotoPatch(body));
     return NextResponse.json({ ok: true, photos });
   } catch (error) {

@@ -5,10 +5,11 @@ import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { HOYA_ALUM_SESSION_COOKIE, isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
 import { isLockerPath } from "@/lib/locker-paths";
 import {
+  canAccessAlumniClaimPath,
+  isAlumniClaimPath,
   isAlumAllowedPath,
   isDataSyncPath,
   isPublicPath,
-  isStaffAlumniMutationPath,
   loginPathFor as portalLoginPathFor,
 } from "@/lib/portal-paths";
 import { isCoachLoggedIn } from "@/lib/session";
@@ -19,10 +20,6 @@ import { isCoachLoggedIn } from "@/lib/session";
 // locker-format token on the same cookie name. Do not use ga_session for alum.
 // Platform role (admin | board | alum) is resolved in `@/lib/platform-roles`
 // from these same cookies — no new cookie names.
-
-function isAlumniClaimPath(pathname: string) {
-  return pathname === "/me" || pathname.startsWith("/me/") || pathname.startsWith("/api/alumni/");
-}
 
 function loginPathFor(pathname: string) {
   if (isAlumniClaimPath(pathname)) return "/alumni-login";
@@ -57,10 +54,12 @@ export function proxy(request: NextRequest) {
   }
 
   if (isAlumniClaimPath(pathname)) {
-    if (isAlumLoggedIn(request.cookies)) {
-      return NextResponse.next();
-    }
-    if (isCoachLoggedIn(request.cookies) && isStaffAlumniMutationPath(pathname)) {
+    if (
+      canAccessAlumniClaimPath(pathname, {
+        hasPortalAlumSession: hasPortalAlumSession(request),
+        isCoach: isCoachLoggedIn(request.cookies),
+      })
+    ) {
       return NextResponse.next();
     }
     if (pathname.startsWith("/api/")) {
