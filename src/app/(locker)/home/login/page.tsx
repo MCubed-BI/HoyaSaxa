@@ -64,11 +64,11 @@ export default async function LockerLoginPage({
           Sign in
         </Button>
         <p className="text-center text-xs text-muted-foreground">
-          Staff CRM lives at{" "}
+          Admin access is at{" "}
           <Link href="/login" className="text-navy underline-offset-4 hover:underline">
-            coach login
+            Admin login
           </Link>
-          . Claim/register is a separate lane.
+          . Register myself is a separate path.
         </p>
       </form>
     </AuthShell>

@@ -32,7 +32,7 @@ export default async function LoginPage({
   }
 
   return (
-    <AuthShell title="Sign in" subtitle="Staff sign-in for the Georgetown Football Alum Network.">
+    <AuthShell title="Sign in" subtitle="Admin sign-in for the Georgetown Football Alum Network.">
       <form action="/api/login" method="post" className="space-y-4">
         <input type="hidden" name="next" value={safeNextPath(params.next)} />
         <div className="space-y-1.5">
@@ -74,7 +74,7 @@ export default async function LoginPage({
             Alumni login
           </Link>
           <p className="pt-1 text-center text-muted-foreground">
-            Portal preview:{" "}
+            Alumni portal:{" "}
             <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
               Home
             </Link>
