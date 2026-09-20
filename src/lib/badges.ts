@@ -7,9 +7,13 @@
  *   - event_top_platinum | event_top_gold | event_top_silver | event_top_bronze
  *
  * Donor rank uses giving_pledges / fundraising_pledges when those tables exist.
- * Event rank uses event_checkins once Coder 5 lands attendance (stub returns empty).
+ * Event bands consume Coder 4 ranks (eventId, alumId, checkedInAt, totals/ranks).
+ * This file never INSERTs event_checkins. Fallback is SELECT-only counts.
+ *
+ * Coder 4 / 5: import `@/lib/badge-api` (HoyaBadge + consume helpers).
  */
 import { getDatabaseUrl, getSql } from "@/lib/db";
+import type { EventBadgeFeedRow, EventBadgeTotals } from "@/lib/badge-event-feed";
 
 export const BADGE_TYPES = [
   "verified_hoya",
@@ -89,6 +93,36 @@ export function donorBadgeType(tier: BadgeTier): BadgeType {
 
 export function eventTopBadgeType(tier: BadgeTier): BadgeType {
   return `event_top_${tier}`;
+}
+
+/**
+ * Coder 4 owns rank + percentile. Prefer their percentile; else rank/cohortSize.
+ * Does not use attendanceCount (that would re-rank). Returns null below Bronze.
+ */
+export function eventTierFromCoder4Feed(input: {
+  rank?: number | null;
+  percentile?: number | null;
+  cohortSize?: number | null;
+}): BadgeTier | null {
+  if (input.percentile != null && Number.isFinite(Number(input.percentile))) {
+    return tierFromPercentile(Number(input.percentile));
+  }
+  if (input.rank != null && input.cohortSize != null) {
+    return tierFromPercentile(percentileFromRank(Number(input.rank), Number(input.cohortSize)));
+  }
+  return null;
+}
+
+export function eventBadgeFromCoder4Totals(totals: EventBadgeTotals | null | undefined): PublicBadge | null {
+  if (!totals) return null;
+  const tier = eventTierFromCoder4Feed(totals);
+  return tier ? toPublicBadge(eventTopBadgeType(tier)) : null;
+}
+
+export function eventBadgeFromCoder4Row(row: EventBadgeFeedRow | null | undefined): PublicBadge | null {
+  if (!row) return null;
+  const tier = eventTierFromCoder4Feed(row);
+  return tier ? toPublicBadge(eventTopBadgeType(tier)) : null;
 }
 
 export function tierFromPercentile(percentile: number): BadgeTier | null {
@@ -272,6 +306,7 @@ export async function computeDonorBadge(alumniId: string): Promise<PublicBadge |
 
 type EventCount = { key: string; checkins: number };
 
+/** SELECT-only fallback while Coder 4's feed is not passed in. Never INSERT. */
 async function loadEventAttendance(): Promise<{ ready: boolean; rows: EventCount[] }> {
   if (!(await tableExists("event_checkins"))) {
     return { ready: false, rows: [] };
@@ -297,7 +332,13 @@ export function eventTierForAlumniId(alumniId: string, rows: EventCount[]): Badg
   return tierFromPercentile(percentileFromRank(rank, scored.length));
 }
 
-export async function computeEventTopBadge(alumniId: string): Promise<PublicBadge | null> {
+export async function computeEventTopBadge(
+  alumniId: string,
+  coder4?: { totals?: EventBadgeTotals | null },
+): Promise<PublicBadge | null> {
+  if (coder4 && "totals" in coder4) {
+    return eventBadgeFromCoder4Totals(coder4.totals);
+  }
   if (!getDatabaseUrl() || !alumniId.trim()) return null;
   try {
     const attendance = await loadEventAttendance();
@@ -329,9 +370,17 @@ export function assemblePublicBadges(input: {
   return publicBadgesJson([...byType.values()]);
 }
 
-export async function listPublicBadges(alumniId: string): Promise<PublicBadge[]> {
+export async function listPublicBadges(
+  alumniId: string,
+  options?: { attendanceTotals?: EventBadgeTotals | null },
+): Promise<PublicBadge[]> {
   const stored = await listStoredBadges(alumniId);
-  const [donor, eventTop] = await Promise.all([computeDonorBadge(alumniId), computeEventTopBadge(alumniId)]);
+  const [donor, eventTop] = await Promise.all([
+    computeDonorBadge(alumniId),
+    options && "attendanceTotals" in options
+      ? computeEventTopBadge(alumniId, { totals: options.attendanceTotals })
+      : computeEventTopBadge(alumniId),
+  ]);
   return assemblePublicBadges({
     stored,
     donorTier: donor?.tier ?? null,
@@ -381,21 +430,30 @@ async function loadClaimedIds(alumniIds: string[]): Promise<Set<string>> {
 /**
  * Directory/profile batch read. One donor + check-in scan, then per-id assemble.
  * Never returns gift totals. Extra `verifiedAlumniIds` mark claimed / logged-in rows.
+ *
+ * When `attendanceLeaders` is passed (Coder 4 feed), those ranks win and we do
+ * not re-rank `event_checkins`. Omit the option to use the SELECT-only fallback.
  */
 export async function listPublicBadgesMany(
   alumniIds: string[],
-  options: { verifiedAlumniIds?: string[] } = {},
+  options: { verifiedAlumniIds?: string[]; attendanceLeaders?: EventBadgeTotals[] } = {},
 ): Promise<Record<string, PublicBadge[]>> {
   const ids = [...new Set(alumniIds.filter(Boolean))];
   const out: Record<string, PublicBadge[]> = Object.fromEntries(ids.map((id) => [id, []]));
   if (!ids.length || !getDatabaseUrl()) return out;
 
   const uuidIds = uuidAlumniIds(ids);
+  const consumeCoder4 = options.attendanceLeaders !== undefined;
+  const leadersByAlum = new Map(
+    (options.attendanceLeaders ?? [])
+      .filter((row) => typeof row.alumId === "string" && row.alumId)
+      .map((row) => [row.alumId, row]),
+  );
   try {
     const [storedById, totals, attendance, claimed] = await Promise.all([
       listStoredBadgesMany(uuidIds),
       loadDonorTotals(),
-      loadEventAttendance(),
+      consumeCoder4 ? Promise.resolve({ ready: false, rows: [] as EventCount[] }) : loadEventAttendance(),
       loadClaimedIds(uuidIds),
     ]);
     const extraVerified = new Set(options.verifiedAlumniIds ?? []);
@@ -404,7 +462,11 @@ export async function listPublicBadgesMany(
       out[id] = assemblePublicBadges({
         stored,
         donorTier: donorTierForAlumniId(id, totals),
-        eventTier: attendance.ready ? eventTierForAlumniId(id, attendance.rows) : null,
+        eventTier: consumeCoder4
+          ? eventTierFromCoder4Feed(leadersByAlum.get(id) ?? {})
+          : attendance.ready
+            ? eventTierForAlumniId(id, attendance.rows)
+            : null,
         verified:
           extraVerified.has(id) ||
           claimed.has(id) ||

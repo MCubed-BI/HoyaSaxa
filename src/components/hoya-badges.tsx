@@ -2,10 +2,18 @@ import { Badge } from "@/components/ui/badge";
 import { type PublicBadge, badgeLabel, type BadgeType } from "@/lib/badges";
 
 /**
- * Display-only chips from `@/lib/badges` (contracts PR).
- * Coder 4 / Coder 5: reuse HoyaBadge + HoyaBadgeRow. Do not add a second chip.
- * Load with `listPublicBadges` / `listPublicBadgesMany` / `computeEventTopBadge`.
- * Never pass or render donor dollar amounts.
+ * Badge component API — Coder 4 / 5: reuse these chips. Do not add a second chip.
+ *
+ *   import { HoyaBadge, HoyaBadgeRow } from "@/components/hoya-badges";
+ *   // barrel: import { HoyaBadge, HoyaBadgeRow } from "@/lib/badge-api";
+ *
+ *   <HoyaBadge badge={badge} />              // PublicBadge | BadgeType
+ *   <HoyaBadgeRow badges={badges} />
+ *
+ * Labels only (`Verified Hoya`, `Donor · Platinum`, `Event top · Gold`).
+ * Never pass or render donor `$` / `amount_cents`.
+ * Event bands: consume Coder 4 ranks via `eventBadgeFromCoder4Totals` /
+ * `listPublicBadgesMany(ids, { attendanceLeaders })` — no dual-write.
  */
 export function HoyaBadge({ badge }: { badge: PublicBadge | BadgeType }) {
   const view = typeof badge === "string" ? { type: badge, label: badgeLabel(badge), tier: null } : badge;
