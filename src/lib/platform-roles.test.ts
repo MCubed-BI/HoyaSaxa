@@ -7,6 +7,7 @@ import {
   canCreateProgramEvents,
   canPostBoardSection,
   canPostBrothers,
+  canPostEvents,
   canPostSgarlataOrCoachBoard,
   isAdminEmail,
   isSeedAdminIdentity,
@@ -64,6 +65,10 @@ describe("platform roles", () => {
     assert.equal(canPostBoardSection(board), true);
     assert.equal(canPostBoardSection(alum), false);
     assert.equal(canPostBrothers(alum), true);
+    assert.equal(canPostEvents("admin"), true);
+    assert.equal(canPostEvents(board), true);
+    assert.equal(canPostEvents(alum), true);
+    assert.equal(canPostEvents(null), false);
     assert.equal(canEditAlumniRecord("alum", "aaa", "aaa"), true);
     assert.equal(canEditAlumniRecord("alum", "aaa", "bbb"), false);
     assert.equal(canEditAlumniRecord("admin", null, "bbb"), true);

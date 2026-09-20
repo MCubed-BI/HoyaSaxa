@@ -157,8 +157,13 @@ export function canPostSgarlataOrCoachBoard(role: PlatformRole) {
 }
 
 /** Events are not For You sections — Admin, Board, and Alum may post them. */
-export function canCreateProgramEvents(role: PlatformRole) {
+export function canPostEvents(role: PlatformRole | null | undefined) {
   return role === "admin" || role === "board" || role === "alum";
+}
+
+/** Alias for Coder 4 / session capabilities. Same ACL as `canPostEvents`. */
+export function canCreateProgramEvents(role: PlatformRole) {
+  return canPostEvents(role);
 }
 
 /** Claim → Alum Mode surfaces. Board inherits these plus `canPostBoardSection`. */
