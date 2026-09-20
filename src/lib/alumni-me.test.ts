@@ -36,6 +36,14 @@ describe("alum /me and own-photo ACL", () => {
       true,
     );
     assert.equal(
+      canAccessAlumniClaimPath("/api/alumni/dismiss-duplicate", { hasPortalAlumSession: false, isCoach: true }),
+      true,
+    );
+    assert.equal(
+      canAccessAlumniClaimPath("/api/alumni/dismiss-duplicate", { hasPortalAlumSession: true, isCoach: false }),
+      true,
+    );
+    assert.equal(
       canAccessAlumniClaimPath("/api/alumni/update", { hasPortalAlumSession: false, isCoach: true }),
       false,
     );

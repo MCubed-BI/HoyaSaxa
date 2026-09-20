@@ -149,6 +149,7 @@ describe("portal paths", () => {
     assert.equal(isPublicPath("/api/alumni/login"), true);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/update"), false);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/merge"), true);
+    assert.equal(isStaffAlumniMutationPath("/api/alumni/dismiss-duplicate"), true);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/register"), false);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/lookup"), false);
     assert.equal(isAlumniClaimPath("/me"), true);
@@ -157,6 +158,7 @@ describe("portal paths", () => {
     assert.equal(canAccessAlumniClaimPath("/me", { hasPortalAlumSession: true }), true);
     assert.equal(canAccessAlumniClaimPath("/me", { hasPortalAlumSession: false, isCoach: true }), false);
     assert.equal(canAccessAlumniClaimPath("/api/alumni/merge", { hasPortalAlumSession: false, isCoach: true }), true);
+    assert.equal(canAccessAlumniClaimPath("/api/alumni/dismiss-duplicate", { hasPortalAlumSession: false, isCoach: true }), true);
     assert.equal(isPublicPath("/api/session"), true);
     assert.equal(isAlumAllowedPath("/alum"), true);
     assert.equal(isAlumAllowedPath("/portal"), true);

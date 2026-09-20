@@ -66,9 +66,9 @@ export function isAlumAllowedPath(pathname: string) {
   return ALUM_ALLOWED_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-/** Staff admin may merge duplicates on this claim-adjacent API only. Photos use POST /api/alum/photos. */
+/** Staff admin may merge or permanently dismiss a duplicate pair. Photos use POST /api/alum/photos. */
 export function isStaffAlumniMutationPath(pathname: string) {
-  return pathname === "/api/alumni/merge";
+  return pathname === "/api/alumni/merge" || pathname === "/api/alumni/dismiss-duplicate";
 }
 
 /** /me and claim APIs. Public register/lookup/login stay on PUBLIC_PATHS. */

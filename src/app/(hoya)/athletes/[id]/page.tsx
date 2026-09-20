@@ -68,7 +68,7 @@ export default async function AthleteProfilePage({
             preferred_name: person.preferredName,
             full_name: person.fullName,
           },
-          actor.accountId,
+          actor,
         )
       : [];
   const visibleDuplicates = actor.isAdmin

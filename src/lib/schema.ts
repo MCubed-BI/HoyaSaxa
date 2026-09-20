@@ -244,6 +244,22 @@ export const alumniRecordMerges = pgTable("alumni_record_merges", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Permanent Not me dismissals. Keyed by ordered alumni pair + actor (claimed account or admin). */
+export const alumniDuplicateDismissals = pgTable(
+  "alumni_duplicate_dismissals",
+  {
+    alumniIdLow: uuid("alumni_id_low")
+      .notNull()
+      .references(() => alumni.id, { onDelete: "cascade" }),
+    alumniIdHigh: uuid("alumni_id_high")
+      .notNull()
+      .references(() => alumni.id, { onDelete: "cascade" }),
+    actorKey: text("actor_key").notNull(),
+    dismissedAt: timestamp("dismissed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("alumni_duplicate_dismissals_pair_actor").on(table.alumniIdLow, table.alumniIdHigh, table.actorKey)],
+);
+
 export const givingPledges = pgTable("giving_pledges", {
   id: uuid("id").primaryKey().defaultRandom(),
   amountCents: integer("amount_cents").notNull(),
