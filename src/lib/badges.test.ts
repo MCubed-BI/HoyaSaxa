@@ -8,10 +8,12 @@ import {
   resolveFeedAlumId,
 } from "./badge-event-feed";
 import {
+  BADGE_LABELS,
   BADGE_PERCENTILE_THRESHOLDS,
   BADGE_TYPES,
   assemblePublicBadges,
   computeEventTopBadge,
+  donorBadgeType,
   donorTierForAlumniId,
   eventBadgeFromCoder4Row,
   eventBadgeFromCoder4Totals,
@@ -21,7 +23,9 @@ import {
   grantVerifiedHoyaForAlumSession,
   percentileFromRank,
   publicBadgesJson,
+  rankDonorTotals,
   tierFromPercentile,
+  tierFromRank,
   toPublicBadge,
 } from "./badges";
 
@@ -56,6 +60,79 @@ describe("badge primitives", () => {
     assert.deepEqual(json, [{ type: "donor_gold", label: "Donor · Gold", tier: "gold" }]);
     assert.equal(JSON.stringify(json).includes("cent"), false);
     assert.equal(JSON.stringify(json).includes("$"), false);
+  });
+
+  it("renders all four donor labels from a 100-donor percentile fixture", () => {
+    const totals = Array.from({ length: 100 }, (_, index) => ({
+      key: `alum-${String(index + 1).padStart(3, "0")}`,
+      total_cents: 100_000 - index,
+    }));
+    assert.equal(donorTierForAlumniId("alum-001", totals), "platinum");
+    assert.equal(donorTierForAlumniId("alum-002", totals), "platinum");
+    assert.equal(donorTierForAlumniId("alum-003", totals), "gold");
+    assert.equal(donorTierForAlumniId("alum-011", totals), "gold");
+    assert.equal(donorTierForAlumniId("alum-026", totals), "silver");
+    assert.equal(donorTierForAlumniId("alum-051", totals), "bronze");
+    assert.equal(donorTierForAlumniId("alum-052", totals), null);
+
+    const chips = (["platinum", "gold", "silver", "bronze"] as const).map((tier) =>
+      toPublicBadge(donorBadgeType(tier)),
+    );
+    assert.deepEqual(
+      chips.map((badge) => badge.label),
+      ["Donor · Platinum", "Donor · Gold", "Donor · Silver", "Donor · Bronze"],
+    );
+    const assembled = assemblePublicBadges({
+      verified: true,
+      donorTier: "gold",
+      eventTier: "platinum",
+    });
+    assert.deepEqual(
+      assembled.map((badge) => badge.label),
+      ["Verified Hoya", "Donor · Gold", "Top Tailgate · Platinum"],
+    );
+    assert.equal(BADGE_LABELS.donor_silver, "Donor · Silver");
+    assert.equal(BADGE_LABELS.donor_bronze, "Donor · Bronze");
+    assert.equal(JSON.stringify(assembled).includes("$"), false);
+    assert.equal(JSON.stringify(publicBadgesJson(chips)).includes("cent"), false);
+  });
+
+  it("keeps unmatched pledges in the cohort so Gold/Silver/Bronze can exist", () => {
+    const sgarlata = "14267c65-6493-4663-9832-2cf7bba4a48a";
+    const totals = [
+      { key: sgarlata, total_cents: 10_000 },
+      { key: "label:anonymous", total_cents: 7_500 },
+      { key: "label:ci verify", total_cents: 5_000 },
+      { key: "label:smoke-coder3-2", total_cents: 5_000 },
+      { key: "label:giving-smoke", total_cents: 2_500 },
+      { key: "label:smoke-coder3", total_cents: 2_500 },
+    ];
+    const ranked = rankDonorTotals(totals);
+    assert.deepEqual(
+      ranked.map((row) => [row.key, row.tier]),
+      [
+        [sgarlata, "platinum"],
+        ["label:anonymous", "gold"],
+        ["label:ci verify", "silver"],
+        ["label:smoke-coder3-2", "bronze"],
+        ["label:giving-smoke", null],
+        ["label:smoke-coder3", null],
+      ],
+    );
+    assert.equal(donorTierForAlumniId(sgarlata, totals), "platinum");
+    assert.equal(tierFromRank(2, 6), "gold");
+    assert.equal(tierFromRank(3, 6), "silver");
+    assert.equal(tierFromRank(4, 6), "bronze");
+    assert.equal(tierFromPercentile(percentileFromRank(2, 6)), "silver");
+    const directory = assemblePublicBadges({ verified: true, donorTier: donorTierForAlumniId(sgarlata, totals) });
+    assert.ok(directory.some((badge) => badge.label === "Donor · Platinum"));
+    const goldChip = assemblePublicBadges({ donorTier: "gold" });
+    const silverChip = assemblePublicBadges({ donorTier: "silver" });
+    const bronzeChip = assemblePublicBadges({ donorTier: "bronze" });
+    assert.deepEqual(goldChip.map((badge) => badge.label), ["Donor · Gold"]);
+    assert.deepEqual(silverChip.map((badge) => badge.label), ["Donor · Silver"]);
+    assert.deepEqual(bronzeChip.map((badge) => badge.label), ["Donor · Bronze"]);
+    assert.equal(JSON.stringify({ directory, goldChip, silverChip, bronzeChip }).includes("$"), false);
   });
 
   it("skips grantVerifiedHoya for preview Alum (session-only badge)", async () => {

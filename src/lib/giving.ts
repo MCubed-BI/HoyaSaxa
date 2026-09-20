@@ -1,3 +1,4 @@
+import { attachDonorLeaderBadges, type PublicBadge } from "@/lib/badges";
 import { getSql } from "@/lib/db";
 import { ensureGivingPledgesTable } from "@/lib/giving-schema";
 
@@ -19,6 +20,7 @@ export type GivingLeaderRow = {
   donor_label: string;
   amount_cents: number;
   pledge_count: number;
+  badge?: PublicBadge | null;
 };
 
 export type GivingSummary = {
@@ -98,7 +100,7 @@ export async function listGivingSummary(limit = 12): Promise<GivingSummary> {
 
   return {
     pledges,
-    leaders,
+    leaders: await attachDonorLeaderBadges(leaders),
     totals: totals[0] ?? { count: 0, amount_cents: 0 },
   };
 }

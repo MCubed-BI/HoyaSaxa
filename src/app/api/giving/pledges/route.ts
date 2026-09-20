@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isPreviewAlumSession, readAlumSessionFromCookies } from "@/lib/alum-session";
-import { seedAlumniIdForLabel } from "@/lib/badge-identity";
+import { isAlumniUuid } from "@/lib/badge-event-feed";
+import { loadAlumniNameIndex, resolveAlumniIdFromLabel } from "@/lib/badge-identity";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import {
   MAX_PLEDGE_CENTS,
@@ -10,6 +11,7 @@ import {
   listGivingSummary,
   normalizeDonorLabel,
 } from "@/lib/giving";
+import { getCurrentViewer } from "@/lib/viewer";
 
 function parseAmountCents(body: Record<string, unknown>): number | null {
   const fromDollars = dollarsToCents(body.amountDollars ?? body.amount_dollars);
@@ -74,10 +76,18 @@ export async function POST(request: Request) {
 
   try {
     const session = await readAlumSessionFromCookies();
+    const viewer = await getCurrentViewer().catch(() => null);
+    const alumni = await loadAlumniNameIndex().catch(() => []);
     const donorLabel = normalizeDonorLabel(body.donorLabel ?? body.donor_label);
     const fromSession = session && !isPreviewAlumSession(session) ? session.alumniId : null;
     const fromBody = typeof body.alumniId === "string" ? body.alumniId.trim() : "";
-    const alumniId = fromSession || fromBody || (donorLabel ? seedAlumniIdForLabel(donorLabel) : null);
+    const fromLabel = donorLabel ? resolveAlumniIdFromLabel(donorLabel, alumni) : "";
+    const fromViewer =
+      !donorLabel && viewer
+        ? resolveAlumniIdFromLabel(viewer.username || viewer.label || "", alumni)
+        : "";
+    const alumniId =
+      fromSession || (isAlumniUuid(fromBody) ? fromBody : "") || fromLabel || fromViewer || null;
     const pledge = await createGivingPledge({
       amountCents,
       donorLabel,

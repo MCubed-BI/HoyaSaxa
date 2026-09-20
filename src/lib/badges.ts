@@ -23,9 +23,10 @@ import {
 } from "@/lib/badge-event-feed";
 import {
   addCentsByKey,
+  donorCohortKey,
   loadAlumniNameIndex,
-  resolveAlumniIdFromLabel,
   resolveAttendanceAlumId,
+  unmatchedDonorKey,
   type AlumniIdentity,
 } from "@/lib/badge-identity";
 import { getDatabaseUrl, getSql } from "@/lib/db";
@@ -171,6 +172,36 @@ export function tierFromPercentile(percentile: number): BadgeTier | null {
   return null;
 }
 
+/**
+ * Rank 1 of N uses the same 1/10/25/50 cutoffs as `tierFromPercentile`.
+ * Discrete ranks skip Gold until N≥10 (rank 2 of 9 is 88.9). Pull the next
+ * still-in-top-50% donor up into any skipped band so all four labels can
+ * exist when the giving cohort is large enough — no invented dollars.
+ */
+export function tierFromRank(rank: number, population: number): BadgeTier | null {
+  if (!Number.isFinite(rank) || !Number.isFinite(population) || rank < 1 || population < 1) {
+    return null;
+  }
+  const assigned: Array<BadgeTier | null> = [];
+  const percentiles: number[] = [];
+  for (let r = 1; r <= population; r++) {
+    const percentile = percentileFromRank(r, population);
+    percentiles[r] = percentile;
+    assigned[r] = tierFromPercentile(percentile);
+  }
+  for (const need of TIER_ORDER) {
+    if (assigned.includes(need)) continue;
+    const needIdx = TIER_ORDER.indexOf(need);
+    const candidate = assigned.findIndex((tier, index) => {
+      if (!tier) return false;
+      if ((percentiles[index] ?? 0) < BADGE_PERCENTILE_THRESHOLDS.bronze) return false;
+      return TIER_ORDER.indexOf(tier) > needIdx;
+    });
+    if (candidate >= 0) assigned[candidate] = need;
+  }
+  return assigned[rank] ?? null;
+}
+
 /** Rank 1 of N → 100. Rank 2 of 100 → 99. Rank N of N → 100/N. */
 export function percentileFromRank(rank: number, population: number) {
   if (!Number.isFinite(rank) || !Number.isFinite(population) || rank < 1 || population < 1) {
@@ -280,7 +311,7 @@ export async function listStoredBadges(alumniId: string): Promise<PublicBadge[]>
   }
 }
 
-type DonorTotal = { key: string; total_cents: number };
+export type DonorTotal = { key: string; total_cents: number };
 
 async function tableExists(tableName: string) {
   const sql = getSql();
@@ -331,10 +362,10 @@ async function loadFundraisingDonorTotals(alumni: AlumniIdentity[]): Promise<Don
       `,
     )) as Array<{ label: string; total_cents: string | number }>;
     for (const row of rows) {
-      const key = resolveAlumniIdFromLabel(row.label, alumni);
-      addCentsByKey(totals, key, Number(row.total_cents));
+      addCentsByKey(totals, donorCohortKey(row.label, alumni), Number(row.total_cents));
     }
   }
+  await addUnlinkedAnonymousCents(totals, "fundraising_pledges", names.has("alumni_id"), names.has("name") ? "name" : null);
   return [...totals.entries()].map(([key, total_cents]) => ({ key, total_cents }));
 }
 
@@ -367,11 +398,35 @@ async function loadGivingDonorTotals(alumni: AlumniIdentity[]): Promise<DonorTot
       `,
     )) as Array<{ label: string; total_cents: string | number }>;
     for (const row of rows) {
-      const key = resolveAlumniIdFromLabel(row.label, alumni);
-      addCentsByKey(totals, key, Number(row.total_cents));
+      addCentsByKey(totals, donorCohortKey(row.label, alumni), Number(row.total_cents));
     }
   }
+  await addUnlinkedAnonymousCents(totals, "giving_pledges", names.has("alumni_id"), names.has("donor_label") ? "donor_label" : null);
   return [...totals.entries()].map(([key, total_cents]) => ({ key, total_cents }));
+}
+
+async function addUnlinkedAnonymousCents(
+  totals: Map<string, number>,
+  tableName: string,
+  hasAlumniId: boolean,
+  labelColumn: string | null,
+) {
+  const sql = getSql();
+  const labelFilter = labelColumn
+    ? `AND NULLIF(btrim(COALESCE(${labelColumn}, '')), '') IS NULL`
+    : "";
+  const alumniFilter = hasAlumniId ? "alumni_id IS NULL" : "TRUE";
+  const rows = (await sql.query(
+    `
+    SELECT COALESCE(SUM(amount_cents), 0)::bigint AS total_cents
+    FROM ${tableName}
+    WHERE ${alumniFilter}
+      ${labelFilter}
+      AND amount_cents IS NOT NULL
+      AND amount_cents > 0
+    `,
+  )) as Array<{ total_cents: string | number }>;
+  addCentsByKey(totals, unmatchedDonorKey(null), Number(rows[0]?.total_cents));
 }
 
 /** Isolated per-table reads — a fundraising schema miss must not wipe /giving. */
@@ -384,14 +439,51 @@ export async function loadDonorTotals(): Promise<DonorTotal[]> {
   return [...totals.entries()].map(([key, total_cents]) => ({ key, total_cents }));
 }
 
+function scoreDonorTotals(totals: DonorTotal[]) {
+  return totals
+    .filter((row) => row.total_cents > 0 && (normalizeAlumniId(row.key) || row.key.trim()))
+    .sort((a, b) => b.total_cents - a.total_cents || a.key.localeCompare(b.key));
+}
+
+export function rankDonorTotals(totals: DonorTotal[]) {
+  const scored = scoreDonorTotals(totals);
+  return scored.map((row, index) => {
+    const rank = index + 1;
+    return {
+      key: normalizeAlumniId(row.key) || row.key,
+      rank,
+      tier: tierFromRank(rank, scored.length),
+    };
+  });
+}
+
 export function donorTierForAlumniId(alumniId: string, totals: DonorTotal[]): BadgeTier | null {
   const wanted = normalizeAlumniId(alumniId) || alumniId.trim();
-  const scored = totals
-    .filter((row) => row.total_cents > 0)
-    .sort((a, b) => b.total_cents - a.total_cents || a.key.localeCompare(b.key));
-  const rank = scored.findIndex((row) => (normalizeAlumniId(row.key) || row.key) === wanted) + 1;
-  if (rank < 1) return null;
-  return tierFromPercentile(percentileFromRank(rank, scored.length));
+  if (!wanted) return null;
+  const ranked = rankDonorTotals(totals);
+  return ranked.find((row) => row.key === wanted)?.tier ?? null;
+}
+
+export function donorBadgeForCohortKey(key: string, totals: DonorTotal[]): PublicBadge | null {
+  const tier = donorTierForAlumniId(key, totals);
+  return tier ? toPublicBadge(donorBadgeType(tier)) : null;
+}
+
+/** Giving leaderboard chips — labels only, never `$` / `amount_cents`. */
+export async function attachDonorLeaderBadges<T extends { donor_label: string }>(
+  leaders: T[],
+): Promise<Array<T & { badge: PublicBadge | null }>> {
+  if (!leaders.length) return leaders.map((row) => ({ ...row, badge: null }));
+  try {
+    const alumni = await loadAlumniNameIndex().catch(() => [] as AlumniIdentity[]);
+    const totals = await loadDonorTotals();
+    return leaders.map((row) => {
+      const badge = donorBadgeForCohortKey(donorCohortKey(row.donor_label, alumni), totals);
+      return { ...row, badge: badge ? publicBadgesJson([badge])[0]! : null };
+    });
+  } catch {
+    return leaders.map((row) => ({ ...row, badge: null }));
+  }
 }
 
 export async function computeDonorBadge(alumniId: string): Promise<PublicBadge | null> {
@@ -584,7 +676,10 @@ export function assemblePublicBadges(input: {
   verified?: boolean;
 }): PublicBadge[] {
   const byType = new Map<BadgeType, PublicBadge>();
-  for (const badge of input.stored ?? []) byType.set(badge.type, badge);
+  for (const badge of input.stored ?? []) {
+    if (input.donorTier && badge.type.startsWith("donor_")) continue;
+    byType.set(badge.type, badge);
+  }
   if (input.verified) byType.set("verified_hoya", toPublicBadge("verified_hoya"));
   if (input.donorTier) {
     const type = donorBadgeType(input.donorTier);
