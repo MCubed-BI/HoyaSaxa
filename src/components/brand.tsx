@@ -31,7 +31,7 @@ export function BrandMark({
       href={href}
       title={title}
       aria-label={title}
-      className="group flex shrink-0 items-center gap-3 rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="group flex w-full max-w-full min-w-0 items-center gap-3 rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <span
         aria-hidden

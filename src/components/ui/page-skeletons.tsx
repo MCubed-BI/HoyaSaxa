@@ -9,7 +9,9 @@ function HeaderSkeleton({ href = "/" }: { href?: string }) {
         <div className="h-full w-16 bg-silver" />
       </div>
       <div className="mx-auto flex w-full max-w-6xl items-center gap-3 overflow-visible px-4 py-2.5 sm:px-6">
-        <BrandMark href={href} compact />
+        <div className="@container/brand min-w-[11rem] flex-1">
+          <BrandMark href={href} compact />
+        </div>
         <div className="hidden flex-1 items-center justify-end gap-2 md:flex">
           <Skeleton className="h-8 w-16" />
           <Skeleton className="h-8 w-20" />

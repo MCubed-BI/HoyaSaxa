@@ -53,7 +53,9 @@ export function ProductHeader({
         </div>
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <div className="flex items-center gap-3 overflow-visible py-2.5">
-            <BrandMark href={homeHref} compact title={PRODUCT_DISPLAY_NAME} />
+            <div className="@container/brand min-w-[11rem] flex-1">
+              <BrandMark href={homeHref} compact title={PRODUCT_DISPLAY_NAME} />
+            </div>
             {!stacked && desktopItems.length > 0 ? (
               <nav className="hidden min-w-0 flex-1 items-center justify-end gap-0.5 md:flex" aria-label="Primary">
                 {desktopItems.map((item) => (

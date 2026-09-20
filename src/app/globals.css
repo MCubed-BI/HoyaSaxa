@@ -141,12 +141,15 @@
     white-space: nowrap;
   }
 
+  /* Single-line only when the brand slot is wide enough — never ellipsis-clip. */
   @media (min-width: 901px) {
-    .brand-wordmark--inline-wide {
-      flex-direction: row;
-      flex-wrap: nowrap;
-      align-items: baseline;
-      column-gap: 0.35em;
+    @container brand (min-width: 20rem) {
+      .brand-wordmark--inline-wide {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: baseline;
+        column-gap: 0.35em;
+      }
     }
   }
 
