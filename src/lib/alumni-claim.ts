@@ -14,7 +14,7 @@ import {
   type DuplicateDismissalActor,
 } from "@/lib/alumni-duplicate-dismissals";
 import { isLikelyDuplicate } from "@/lib/alumni-duplicates";
-import { ensureAlumniPhotoColumns } from "@/lib/alumni-photos";
+import { ensureAlumniPhotoColumns, updateAlumniPhotos, type AlumniPhotoPatch } from "@/lib/alumni-photos";
 import { grantVerifiedHoyaForAlumSession } from "@/lib/badges";
 import {
   ALUM_ROLE,
@@ -247,6 +247,7 @@ export async function registerAlumniAccount(input: {
   alumniIds: string[];
   firstName?: string;
   createIfMissing?: boolean;
+  photos?: AlumniPhotoPatch;
 }) {
   await ensureAlumniAuthTables();
   const email = input.email.trim().toLowerCase();
@@ -293,6 +294,9 @@ export async function registerAlumniAccount(input: {
       alumniId,
     ]);
     await grantVerifiedHoyaForAlumSession(alumniId);
+    if (input.photos && Object.keys(input.photos).length > 0) {
+      await updateAlumniPhotos(alumniId, input.photos);
+    }
   }
   return { account, claimedIds: idsToClaim, classYear, lastName };
 }

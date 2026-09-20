@@ -27,14 +27,31 @@ export async function ensureAlumniPhotoColumns() {
   photosEnsured = true;
 }
 
+export const MAX_PHOTO_UPLOAD_BYTES = 1_500_000;
+export const MAX_PHOTO_DATA_URL_CHARS = Math.ceil(MAX_PHOTO_UPLOAD_BYTES * (4 / 3)) + 80;
+export const PHOTO_DATA_URL_PATTERN = /^data:image\/(jpeg|jpg|png|webp|gif);base64,[a-z0-9+/=\s]+$/i;
+
+export function isAllowedPhotoDataUrl(value: string) {
+  return PHOTO_DATA_URL_PATTERN.test(value.trim());
+}
+
 export function normalizePhotoUrl(value: unknown): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   if (!trimmed) return null;
+  if (trimmed.toLowerCase().startsWith("data:")) {
+    if (!isAllowedPhotoDataUrl(trimmed)) {
+      throw new Error("Photo upload must be a JPEG, PNG, WebP, or GIF.");
+    }
+    if (trimmed.length > MAX_PHOTO_DATA_URL_CHARS) {
+      throw new Error("Photo is too large. Use a file under 1.5 MB or paste an image URL.");
+    }
+    return trimmed.replace(/\s+/g, "");
+  }
   if (!/^https?:\/\//i.test(trimmed) && !trimmed.startsWith("/")) {
-    throw new Error("Photo URL must be http(s) or a site path.");
+    throw new Error("Photo URL must be http(s), a site path, or an uploaded image.");
   }
   return trimmed;
 }
