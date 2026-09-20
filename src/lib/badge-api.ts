@@ -40,7 +40,8 @@
  * ```
  *
  * HTTP: `GET /api/badges/:alumniId` → `{ alumniId, badges: PublicBadge[] }`
- * Coder 4 HTTP: `GET /api/events/attendance/feed` (+ `?alumId=` → `{ alum, feed }`)
+ * Live attendance: `GET /api/events/attendance/feed` (+ `?alumId=` → `{ alum, feed }`)
+ * Server loaders: `listPublicBadgesFromFeed` / `listPublicBadgesManyFromFeed` in `@/lib/badges-attendance`
  */
 export { HoyaBadge, HoyaBadgeRow } from "@/components/hoya-badges";
 export { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";

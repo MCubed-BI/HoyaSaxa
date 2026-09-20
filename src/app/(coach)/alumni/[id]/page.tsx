@@ -5,7 +5,7 @@ import { PageMain, PageShell } from "@/components/page-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { listPublicBadgesMany } from "@/lib/badges";
+import { listPublicBadgesFromFeed } from "@/lib/badges-attendance";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import {
   classYearLabel,
@@ -43,7 +43,7 @@ export default async function AlumniDetailPage({
   try {
     const person = await getAlumniById(id);
     if (!person) notFound();
-    const badges = (await listPublicBadgesMany([person.id]))[person.id] ?? [];
+    const badges = await listPublicBadgesFromFeed(person.id);
 
     const emails = [
       ...(person.email_primary ? [{ email: person.email_primary, label: "Primary" }] : []),

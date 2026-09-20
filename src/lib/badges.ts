@@ -7,8 +7,8 @@
  *   - event_top_platinum | event_top_gold | event_top_silver | event_top_bronze
  *
  * Donor rank uses giving_pledges / fundraising_pledges when those tables exist.
- * Event bands consume Coder 4 ranks (eventId, alumId, checkedInAt, totals/ranks).
- * This file never INSERTs event_checkins. Fallback is SELECT-only counts.
+ * Event / Top Tailgate bands consume GET /api/events/attendance/feed ranks.
+ * This file never INSERTs event_checkins. Pages load via badges-attendance.ts.
  *
  * Coder 4 / 5: import `@/lib/badge-api` (HoyaBadge + consume helpers).
  */

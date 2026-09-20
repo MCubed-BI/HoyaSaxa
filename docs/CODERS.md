@@ -124,7 +124,7 @@ Coder 4 feed contract (consume-only): `eventId`, `eventSlug?`, `eventTitle?`, `a
 
 - One person: `listPublicBadges(alumniId, { attendanceTotals })` or `GET /api/badges/:alumniId` → `{ alumniId, badges: PublicBadge[] }`
 - Directory: `listPublicBadgesMany(ids, { verifiedAlumniIds, attendanceLeaders })`
-- `listPublicBadges` / `listPublicBadgesMany` consume Coder 4's feed shape (`eventId` / slug / title, `alumId`, `checkedInAt`, `attendanceCount`, `rank` / `percentile`). Prefer injected `attendanceLeaders` from `listEventCheckinFeed` / `GET /api/events/attendance/feed`. Otherwise `consumeEventCheckinFeed` is a **SELECT-only** reader of `event_checkins` (never INSERT).
+- Profile + directory load `listPublicBadgesManyFromFeed` / `listPublicBadgesFromFeed` (`@/lib/badges-attendance`) — same payload as **`GET /api/events/attendance/feed`** and **`?alumId=`**. Consume only; never INSERT `event_checkins`.
 
 ---
 

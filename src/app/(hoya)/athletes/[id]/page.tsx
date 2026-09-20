@@ -6,7 +6,7 @@ import { PageMain, pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isPreviewAlumSession, readAlumSessionFromCookies } from "@/lib/alum-session";
-import { listPublicBadgesMany } from "@/lib/badges";
+import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { displayName, jobLabel, positionLabel } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
 import { getLockerPersonById } from "@/lib/locker-directory";
@@ -46,7 +46,7 @@ export default async function AthleteProfilePage({
   const session = await readAlumSessionFromCookies();
   const viewingOwnClaim =
     session && !isPreviewAlumSession(session) && session.alumniId === person.id ? [person.id] : [];
-  const badgesById = await listPublicBadgesMany([person.id], { verifiedAlumniIds: viewingOwnClaim });
+  const badgesById = await listPublicBadgesManyFromFeed([person.id], { verifiedAlumniIds: viewingOwnClaim });
   const badges = badgesById[person.id] ?? [];
 
   return (
