@@ -6,6 +6,7 @@ import { BrandMark } from "@/components/brand";
 import { NavIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";
+import { DESKTOP_PRIMARY_NAV_CLASS, HEADER_BRAND_SLOT_CLASS } from "@/lib/header-chrome";
 import { headerShowsUpdateMe, type NavItem, type NavKey } from "@/lib/nav";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 import { cn } from "cn";
@@ -59,14 +60,15 @@ export function ProductHeader({
           <div className="h-full w-16 bg-silver" />
         </div>
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-          <div className="flex items-center gap-3 overflow-visible py-2.5">
-            <div className="@container/brand min-w-[11rem] flex-1">
+          <div className="flex items-center gap-2 overflow-visible py-2.5">
+            <div className={HEADER_BRAND_SLOT_CLASS}>
               <BrandMark href={homeHref} compact title={PRODUCT_DISPLAY_NAME} />
             </div>
             {!stacked && desktopItems.length > 0 ? (
               <nav
-                className="hidden min-w-0 flex-1 flex-wrap items-center justify-end gap-0.5 md:flex"
+                className={DESKTOP_PRIMARY_NAV_CLASS}
                 aria-label="Primary"
+                data-primary-nav="desktop"
               >
                 {desktopItems.map((item) => (
                   <NavLink key={`${item.key}-${item.href}`} item={item} current={current} />
@@ -159,8 +161,8 @@ function NavLink({
       href={item.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "inline-flex shrink-0 items-center rounded-lg text-sm font-medium transition-colors",
-        compact ? "gap-1 px-2 py-1.5" : "gap-1.5 px-2.5 py-1.5",
+        "inline-flex shrink-0 items-center whitespace-nowrap rounded-lg font-medium transition-colors",
+        compact ? "gap-1 px-2 py-1.5 text-sm" : "gap-1 px-1.5 py-1.5 text-[13px] leading-none",
         active ? "bg-navy text-white shadow-[var(--shadow-xs)]" : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >

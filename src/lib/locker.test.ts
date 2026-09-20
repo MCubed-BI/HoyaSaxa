@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { displayName } from "./format";
@@ -10,7 +12,7 @@ import {
   toNameFields,
 } from "./locker-classify";
 import { athleteHref, directoryHref, isLockerPublicPath, parseAthleteTab, parseDirectoryPill } from "./locker-paths";
-import { ATHLETE_TABS } from "./locker-types";
+import { ATHLETE_TABS, athleteTabLabel, YEARS_ACTIVE_LABEL } from "./locker-types";
 import { ALUM_SESSION_COOKIE_ALIASES, HOYA_ALUM_SESSION_COOKIE, hasAlumSessionCookie } from "./locker-session";
 import { emptyLockerPhotos, lockerStubPeople } from "./locker-stubs";
 
@@ -66,7 +68,32 @@ describe("directory pills and search", () => {
     assert.equal(athleteHref("abc", "Q&A"), "/athletes/abc?tab=qa");
     assert.equal(parseAthleteTab("photos"), "photos");
     assert.equal(parseAthleteTab("stats"), "stats");
-    assert.equal(ATHLETE_TABS.find((tab) => tab.id === "stats")?.label, "Years Active");
+    assert.equal(athleteTabLabel("stats"), YEARS_ACTIVE_LABEL);
+    assert.equal(ATHLETE_TABS.find((tab) => tab.id === "stats")?.label, YEARS_ACTIVE_LABEL);
+    assert.equal(
+      ATHLETE_TABS.every((tab) => !/\bStats\b/i.test(tab.label)),
+      true,
+    );
+  });
+
+  it("keeps Years Active on every athlete/alum profile surface", () => {
+    const files = [
+      "src/lib/locker-types.ts",
+      "src/app/(hoya)/athletes/[id]/page.tsx",
+      "src/app/(coach)/alumni/[id]/page.tsx",
+      "src/components/hoya-directory.tsx",
+      "src/components/alum-directory.tsx",
+      "src/components/alumni-directory.tsx",
+    ];
+    for (const rel of files) {
+      const text = readFileSync(join(process.cwd(), rel), "utf8");
+      assert.doesNotMatch(text, /<(CardTitle|title)>\s*Stats\s*</);
+      assert.doesNotMatch(text, /label:\s*"Stats"/);
+      assert.doesNotMatch(text, />Stats</);
+    }
+    const athletePage = readFileSync(join(process.cwd(), "src/app/(hoya)/athletes/[id]/page.tsx"), "utf8");
+    assert.match(athletePage, /athleteTabLabel\("stats"\)/);
+    assert.match(athletePage, /item\.label/);
   });
 
   it("exposes football roster and current photo slots", () => {

@@ -11,13 +11,20 @@ export type LockerKind = "athlete" | "alumni" | "coach" | "staff";
 export type LockerSource = "roster" | "sample";
 export type AthleteTab = "overview" | "stats" | "photos" | "career" | "qa";
 
+/** User-visible label for the `stats` tab query key. */
+export const YEARS_ACTIVE_LABEL = "Years Active";
+
 export const ATHLETE_TABS: Array<{ id: AthleteTab; label: string }> = [
   { id: "overview", label: "Overview" },
-  { id: "stats", label: "Years Active" },
+  { id: "stats", label: YEARS_ACTIVE_LABEL },
   { id: "photos", label: "Photos" },
   { id: "career", label: "Career" },
   { id: "qa", label: "Q&A" },
 ];
+
+export function athleteTabLabel(id: AthleteTab): string {
+  return ATHLETE_TABS.find((tab) => tab.id === id)?.label ?? YEARS_ACTIVE_LABEL;
+}
 
 export type LockerRosterYear = {
   year: number;
