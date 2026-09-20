@@ -40,7 +40,7 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
   const staffUsername = getSessionUsername(jar.get(SESSION_COOKIE)?.value);
   if (staffUsername) {
     let role = resolveRoleFromEnv(staffUsername, getCoachCredentials().username);
-    let assignedRole: string | null = null;
+    let assignedRole: Role | "admin" | null = null;
     if (getDatabaseUrl()) {
       try {
         assignedRole = await lookupStaffRole(staffUsername);
