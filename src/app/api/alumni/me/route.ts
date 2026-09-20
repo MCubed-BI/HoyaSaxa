@@ -1,29 +1,19 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { accountIdFromCookies, findSameLastNameCandidates, getAccountById, getClaimedRecords } from "@/lib/alumni-claim";
+import { loadAlumniMeState } from "@/lib/alumni-claim";
 import { isMissingDatabaseConfig } from "@/lib/db";
 
 export async function GET() {
   try {
     const jar = await cookies();
-    const accountId = await accountIdFromCookies(jar);
-    if (!accountId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const account = await getAccountById(accountId);
-    if (!account) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const records = await getClaimedRecords(accountId);
-    const lastName = records[0]?.last_name ?? "";
-    const mergeCandidates = lastName
-      ? await findSameLastNameCandidates(
-          lastName,
-          accountId,
-          records.map((row) => row.id),
-        )
-      : [];
+    const state = await loadAlumniMeState(jar);
+    if (!state) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const email = state.account?.email || state.identity.email || state.identity.name || "Alumnus";
     return NextResponse.json({
-      account,
-      records,
-      mergeCandidates,
-      verifiedHoya: records.length > 0,
+      account: state.account ?? { id: state.identity.accountId ?? state.identity.alumniId ?? "session", email },
+      records: state.records,
+      mergeCandidates: state.mergeCandidates,
+      verifiedHoya: state.records.length > 0,
       mode: "alum",
     });
   } catch (error) {
