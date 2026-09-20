@@ -54,6 +54,27 @@ export type AttendanceBadgeFeed = {
   leaders: AttendanceLeaderRow[];
 };
 
+/** Coder 3 import aliases — attendance only, no badge components. */
+export type EventCheckinFeedRow = AttendanceBadgeFeedRow;
+export type EventCheckinFeed = AttendanceBadgeFeed;
+
+export type AlumAttendanceTotals = {
+  alumId: string;
+  userId: string;
+  attendanceCount: number;
+  attendanceCountScope: AttendanceCountScope;
+  rank: number | null;
+  percentile: number | null;
+  cohortSize: number;
+  rankBasis: typeof ATTENDANCE_RANK_BASIS;
+  events: Array<{
+    eventId: string;
+    eventSlug?: string;
+    eventTitle?: string;
+    checkedInAt: string;
+  }>;
+};
+
 export function eventSlugFromTitle(title: string, eventId: string) {
   const slug = title
     .toLowerCase()
@@ -170,4 +191,34 @@ export async function listAttendanceBadgeFeed(input?: {
     rows,
     leaders,
   };
+}
+
+export const listEventCheckinFeed = listAttendanceBadgeFeed;
+
+/** Project a feed down to one alum. Coder 3 maps percentile → badge tier. */
+export function alumAttendanceTotalsFromFeed(alumId: string, feed: EventCheckinFeed): AlumAttendanceTotals {
+  const first = feed.rows[0];
+  const leader =
+    feed.leaders.find((row) => row.alumId === alumId) ??
+    feed.leaders.find((row) => row.personKey === `alum:${alumId}`);
+  return {
+    alumId,
+    userId: first?.userId ?? alumId,
+    attendanceCount: leader?.attendanceCount ?? first?.attendanceCount ?? 0,
+    attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
+    rank: leader?.rank ?? first?.rank ?? null,
+    percentile: leader?.percentile ?? first?.percentile ?? null,
+    cohortSize: leader?.cohortSize ?? first?.cohortSize ?? feed.leaders.length,
+    rankBasis: ATTENDANCE_RANK_BASIS,
+    events: feed.rows.map((row) => ({
+      eventId: row.eventId,
+      eventSlug: row.eventSlug,
+      eventTitle: row.eventTitle,
+      checkedInAt: row.checkedInAt,
+    })),
+  };
+}
+
+export async function getAlumAttendanceTotals(alumId: string): Promise<AlumAttendanceTotals> {
+  return alumAttendanceTotalsFromFeed(alumId, await listAttendanceBadgeFeed({ alumId }));
 }

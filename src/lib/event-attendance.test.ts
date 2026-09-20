@@ -13,7 +13,7 @@ import {
   resolveCheckInAction,
 } from "./event-attendance";
 import { canCreateEvents, canOverrideEventCheckIn } from "./event-auth";
-import { eventSlugFromTitle } from "./event-attendance-feed";
+import { eventSlugFromTitle, type AlumAttendanceTotals, type EventCheckinFeedRow } from "./event-attendance-feed";
 import { createHoyaAlumSessionToken } from "./hoya-alum-session";
 import { isAlumAllowedPath, isDataSyncPath } from "./portal-paths";
 import { isAlumAllowedPath as messagesAlumAllowed, isDataSyncPath as messagesDataSync } from "./messages-auth";
@@ -82,6 +82,38 @@ describe("event check-in rules", () => {
     assert.equal(percentileFromRank(1, 100), 100);
     assert.equal(percentileFromRank(2, 100), 99);
     assert.equal(eventSlugFromTitle("Homecoming Tailgate", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"), "homecoming-tailgate-aaaaaaaa");
+  });
+
+  it("exports a Coder 3 consume shape without badge UI fields", () => {
+    const row: EventCheckinFeedRow = {
+      eventId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      eventSlug: "homecoming-tailgate-aaaaaaaa",
+      eventTitle: "Homecoming Tailgate",
+      alumId: "11111111-1111-1111-1111-111111111111",
+      userId: "11111111-1111-1111-1111-111111111111",
+      checkedInAt: "2026-09-20T21:00:00.000Z",
+      attendanceCount: 3,
+      attendanceCountScope: "lifetime",
+      rank: 1,
+      percentile: 100,
+      cohortSize: 4,
+      rankBasis: "lifetime_all_events",
+    };
+    const alum: AlumAttendanceTotals = {
+      alumId: row.alumId!,
+      userId: row.userId,
+      attendanceCount: row.attendanceCount,
+      attendanceCountScope: "lifetime",
+      rank: row.rank,
+      percentile: row.percentile,
+      cohortSize: row.cohortSize,
+      rankBasis: "lifetime_all_events",
+      events: [{ eventId: row.eventId, eventSlug: row.eventSlug, eventTitle: row.eventTitle, checkedInAt: row.checkedInAt }],
+    };
+    assert.equal(row.attendanceCountScope, "lifetime");
+    assert.equal(alum.events.length, 1);
+    assert.equal(JSON.stringify(row).includes("Platinum"), false);
+    assert.equal(JSON.stringify(alum).includes("badge"), false);
   });
 });
 
