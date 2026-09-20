@@ -48,7 +48,7 @@ export function isFeedTab(value: string | null | undefined): value is FeedTab {
 
 export const DEMO_UPCOMING_EVENT: UpcomingEvent = {
   title: "Homecoming weekend at Cooper Field",
-  body: "Board gathering after kickoff. Events lane will own RSVP; this card reads the next dated Newsflash or an `events` row when that table lands.",
+  body: "Board gathering after kickoff. Events lane will own RSVP; this card reads the next dated Board note or an `events` row when that table lands.",
   startsAt: "2026-10-17T16:00:00.000Z",
   location: "Cooper Field · Georgetown",
   source: "demo",
@@ -66,7 +66,7 @@ export const DEMO_NEWSFLASH: NewsflashPost[] = [
   },
   {
     id: "demo-newsflash-live",
-    title: "Newsflash is live",
+    title: "Board notes are live",
     body: "Board notes, game-week updates, and locker announcements now publish here. Alumni can read every post; only board can write.",
     event_at: null,
     author_label: "Lars",
@@ -81,7 +81,7 @@ export const DEMO_FEED: FeedPost[] = [
     author_role: "official",
     audience: "for-you",
     title: "Fall camp notes",
-    body: "Official: fall camp wraps this week. Watch Newsflash for the board’s homecoming plan.",
+    body: "Official: fall camp wraps this week. Watch From Your Board for the board’s homecoming plan.",
     created_at: "2026-09-17T18:00:00.000Z",
     source: "feed",
     section: "board",

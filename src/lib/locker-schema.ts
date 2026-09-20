@@ -10,7 +10,7 @@ const SEED_NEWSFLASH = [
     authorLabel: "Lars",
   },
   {
-    title: "Newsflash is live",
+    title: "Board notes are live",
     body: "Board notes, game-week updates, and locker announcements now publish here. Alumni can read every post; only board can write.",
     eventAt: null,
     authorLabel: "Lars",
@@ -23,7 +23,7 @@ const SEED_FEED = [
     authorRole: "official",
     audience: "for-you",
     title: "Fall camp notes",
-    body: "Official: fall camp wraps this week. Watch Newsflash for the board’s homecoming plan.",
+    body: "Official: fall camp wraps this week. Watch From Your Board for the board’s homecoming plan.",
   },
   {
     authorLabel: "Pat Hoya ’15",

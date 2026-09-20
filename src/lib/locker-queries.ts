@@ -386,7 +386,7 @@ function memoryHome(reason: string): LockerHomeData {
 export async function loadLockerHome(): Promise<LockerHomeData> {
   if (!getDatabaseUrl()) {
     return memoryHome(
-      "DATABASE_URL is not set. Locker tables (`newsflash_posts`, `locker_feed_posts`) seed on first connected load. Newsflash publishes stay in this process until Neon is configured.",
+      "DATABASE_URL is not set. Locker tables (`newsflash_posts`, `locker_feed_posts`) seed on first connected load. Board publishes stay in this process until Neon is configured.",
     );
   }
 
