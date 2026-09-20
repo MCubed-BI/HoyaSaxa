@@ -2,7 +2,10 @@ import { Badge } from "@/components/ui/badge";
 import { type PublicBadge, badgeLabel, type BadgeType } from "@/lib/badges";
 
 /**
- * Display-only badge stubs. Do not pass or render donor dollar amounts.
+ * Display-only chips from `@/lib/badges` (contracts PR).
+ * Coder 4 / Coder 5: reuse HoyaBadge + HoyaBadgeRow. Do not add a second chip.
+ * Load with `listPublicBadges` / `listPublicBadgesMany` / `computeEventTopBadge`.
+ * Never pass or render donor dollar amounts.
  */
 export function HoyaBadge({ badge }: { badge: PublicBadge | BadgeType }) {
   const view = typeof badge === "string" ? { type: badge, label: badgeLabel(badge), tier: null } : badge;

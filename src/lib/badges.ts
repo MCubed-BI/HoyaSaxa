@@ -309,15 +309,110 @@ export async function computeEventTopBadge(alumniId: string): Promise<PublicBadg
   }
 }
 
+export function assemblePublicBadges(input: {
+  stored?: PublicBadge[];
+  donorTier?: BadgeTier | null;
+  eventTier?: BadgeTier | null;
+  verified?: boolean;
+}): PublicBadge[] {
+  const byType = new Map<BadgeType, PublicBadge>();
+  for (const badge of input.stored ?? []) byType.set(badge.type, badge);
+  if (input.verified) byType.set("verified_hoya", toPublicBadge("verified_hoya"));
+  if (input.donorTier) {
+    const type = donorBadgeType(input.donorTier);
+    byType.set(type, toPublicBadge(type));
+  }
+  if (input.eventTier) {
+    const type = eventTopBadgeType(input.eventTier);
+    byType.set(type, toPublicBadge(type));
+  }
+  return publicBadgesJson([...byType.values()]);
+}
+
 export async function listPublicBadges(alumniId: string): Promise<PublicBadge[]> {
   const stored = await listStoredBadges(alumniId);
   const [donor, eventTop] = await Promise.all([computeDonorBadge(alumniId), computeEventTopBadge(alumniId)]);
-  const byType = new Map<BadgeType, PublicBadge>();
-  for (const badge of stored) byType.set(badge.type, badge);
-  if (donor) byType.set(donor.type, donor);
-  if (eventTop) byType.set(eventTop.type, eventTop);
-  if (!byType.has("verified_hoya") && stored.some((badge) => badge.type === "verified_hoya")) {
-    byType.set("verified_hoya", toPublicBadge("verified_hoya"));
+  return assemblePublicBadges({
+    stored,
+    donorTier: donor?.tier ?? null,
+    eventTier: eventTop?.tier ?? null,
+    verified: stored.some((badge) => badge.type === "verified_hoya"),
+  });
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function uuidAlumniIds(ids: string[]) {
+  return [...new Set(ids.filter((id) => UUID_RE.test(id)))];
+}
+
+async function listStoredBadgesMany(alumniIds: string[]): Promise<Map<string, PublicBadge[]>> {
+  const out = new Map<string, PublicBadge[]>();
+  if (!alumniIds.length || !getDatabaseUrl()) return out;
+  await ensureAlumBadgesTable();
+  const sql = getSql();
+  const rows = (await sql.query(
+    `SELECT alumni_id::text AS id, badge_type AS type FROM alum_badges WHERE alumni_id = ANY($1::uuid[])`,
+    [alumniIds],
+  )) as Array<{ id: string; type: string }>;
+  for (const row of rows) {
+    if (!isBadgeType(row.type)) continue;
+    const list = out.get(row.id) ?? [];
+    list.push(toPublicBadge(row.type));
+    out.set(row.id, list);
   }
-  return publicBadgesJson([...byType.values()]);
+  return out;
+}
+
+async function loadClaimedIds(alumniIds: string[]): Promise<Set<string>> {
+  const claimed = new Set<string>();
+  if (!alumniIds.length || !(await tableExists("alumni_claims"))) return claimed;
+  const sql = getSql();
+  const rows = (await sql.query(
+    `SELECT DISTINCT alumni_id::text AS id FROM alumni_claims WHERE alumni_id = ANY($1::uuid[])`,
+    [alumniIds],
+  )) as Array<{ id: string }>;
+  for (const row of rows) {
+    if (row.id) claimed.add(row.id);
+  }
+  return claimed;
+}
+
+/**
+ * Directory/profile batch read. One donor + check-in scan, then per-id assemble.
+ * Never returns gift totals. Extra `verifiedAlumniIds` mark claimed / logged-in rows.
+ */
+export async function listPublicBadgesMany(
+  alumniIds: string[],
+  options: { verifiedAlumniIds?: string[] } = {},
+): Promise<Record<string, PublicBadge[]>> {
+  const ids = [...new Set(alumniIds.filter(Boolean))];
+  const out: Record<string, PublicBadge[]> = Object.fromEntries(ids.map((id) => [id, []]));
+  if (!ids.length || !getDatabaseUrl()) return out;
+
+  const uuidIds = uuidAlumniIds(ids);
+  try {
+    const [storedById, totals, attendance, claimed] = await Promise.all([
+      listStoredBadgesMany(uuidIds),
+      loadDonorTotals(),
+      loadEventAttendance(),
+      loadClaimedIds(uuidIds),
+    ]);
+    const extraVerified = new Set(options.verifiedAlumniIds ?? []);
+    for (const id of ids) {
+      const stored = storedById.get(id) ?? [];
+      out[id] = assemblePublicBadges({
+        stored,
+        donorTier: donorTierForAlumniId(id, totals),
+        eventTier: attendance.ready ? eventTierForAlumniId(id, attendance.rows) : null,
+        verified:
+          extraVerified.has(id) ||
+          claimed.has(id) ||
+          stored.some((badge) => badge.type === "verified_hoya"),
+      });
+    }
+    return out;
+  } catch {
+    return out;
+  }
 }

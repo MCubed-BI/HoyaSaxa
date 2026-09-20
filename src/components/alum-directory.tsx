@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import type { PublicBadge } from "@/lib/badges";
 import { filtersToSearchParams, type AlumniFilters } from "@/lib/filters";
 import {
   classYearLabel,
@@ -21,6 +23,7 @@ export function AlumDirectory({
   filters,
   basePath = "/alum",
   profileHref = "/portal/profile",
+  badgesById = {},
 }: {
   rows: AlumniListItem[];
   total: number;
@@ -29,6 +32,7 @@ export function AlumDirectory({
   filters: AlumniFilters;
   basePath?: string;
   profileHref?: string;
+  badgesById?: Record<string, PublicBadge[]>;
 }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const prev = page > 1 ? `${basePath}?${filtersToSearchParams(filters, page - 1).toString()}` : null;
@@ -87,6 +91,7 @@ export function AlumDirectory({
                     </Badge>
                   ) : null}
                 </div>
+                <HoyaBadgeRow badges={badgesById[person.id] ?? []} />
               </div>
             </CardContent>
           </Card>

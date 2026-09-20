@@ -89,13 +89,24 @@ Types: `verified_hoya`, `donor_platinum|gold|silver|bronze`, `event_top_*` (same
 | silver | ≥ 75 |
 | bronze | ≥ 50 |
 
-**Never expose donor `$` / `amount_cents` in badge UI or `/api/badges`.** Use `PublicBadge` / `HoyaBadge` / `HoyaBadgeRow`.
+**Never expose donor `$` / `amount_cents` in badge UI or `/api/badges`.** Use `PublicBadge` / `HoyaBadge` / `HoyaBadgeRow`. Do not add a second chip component.
 
-- Verified Hoya is granted on claim / alumni login (`grantVerifiedHoya`).
+- Verified Hoya is granted on claim / alumni login (`grantVerifiedHoya`). Directory/profile also treat `alumni_claims` as verified.
 - Donor rank reads `fundraising_pledges.alumni_id` (and `giving_pledges.alumni_id` if that column exists).
 - Event rank reads `event_checkins` once Coder 5 writes rows; until then the helper returns no event badge.
 
-`GET /api/badges/:alumniId` → `{ alumniId, badges: PublicBadge[] }`.
+**Surfaces:** `/directory` cards + table, `/athletes/[id]`, `/me`, staff `/` cards, `/alumni/[id]`.
+
+**Coder 4 / 5 reuse**
+
+```ts
+import { HoyaBadge, HoyaBadgeRow } from "@/components/hoya-badges";
+import { listPublicBadges, listPublicBadgesMany, computeEventTopBadge } from "@/lib/badges";
+```
+
+- One person: `listPublicBadges(alumniId)` or `GET /api/badges/:alumniId` → `{ alumniId, badges: PublicBadge[] }`
+- Directory page: `listPublicBadgesMany(ids, { verifiedAlumniIds })`
+- Check-in counts: keep writing `event_checkins`; `computeEventTopBadge` / `eventTierForAlumniId` already rank them. Render with `HoyaBadgeRow`.
 
 ---
 

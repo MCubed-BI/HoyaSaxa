@@ -8,6 +8,8 @@ import { ResultPagination } from "@/components/result-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableCell } from "@/components/ui/table";
+import { HoyaBadgeRow } from "@/components/hoya-badges";
+import type { PublicBadge } from "@/lib/badges";
 import { filtersToSearchParams, type AlumniFilters } from "@/lib/filters";
 import {
   classYearLabel,
@@ -50,12 +52,14 @@ export function AlumniDirectory({
   page,
   pageSize,
   filters,
+  badgesById = {},
 }: {
   rows: AlumniListItem[];
   total: number;
   page: number;
   pageSize: number;
   filters: AlumniFilters;
+  badgesById?: Record<string, PublicBadge[]>;
 }) {
   const { isSelected, toggle } = useSelection();
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -109,6 +113,7 @@ export function AlumniDirectory({
                       residenceLabel(person) ||
                       "Location unknown"}
                   </p>
+                  <HoyaBadgeRow badges={badgesById[person.id] ?? []} />
                   <ContactPills person={person} />
                 </div>
               </Link>
@@ -141,6 +146,7 @@ export function AlumniDirectory({
               <TableHead>Hometown</TableHead>
               <TableHead>Current</TableHead>
               <TableHead>Work</TableHead>
+              <TableHead>Badges</TableHead>
               <TableHead>Contact</TableHead>
             </TableRow>
           </StickyTableHeader>
@@ -174,6 +180,9 @@ export function AlumniDirectory({
                 </TableCell>
                 <TableCell className="max-w-56 truncate text-muted-foreground">
                   {jobLabel(person.company_name, person.job_title) || "—"}
+                </TableCell>
+                <TableCell>
+                  <HoyaBadgeRow badges={badgesById[person.id] ?? []} />
                 </TableCell>
                 <TableCell>
                   <ContactPills person={person} />

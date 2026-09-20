@@ -7,9 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { Kpi, KpiGrid } from "@/components/kpi";
 import { Notice } from "@/components/page-chrome";
 import { Timestamp } from "@/components/timestamp";
+import type { PublicBadge } from "@/lib/badges";
 import { displayName, formatCount } from "@/lib/format";
 import type { AlumniDetail, AlumniListItem } from "@/lib/types";
 
@@ -19,10 +21,12 @@ export function AlumniMePanel({
   email,
   records,
   mergeCandidates,
+  badgesById = {},
 }: {
   email: string;
   records: AlumniDetail[];
   mergeCandidates: MergeCandidate[];
+  badgesById?: Record<string, PublicBadge[]>;
 }) {
   const router = useRouter();
   const [activeId, setActiveId] = useState(records[0]?.id ?? "");
@@ -133,6 +137,8 @@ export function AlumniMePanel({
           hint={mergeCandidates.length > 0 ? "Same last name — claim or merge below" : "No other unclaimed rows"}
         />
       </KpiGrid>
+
+      <HoyaBadgeRow badges={badgesById[active.id] ?? []} />
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         {records.length > 1 ? (

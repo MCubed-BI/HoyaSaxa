@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   BADGE_PERCENTILE_THRESHOLDS,
   BADGE_TYPES,
+  assemblePublicBadges,
   donorTierForAlumniId,
   eventTierForAlumniId,
   percentileFromRank,
@@ -38,5 +39,19 @@ describe("badge primitives", () => {
     assert.deepEqual(json, [{ type: "donor_gold", label: "Donor · Gold", tier: "gold" }]);
     assert.equal(JSON.stringify(json).includes("cent"), false);
     assert.equal(JSON.stringify(json).includes("$"), false);
+  });
+
+  it("assembles verified + donor + event chips without gift totals", () => {
+    const badges = assemblePublicBadges({
+      verified: true,
+      donorTier: "platinum",
+      eventTier: "gold",
+    });
+    assert.deepEqual(
+      badges.map((badge) => badge.label),
+      ["Verified Hoya", "Donor · Platinum", "Event top · Gold"],
+    );
+    assert.equal(JSON.stringify(badges).includes("$"), false);
+    assert.equal(JSON.stringify(badges).includes("cent"), false);
   });
 });

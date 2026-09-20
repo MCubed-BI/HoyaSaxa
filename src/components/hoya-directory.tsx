@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AlumEmailBar, DirectoryPickToggle } from "@/components/directory-picks";
 import { FilterToolbar } from "@/components/filter-toolbar";
 import { HoyaAvatar } from "@/components/hoya-avatar";
+import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { AppIcon } from "@/components/icons";
 import { DataTable, StickyTableHeader, Table, TableBody, TableHead, TableRow } from "@/components/data-table";
 import { pillClass } from "@/components/page-chrome";
@@ -15,6 +16,7 @@ import { TableCell } from "@/components/ui/table";
 import { displayName, formatCount, positionLabel, resultRange } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
 import { athleteHref, directoryHref } from "@/lib/locker-paths";
+import type { PublicBadge } from "@/lib/badges";
 import { isLockerStubId } from "@/lib/locker-stubs";
 import { DIRECTORY_PILLS, type DirectoryPill, type LockerPerson } from "@/lib/locker-types";
 
@@ -26,6 +28,7 @@ export function HoyaDirectory({
   page,
   pageSize,
   usingSample,
+  badgesById = {},
 }: {
   q: string;
   role: DirectoryPill;
@@ -34,6 +37,7 @@ export function HoyaDirectory({
   page: number;
   pageSize: number;
   usingSample: boolean;
+  badgesById?: Record<string, PublicBadge[]>;
 }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const range = resultRange(page, pageSize, total);
@@ -132,6 +136,7 @@ export function HoyaDirectory({
                               <Badge variant="secondary">{kindLabel(person.kind)}</Badge>
                               {position ? <Badge variant="outline">{position}</Badge> : null}
                             </div>
+                            <HoyaBadgeRow badges={badgesById[person.id] ?? []} />
                           </div>
                         </CardContent>
                       </Card>
@@ -151,6 +156,7 @@ export function HoyaDirectory({
                   <TableHead>Class / sport</TableHead>
                   <TableHead>City</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Badges</TableHead>
                   <TableHead>Position</TableHead>
                 </TableRow>
               </StickyTableHeader>
@@ -179,6 +185,9 @@ export function HoyaDirectory({
                       <TableCell className="text-muted-foreground">{city}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{kindLabel(person.kind)}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <HoyaBadgeRow badges={badgesById[person.id] ?? []} />
                       </TableCell>
                       <TableCell className="text-muted-foreground">{position}</TableCell>
                     </TableRow>
