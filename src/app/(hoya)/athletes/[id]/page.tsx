@@ -169,11 +169,11 @@ export default async function AthleteProfilePage({
       {tab === "stats" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Stats</CardTitle>
+            <CardTitle>Years Active</CardTitle>
           </CardHeader>
           <CardContent>
             {person.rosterYears.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Season stats shell — roster years will show here.</p>
+              <p className="text-sm text-muted-foreground">Roster years will show here.</p>
             ) : (
               <ul className="space-y-2 text-sm">
                 {person.rosterYears.map((row) => (

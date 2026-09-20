@@ -1,10 +1,19 @@
 import Link from "next/link";
 import { ForYouCard } from "@/components/for-you-card";
 import { ForYouComposer } from "@/components/for-you-composer";
+import { ForYouFilters } from "@/components/for-you-filters";
 import { HoyaAvatar } from "@/components/hoya-avatar";
 import { Notice } from "@/components/page-chrome";
-import { FEED_SECTIONS, canPostToFeedSection, type FeedSection } from "@/lib/feed-sections";
-import { forYouEmptyCopy, forYouHeading, type ForYouCardPost, type ForYouIdentity } from "@/lib/for-you";
+import { canPostToFeedSection, type FeedSection } from "@/lib/feed-sections";
+import {
+  forYouEmptyCopy,
+  forYouFilterHref,
+  forYouHeading,
+  forYouSectionsForFilter,
+  type ForYouCardPost,
+  type ForYouFilter,
+  type ForYouIdentity,
+} from "@/lib/for-you";
 import type { LockerViewer } from "@/lib/locker-viewer";
 
 function sectionClass(section: FeedSection) {
@@ -25,7 +34,9 @@ function Section({
   return (
     <section id={section} className={sectionClass(section)}>
       <h2 className="for-you__section-label">{forYouHeading(section)}</h2>
-      {canPostToFeedSection(viewer.platformRole, section) ? <ForYouComposer section={section} /> : null}
+      {canPostToFeedSection(viewer.platformRole, section) ? (
+        <ForYouComposer section={section} next={forYouFilterHref(section)} />
+      ) : null}
       {posts.length === 0 ? (
         <p className="for-you__empty">{forYouEmptyCopy(section)}</p>
       ) : (
@@ -44,12 +55,16 @@ export function ForYouFeed({
   identity,
   posts,
   fallbackReason,
+  filter = "all",
 }: {
   viewer: LockerViewer;
   identity: ForYouIdentity;
   posts: Record<FeedSection, ForYouCardPost[]>;
   fallbackReason?: string | null;
+  filter?: ForYouFilter;
 }) {
+  const sections = forYouSectionsForFilter(filter);
+
   return (
     <div className="for-you">
       <aside className="for-you__identity">
@@ -73,8 +88,9 @@ export function ForYouFeed({
       </aside>
 
       <div className="for-you__feeds">
+        <ForYouFilters active={filter} />
         {fallbackReason ? <Notice>{fallbackReason}</Notice> : null}
-        {FEED_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <Section key={section} section={section} posts={posts[section]} viewer={viewer} />
         ))}
       </div>

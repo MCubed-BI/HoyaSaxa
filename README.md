@@ -169,7 +169,7 @@ Verify:
 
 1. Open `/home/login`, sign in as `Lars` / `Sgarlata35` (Admin). Confirm Home hero, quick actions, upcoming event, and recent activity.
 2. Open `/board` as Admin or `Board` and publish a headline. Confirm it appears for an `Alum` session after sign-out / sign-in. `/newsflash` redirects to `/board`.
-3. Open `/feed`. For You shows pic + name + class year + locker link, then From Your Brothers / From Your Board / From Sgarlata. Alum can compose a Brothers post. `/newsflash` still redirects to `/board`.
+3. Open `/feed`. For You shows pic + name + class year + locker link, then chips All / Your Brothers / Board / From Your Headcoach. Alum can compose a Brothers post. `/newsflash` still redirects to `/board`.
 
 ### Seed dependency
 
@@ -198,7 +198,7 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/events/new` — Create Event (Admin, Board, or Alum)
 - `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
 - `/directory` — Hoya Directory (search + All/Athletes/Alumni/Coaches/Staff). Requires `ga_session`, `hoya_alum_session`, or the claim session. Anonymous visitors are sent to `/login`. Emails stay hidden on these cards.
-- `/athletes/[id]` — public athlete profile (Overview/Stats/Photos/Career/Q&A). Likely-duplicate panel: Merge duplicate is unchanged; **Not me** permanently hides that pair for the viewing claimed alum (`account:{id}`) or staff admin (`admin:{username}`). The other scope can still see it.
+- `/athletes/[id]` — public athlete profile (Overview/Years Active/Photos/Career/Q&A). Likely-duplicate panel: Merge duplicate is unchanged; **Not me** permanently hides that pair for the viewing claimed alum (`account:{id}`) or staff admin (`admin:{username}`). The other scope can still see it.
 - `/portal/directory` / `/portal/profile` — aliases to `/directory`
 - `/portal/events` / `/portal/giving` — aliases to `/events` and `/giving`
 - `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases (`/portal/newsflash` → `/board`)

@@ -14,13 +14,23 @@ import {
   feedPostToCard,
   forYouComposableSections,
   forYouEmptyCopy,
+  forYouFilterHref,
+  forYouFilterLabel,
   forYouHeading,
+  forYouSectionsForFilter,
   identityFromLabel,
+  parseForYouFilter,
 } from "./for-you";
 import { readPlatformRole } from "./platform-session";
 import { canPostBoardSection, canPostBrothers } from "./platform-roles";
 import { DEMO_FEED, DEMO_NEWSFLASH, filterFeedPostsBySection, newsflashToFeedPost } from "./locker-data";
-import { portalMoreItems, portalSecondaryItems, navItemsForRole } from "./nav";
+import {
+  alumPrimaryNavItems,
+  headerShowsUpdateMe,
+  portalMoreItems,
+  portalSecondaryItems,
+  navItemsForRole,
+} from "./nav";
 import { PRODUCT_DISPLAY_NAME } from "./product";
 
 describe("for you myspace stack", () => {
@@ -31,8 +41,28 @@ describe("for you myspace stack", () => {
     assert.equal(feedSectionPath("newsflash"), "/board");
     assert.equal(forYouHeading("brothers"), "From Your Brothers");
     assert.equal(forYouHeading("board"), "From Your Board");
-    assert.equal(forYouHeading("sgarlata"), "From Sgarlata");
+    assert.equal(forYouHeading("sgarlata"), "From Your Headcoach");
     assert.match(forYouEmptyCopy("board"), /Board/i);
+    assert.equal(canonicalizeFeedSection("headcoach"), "sgarlata");
+  });
+
+  it("filters For You onto All / Brothers / Board / Headcoach", () => {
+    assert.deepEqual(forYouSectionsForFilter("all"), ["brothers", "board", "sgarlata"]);
+    assert.deepEqual(forYouSectionsForFilter("brothers"), ["brothers"]);
+    assert.deepEqual(forYouSectionsForFilter("board"), ["board"]);
+    assert.deepEqual(forYouSectionsForFilter("sgarlata"), ["sgarlata"]);
+    assert.equal(parseForYouFilter(undefined), "all");
+    assert.equal(parseForYouFilter("all"), "all");
+    assert.equal(parseForYouFilter("brothers"), "brothers");
+    assert.equal(parseForYouFilter("board"), "board");
+    assert.equal(parseForYouFilter("headcoach"), "sgarlata");
+    assert.equal(parseForYouFilter("nope"), "all");
+    assert.equal(forYouFilterLabel("all"), "All");
+    assert.equal(forYouFilterLabel("brothers"), "Your Brothers");
+    assert.equal(forYouFilterLabel("board"), "Board");
+    assert.equal(forYouFilterLabel("sgarlata"), "From Your Headcoach");
+    assert.equal(forYouFilterHref("all"), "/feed");
+    assert.equal(forYouFilterHref("sgarlata"), "/feed?section=sgarlata");
   });
 
   it("splits locker feed onto brothers | board | sgarlata", () => {
@@ -68,7 +98,16 @@ describe("for you myspace stack", () => {
       false,
     );
     assert.equal(portalSecondaryItems().some((item) => item.key === "feed"), true);
-    assert.equal(portalSecondaryItems().some((item) => item.key === "board"), true);
+    assert.equal(portalSecondaryItems().some((item) => item.key === "board"), false);
+    assert.equal(alumPrimaryNavItems().some((item) => item.key === "board"), false);
+    assert.equal(portalMoreItems("alum").some((item) => item.key === "board"), false);
+    assert.deepEqual(
+      alumPrimaryNavItems().map((item) => item.label),
+      ["Home", "Directory", "Events", "Giving", "Messages", "For You"],
+    );
+    assert.equal(headerShowsUpdateMe(true), true);
+    assert.equal(headerShowsUpdateMe(true, "me"), false);
+    assert.equal(headerShowsUpdateMe(false), false);
   });
 
   it("locks chrome display name to Georgetown Football Alum Network", () => {

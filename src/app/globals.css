@@ -205,6 +205,12 @@
     min-width: 0;
   }
 
+  .for-you__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
   .for-you__brothers,
   .for-you__board,
   .for-you__sgarlata {
@@ -297,7 +303,7 @@
 
     .for-you__identity {
       position: sticky;
-      top: 4.75rem;
+      top: 7.25rem;
       flex-direction: column;
       align-items: flex-start;
     }

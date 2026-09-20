@@ -10,6 +10,7 @@ import {
   toNameFields,
 } from "./locker-classify";
 import { athleteHref, directoryHref, isLockerPublicPath, parseAthleteTab, parseDirectoryPill } from "./locker-paths";
+import { ATHLETE_TABS } from "./locker-types";
 import { ALUM_SESSION_COOKIE_ALIASES, HOYA_ALUM_SESSION_COOKIE, hasAlumSessionCookie } from "./locker-session";
 import { emptyLockerPhotos, lockerStubPeople } from "./locker-stubs";
 
@@ -64,6 +65,8 @@ describe("directory pills and search", () => {
     assert.equal(athleteHref("abc"), "/athletes/abc");
     assert.equal(athleteHref("abc", "Q&A"), "/athletes/abc?tab=qa");
     assert.equal(parseAthleteTab("photos"), "photos");
+    assert.equal(parseAthleteTab("stats"), "stats");
+    assert.equal(ATHLETE_TABS.find((tab) => tab.id === "stats")?.label, "Years Active");
   });
 
   it("exposes football roster and current photo slots", () => {

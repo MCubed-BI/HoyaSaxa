@@ -69,16 +69,21 @@ export function portalNavItems(): NavItem[] {
 
 /** Desktop extras that sit next to the primary portal tabs on locker chrome. */
 export function portalSecondaryItems(): NavItem[] {
-  return [
-    { href: "/feed", label: "For You", key: "feed" },
-    { href: "/board", label: "Board", key: "board" },
-  ];
+  return [{ href: "/feed", label: "For You", key: "feed" }];
+}
+
+export function alumPrimaryNavItems(): NavItem[] {
+  return [...portalNavItems(), ...portalSecondaryItems()];
+}
+
+/** Verified Hoya alum chrome — keep Update Me on the identity row, not buried. */
+export function headerShowsUpdateMe(verifiedHoya: boolean, current?: NavKey) {
+  return Boolean(verifiedHoya) && current !== "me";
 }
 
 export function portalMoreItems(role: Role): NavItem[] {
   const items: NavItem[] = [
     { href: "/feed", label: "For You", key: "feed" },
-    { href: "/board", label: "Board", key: "board" },
     { href: "/directory", label: "Profile", key: "profile" },
     { href: "/find-my-alum", label: "Find My Alum", key: "find-my-alum" },
     { href: "/me", label: "My record", key: "me" },
