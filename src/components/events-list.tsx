@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { EventFiltersForm } from "@/components/event-filters";
 import { PageHeader, pillClass } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { canCreateEvents, type EventActor } from "@/lib/event-auth";
 import { formatEventWhen } from "@/lib/event-datetime";
+import { eventsHref, type EventListFilters } from "@/lib/event-filters";
 import type { EventListItem, EventTab } from "@/lib/event-types";
 
 const TABS: { id: EventTab; label: string }[] = [
@@ -13,12 +15,9 @@ const TABS: { id: EventTab; label: string }[] = [
   { id: "mine", label: "My Events" },
 ];
 
-function tabHref(tab: EventTab) {
-  return tab === "upcoming" ? "/events" : `/events?tab=${tab}`;
-}
-
 export function EventsList({
   actor,
+  filters,
   tab,
   rows,
   upcomingCount,
@@ -28,6 +27,7 @@ export function EventsList({
   forbidden,
 }: {
   actor: EventActor;
+  filters: EventListFilters;
   tab: EventTab;
   rows: EventListItem[];
   upcomingCount: number;
@@ -41,12 +41,13 @@ export function EventsList({
     past: pastCount,
     mine: mineCount,
   };
-  const canCreate = canCreateEvents(actor.role);
+  const canCreate = canCreateEvents(actor);
+  const listHref = eventsHref(filters);
   const emptyCopy =
     tab === "upcoming"
-      ? "No upcoming events yet. Admin, Board, or Alum can create one."
+      ? "No upcoming events match these filters. Admin, Board, or Alum can post one."
       : tab === "past"
-        ? "No past events yet."
+        ? "No past events match these filters."
         : "Events you create or add appear here.";
 
   return (
@@ -54,7 +55,7 @@ export function EventsList({
       <PageHeader
         eyebrow="Program"
         title="Events"
-        description="Upcoming, past, and events you created or added. Anyone signed in (Admin, Board, or Alum) can post an event."
+        description="Filter by upcoming or past, then search or narrow by category. Admin, Board, or Alum can post."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
@@ -76,16 +77,16 @@ export function EventsList({
         <p className="rounded-xl border bg-card px-4 py-3 text-sm text-navy shadow-[var(--shadow-xs)]">Event saved.</p>
       ) : null}
       {forbidden ? (
-        <p className="text-sm text-destructive">Sign in as Alum, Board, or Admin to create an event.</p>
+        <p className="text-sm text-destructive">Sign in as Admin, Board, or Alum to post an event.</p>
       ) : null}
 
-      <nav className="flex flex-wrap gap-2" aria-label="Event lists">
+      <nav className="flex flex-wrap gap-2" aria-label="When">
         {TABS.map((item) => {
           const active = item.id === tab;
           return (
             <Link
               key={item.id}
-              href={tabHref(item.id)}
+              href={eventsHref({ ...filters, tab: item.id })}
               aria-current={active ? "page" : undefined}
               className={pillClass(active)}
             >
@@ -94,6 +95,8 @@ export function EventsList({
           );
         })}
       </nav>
+
+      <EventFiltersForm filters={filters} />
 
       {rows.length === 0 ? (
         <StatusCard title="No events in this list" body={emptyCopy} />
@@ -125,7 +128,7 @@ export function EventsList({
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <form action={`/api/events/${event.id}/rsvp`} method="post">
-                      <input type="hidden" name="next" value={tabHref(tab)} />
+                      <input type="hidden" name="next" value={listHref} />
                       <Button type="submit" variant="outline" size="sm">
                         {event.rsvped ? "Remove from My Events" : "Add to My Events"}
                       </Button>

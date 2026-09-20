@@ -124,7 +124,9 @@ describe("event actor sessions", () => {
       alumToken: createHoyaAlumSessionToken("alum", "Alum"),
     });
     assert.equal(staff?.role, "coach");
+    assert.equal(staff?.platformRole, "admin");
     assert.equal(staff?.username, "Hoyas");
+    assert.equal(canCreateEvents(staff), true);
 
     const claimed = eventActorFromTokens({
       alumToken: createAlumSessionToken({
@@ -135,15 +137,26 @@ describe("event actor sessions", () => {
       }),
     });
     assert.equal(claimed?.role, "alum");
+    assert.equal(claimed?.platformRole, "alum");
     assert.equal(claimed?.alumId, "33333333-3333-3333-3333-333333333333");
     assert.equal(claimed?.userId, "33333333-3333-3333-3333-333333333333");
+    assert.equal(canCreateEvents(claimed), true);
 
     const locker = eventActorFromTokens({
       alumToken: createHoyaAlumSessionToken("alum", "Alum"),
     });
     assert.equal(locker?.role, "alum");
+    assert.equal(locker?.platformRole, "alum");
     assert.equal(locker?.username, "Alum");
     assert.equal(locker?.alumId, null);
+    assert.equal(canCreateEvents(locker), true);
+
+    const board = eventActorFromTokens({
+      alumToken: createHoyaAlumSessionToken("board", "Board"),
+    });
+    assert.equal(board?.role, "board");
+    assert.equal(board?.platformRole, "board");
+    assert.equal(canCreateEvents(board), true);
   });
 });
 

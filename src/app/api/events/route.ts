@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   if (!actor) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!canCreateEvents(actor.role)) {
+  if (!canCreateEvents(actor)) {
     return redirectWithError(request, "/events", "forbidden");
   }
 

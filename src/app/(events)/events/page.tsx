@@ -3,8 +3,8 @@ import { EventsList } from "@/components/events-list";
 import { PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { getEventActor } from "@/lib/event-actor";
+import { parseEventFilters } from "@/lib/event-filters";
 import { listEvents } from "@/lib/event-queries";
-import { parseEventTab } from "@/lib/event-types";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { getLockerViewer } from "@/lib/locker-viewer";
 
@@ -16,7 +16,7 @@ export default async function EventsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const tab = parseEventTab(params.tab);
+  const filters = parseEventFilters(params);
   const [actor, locker] = await Promise.all([getEventActor(), getLockerViewer()]);
 
   if (!actor) {
@@ -30,12 +30,13 @@ export default async function EventsPage({
   }
 
   try {
-    const result = await listEvents(tab, actor);
+    const result = await listEvents(filters.tab, actor, filters);
     return (
       <EventsChrome locker={locker}>
         <PageMain>
           <EventsList
             actor={actor}
+            filters={filters}
             tab={result.tab}
             rows={result.rows}
             upcomingCount={result.upcomingCount}
