@@ -1,3 +1,4 @@
+import { attendancePersonFromActor } from "@/lib/event-attendance";
 import { isEventCategory, type EventActor, type EventCategory } from "@/lib/event-auth";
 import { ensureEventTables, seedDemoEventsIfEmpty } from "@/lib/event-schema";
 import type { EventListItem, EventListResult, EventTab } from "@/lib/event-types";
@@ -29,12 +30,14 @@ function mapEventRow(row: Record<string, unknown>, username: string): EventListI
     created_by_role: row.created_by_role === "board" ? "board" : "coach",
     created_by_me: createdBy.toLowerCase() === username.toLowerCase(),
     rsvped: Boolean(row.rsvped),
+    checked_in: Boolean(row.checked_in),
   };
 }
 
 export async function listEvents(tab: EventTab, actor: EventActor): Promise<EventListResult> {
   await readyEventStore();
   const username = actor.username;
+  const personKey = attendancePersonFromActor(actor).personKey;
 
   const [rows, counts] = await Promise.all([
     query<Record<string, unknown>[]>(
@@ -52,7 +55,11 @@ export async function listEvents(tab: EventTab, actor: EventActor): Promise<Even
           EXISTS (
             SELECT 1 FROM event_rsvps r
             WHERE r.event_id = e.id AND lower(r.attendee_key) = lower($1)
-          ) AS rsvped
+          ) AS rsvped,
+          EXISTS (
+            SELECT 1 FROM event_checkins a
+            WHERE a.event_id = e.id AND a.attendee_key = $3
+          ) AS checked_in
         FROM events e
         WHERE
           CASE
@@ -70,7 +77,7 @@ export async function listEvents(tab: EventTab, actor: EventActor): Promise<Even
           CASE WHEN $2 = 'past' THEN e.starts_at END DESC NULLS LAST,
           CASE WHEN $2 <> 'past' THEN e.starts_at END ASC NULLS LAST
       `,
-      [username, tab],
+      [username, tab, personKey],
     ),
     query<Record<string, unknown>[]>(
       `

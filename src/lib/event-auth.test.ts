@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { canCreateEvents, parseUsernameList, resolveEventRole } from "@/lib/event-auth";
+import { canCreateEvents, canOverrideEventCheckIn, parseUsernameList, resolveEventRole } from "@/lib/event-auth";
 
 const originalBoard = process.env.HOYA_BOARD_USERNAMES;
 const originalAlum = process.env.HOYA_ALUM_USERNAMES;
@@ -22,6 +22,8 @@ test("Create Event is allowed for coach and board only", () => {
   assert.equal(canCreateEvents("board"), true);
   assert.equal(canCreateEvents("alum"), false);
   assert.equal(canCreateEvents(null), false);
+  assert.equal(canOverrideEventCheckIn("coach"), true);
+  assert.equal(canOverrideEventCheckIn("alum"), false);
 });
 
 test("shared staff login (Hoyas) resolves to coach", () => {

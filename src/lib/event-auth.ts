@@ -18,6 +18,10 @@ export type EventRole = "coach" | "board" | "alum";
 export type EventActor = {
   username: string;
   role: EventRole;
+  /** Claimed alumni UUID when the contract `hoya_alum_session` has a real alumniId. */
+  alumId?: string | null;
+  /** Stable consumer id for Coder 3 (`alumId` when claimed, else username/label). */
+  userId?: string | null;
 };
 
 /**
@@ -73,8 +77,13 @@ export function canCreateEvents(role: EventRole | null | undefined) {
   return role === "coach" || role === "board";
 }
 
+/** Staff can check someone else in and restamp an existing row. Alum cannot. */
+export function canOverrideEventCheckIn(role: EventRole | null | undefined) {
+  return role === "coach" || role === "board";
+}
+
 export function getEventActorFromToken(token: string | undefined | null): EventActor | null {
   const username = getSessionUsername(token);
   if (!username) return null;
-  return { username, role: resolveEventRole(username) };
+  return { username, role: resolveEventRole(username), alumId: null, userId: username };
 }

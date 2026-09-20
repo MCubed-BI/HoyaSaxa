@@ -79,7 +79,9 @@ describe("locker paths", () => {
     assert.equal(isLockerPath("/newsflash"), true);
     assert.equal(isLockerPath("/board"), true);
     assert.equal(isLockerPath("/events"), true);
+    assert.equal(isLockerPath("/events/check-in"), true);
     assert.equal(isLockerPath("/api/events"), true);
+    assert.equal(isLockerPath("/api/events/attendance/feed"), true);
     assert.equal(isLockerPath("/"), false);
     assert.equal(isLockerPath("/register"), false);
     assert.equal(loginPathFor("/newsflash"), "/home/login");

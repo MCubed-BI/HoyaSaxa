@@ -27,9 +27,7 @@ export async function ensureEventTables() {
       UNIQUE (event_id, attendee_key)
     )
   `);
-  await sql.query(`CREATE INDEX IF NOT EXISTS idx_events_starts_at ON events (starts_at)`);
-  await sql.query(`CREATE INDEX IF NOT EXISTS idx_events_created_by ON events (created_by)`);
-  await sql.query(`CREATE INDEX IF NOT EXISTS idx_event_rsvps_attendee ON event_rsvps (attendee_key)`);
+  // PR #17 stub contract — Coder 3 computeEventTopBadge reads this table.
   await sql.query(`
     CREATE TABLE IF NOT EXISTS event_checkins (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -39,8 +37,19 @@ export async function ensureEventTables() {
       checked_in_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  await sql.query(`ALTER TABLE event_checkins ADD COLUMN IF NOT EXISTS display_name text`);
+  await sql.query(`ALTER TABLE event_checkins ADD COLUMN IF NOT EXISTS checked_in_by text`);
+  await sql.query(`ALTER TABLE event_checkins ADD COLUMN IF NOT EXISTS source text`);
+  await sql.query(`CREATE INDEX IF NOT EXISTS idx_events_starts_at ON events (starts_at)`);
+  await sql.query(`CREATE INDEX IF NOT EXISTS idx_events_created_by ON events (created_by)`);
+  await sql.query(`CREATE INDEX IF NOT EXISTS idx_event_rsvps_attendee ON event_rsvps (attendee_key)`);
   await sql.query(`CREATE INDEX IF NOT EXISTS idx_event_checkins_alumni ON event_checkins (alumni_id)`);
   await sql.query(`CREATE INDEX IF NOT EXISTS idx_event_checkins_event ON event_checkins (event_id)`);
+  await sql.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS event_checkins_event_attendee
+    ON event_checkins (event_id, attendee_key)
+    WHERE attendee_key IS NOT NULL
+  `);
 }
 
 export async function seedDemoEventsIfEmpty() {
