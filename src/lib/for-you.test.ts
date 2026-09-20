@@ -9,6 +9,7 @@ import {
 import { feedPostToCard, forYouEmptyCopy, forYouHeading, identityFromLabel } from "./for-you";
 import { DEMO_FEED, DEMO_NEWSFLASH, filterFeedPostsBySection, newsflashToFeedPost } from "./locker-data";
 import { portalMoreItems, portalSecondaryItems, navItemsForRole } from "./nav";
+import { PRODUCT_DISPLAY_NAME } from "./product";
 
 describe("for you myspace stack", () => {
   it("uses PR #17 feed keys only", () => {
@@ -56,5 +57,9 @@ describe("for you myspace stack", () => {
     );
     assert.equal(portalSecondaryItems().some((item) => item.key === "feed"), true);
     assert.equal(portalSecondaryItems().some((item) => item.key === "board"), true);
+  });
+
+  it("locks chrome display name to Georgetown Football Alum Network", () => {
+    assert.equal(PRODUCT_DISPLAY_NAME, "Georgetown Football Alum Network");
   });
 });

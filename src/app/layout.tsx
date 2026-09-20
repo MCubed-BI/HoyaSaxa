@@ -15,11 +15,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  applicationName: PRODUCT_DISPLAY_NAME,
   title: {
     default: PRODUCT_DISPLAY_NAME,
     template: `%s · ${PRODUCT_DISPLAY_NAME}`,
   },
   description: "Coach Sgarlata's Georgetown football alumni directory and outreach lists.",
+  appleWebApp: {
+    title: PRODUCT_DISPLAY_NAME,
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
