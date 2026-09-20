@@ -124,4 +124,154 @@
     background-color: var(--card);
     box-shadow: var(--shadow-card);
   }
+
+  /* For You hooks for Web Designer. Myspace = profile + stacked feeds, navy/charcoal/white. */
+  .for-you {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .for-you__identity {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.875rem 1rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .for-you__identity-copy {
+    min-width: 0;
+  }
+
+  .for-you__identity-name {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--navy);
+    letter-spacing: -0.03em;
+  }
+
+  .for-you__identity-class {
+    margin-top: 0.125rem;
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+  }
+
+  .for-you__identity-locker {
+    display: inline-block;
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--navy);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .for-you__feeds {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 0;
+  }
+
+  .for-you__brothers,
+  .for-you__board,
+  .for-you__sgarlata {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .for-you__section-label {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: var(--navy);
+  }
+
+  .for-you__empty {
+    padding: 0.875rem 1rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card);
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+  }
+
+  .for-you__cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .for-you-card {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem 0.875rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .for-you-card__main {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .for-you-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .for-you-card__name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--navy);
+  }
+
+  .for-you-card__title {
+    margin-top: 0.125rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .for-you-card__body {
+    margin-top: 0.125rem;
+    white-space: pre-wrap;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--foreground);
+  }
+
+  .for-you-card__media {
+    margin-top: 0.5rem;
+    max-height: 12rem;
+    width: 100%;
+    border-radius: calc(var(--radius) * 0.8);
+    object-fit: cover;
+  }
+
+  @media (min-width: 768px) {
+    .for-you {
+      display: grid;
+      grid-template-columns: 14rem minmax(0, 1fr);
+      align-items: start;
+      gap: 1.75rem;
+    }
+
+    .for-you__identity {
+      position: sticky;
+      top: 4.75rem;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
 }

@@ -1,6 +1,6 @@
 # HoyaSaxa
 
-Georgetown football alumni CRM (Hoya Football / Georgetown Alum).
+Georgetown Football Alum Network — Georgetown football alumni CRM (repo stays HoyaSaxa).
 
 Coach-facing CRM for Georgetown football alumni, plus an alumnus portal for claimed players. Head Coach Sgarlata can search the directory, open a player card, and send in-app text or email blasts. Claimed alumni see a separate alum shell.
 
@@ -136,7 +136,7 @@ Alumni-facing Home, For You feed, and Board (legacy Newsflash). They use the exi
 | --- | --- | --- |
 | `/home/login` | public | Sets `hoya_alum_session` with `role=board` or `role=alum` |
 | `/home` | locker or staff session | Welcome hero, quick actions, upcoming event, recent activity |
-| `/feed` | locker or staff session | Sections `brothers` / `board` / `sgarlata` plus For You tabs |
+| `/feed` | locker or staff session | Myspace For You: identity strip + stacked `brothers` / `board` / `sgarlata` |
 | `/board` | locker or staff session | Board publishes; alumni read. `/newsflash` redirects here |
 
 ### Locker demo session
@@ -153,7 +153,7 @@ Verify:
 
 1. Open `/home/login`, sign in as `Lars` / `Sgarlata35` (Admin). Confirm Home hero, quick actions, upcoming event, and recent activity.
 2. Open `/board` as Admin or `Board` and publish a headline. Confirm it appears for an `Alum` session after sign-out / sign-in. `/newsflash` redirects to `/board`.
-3. Open `/feed`. For You shows official + alumni/Brothers posts. Alum can compose a Brothers post. Teammates and Following are stubs.
+3. Open `/feed`. For You shows pic + name + class year + locker link, then From Your Brothers / From Your Board / From Sgarlata. Alum can compose a Brothers post. `/newsflash` still redirects to `/board`.
 
 ### Seed dependency
 
@@ -176,7 +176,7 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/me` — edit claimed records or merge a duplicate
 - `/portal` — alum entry; redirects to `/home`
 - `/home` — Welcome hero, Directory/Events/News/Giving, upcoming event, recent activity
-- `/feed` — Brothers / Board / From Sgarlata plus For You / Teammates / Alumni / Following
+- `/feed` — For You (Myspace identity rail + Brothers / Board / Sgarlata). Keys stay `brothers` | `board` | `sgarlata`
 - `/board` — Board section (admin + board publish, alumni read). `/newsflash` redirects here
 - `/events` — Upcoming / Past / My Events (date, title, category, location, thumbnail)
 - `/events/new` — Create Event (coach and board only)
