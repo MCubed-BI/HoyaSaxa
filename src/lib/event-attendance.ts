@@ -2,9 +2,12 @@
  * Event check-in persistence for the PR #17 `event_checkins` stub.
  * RSVP (`event_rsvps`) is not attendance. Do not add a parallel table.
  */
+import { percentileFromRank } from "@/lib/badges";
 import { canOverrideEventCheckIn, type EventActor } from "@/lib/event-auth";
 import { ensureEventTables, seedDemoEventsIfEmpty } from "@/lib/event-schema";
 import { getSql } from "@/lib/db";
+
+export { percentileFromRank };
 
 async function readyAttendanceStore() {
   await ensureEventTables();
@@ -114,17 +117,7 @@ export function resolveCheckInAction(input: {
   return input.canOverride ? "override" : "forbidden-override";
 }
 
-/**
- * Same formula as PR #17 `src/lib/badges.ts` `percentileFromRank`.
- * Rank 1 of N → 100. Coder 3 applies ≥99 Platinum, ≥90 Gold, ≥75 Silver, ≥50 Bronze.
- */
-export function percentileFromRank(rank: number, population: number) {
-  if (!Number.isFinite(rank) || !Number.isFinite(population) || rank < 1 || population < 1) {
-    return 0;
-  }
-  return (1 - (rank - 1) / population) * 100;
-}
-
+/** Re-export of PR #17 `percentileFromRank` (rank 1 of N → 100). */
 export const attendancePercentile = percentileFromRank;
 
 export function rankByCount<T extends { attendanceCount: number }>(rows: T[]) {
