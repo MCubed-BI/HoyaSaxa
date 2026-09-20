@@ -40,7 +40,7 @@ export function BrandMark({
           compact ? "size-8 text-[13px]" : "size-9 text-sm",
           inverted
             ? "bg-white text-navy ring-white/20"
-            : "bg-navy text-white shadow-[var(--shadow-xs)] ring-gold/70",
+            : "bg-navy text-white shadow-[var(--shadow-xs)] ring-silver/80",
         )}
       >
         HS

@@ -41,6 +41,9 @@
   --color-card: var(--card);
   --color-navy: var(--navy);
   --color-navy-foreground: var(--navy-foreground);
+  --color-silver: var(--silver);
+  --color-silver-foreground: var(--silver-foreground);
+  --color-silver-strong: var(--silver-strong);
   --color-gold: var(--gold);
   --color-gold-foreground: var(--gold-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
@@ -53,9 +56,12 @@
 }
 
 :root {
-  /* Locked system: deep navy / charcoal / white. Gold is a brand hairline only. */
+  /* Locked chrome: navy + silver/steel. Gold stays a donor/rank token, not a header accent. */
   --navy: #041e42;
   --navy-foreground: #f4f4f5;
+  --silver: #c5ccd4;
+  --silver-foreground: #041e42;
+  --silver-strong: #9aa4af;
   --gold: #b9975b;
   --gold-foreground: #041e42;
   --background: #f2f3f4;
