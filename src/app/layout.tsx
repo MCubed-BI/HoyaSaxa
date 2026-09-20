@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
-import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
+import { PRODUCT_DESCRIPTION, PRODUCT_DISPLAY_NAME } from "@/lib/product";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,10 +20,14 @@ export const metadata: Metadata = {
     default: PRODUCT_DISPLAY_NAME,
     template: `%s · ${PRODUCT_DISPLAY_NAME}`,
   },
-  description: "Coach Sgarlata's Georgetown football alumni directory and outreach lists.",
+  description: PRODUCT_DESCRIPTION,
   appleWebApp: {
     title: PRODUCT_DISPLAY_NAME,
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#041e42",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

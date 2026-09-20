@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -7,6 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
 import { homePathForRole, resolveRoleFromEnv } from "@/lib/roles";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+};
 
 function safeNextPath(value: string | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "";

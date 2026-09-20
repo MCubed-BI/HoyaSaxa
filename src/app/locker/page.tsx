@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth-shell";
@@ -6,6 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SESSION_COOKIE, isValidSessionToken } from "@/lib/auth";
 import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
+
+export const metadata: Metadata = {
+  title: "Alumni messages",
+};
 
 function safeNextPath(value: string | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/messages";
