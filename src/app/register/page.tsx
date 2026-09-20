@@ -23,9 +23,9 @@ export default async function RegisterPage() {
     >
       <RegisterMyself />
       <p className="text-center text-sm text-muted-foreground">
-        Coaching staff?{" "}
+        Admin?{" "}
         <Link href="/login" className="text-navy underline-offset-4 hover:underline">
-          Coach login
+          Admin login
         </Link>
       </p>
     </AuthShell>

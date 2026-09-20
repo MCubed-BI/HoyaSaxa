@@ -44,7 +44,7 @@ export default async function AlumniLoginPage({
         {params.error ? (
           <p className="text-sm text-destructive">That email or password is not recognized.</p>
         ) : (
-          <p className="text-sm text-muted-foreground">This login is for alumni only. Coach access stays on the staff page.</p>
+          <p className="text-sm text-muted-foreground">This login is for alumni only. Admin access stays on the Admin login page.</p>
         )}
         <Button type="submit" className="w-full">
           Sign in
@@ -57,7 +57,7 @@ export default async function AlumniLoginPage({
         </Link>
         {" · "}
         <Link href="/login" className="text-navy underline-offset-4 hover:underline">
-          Coach login
+          Admin login
         </Link>
       </p>
     </AuthShell>

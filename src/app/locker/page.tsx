@@ -57,7 +57,7 @@ export default async function LockerPage({
           <p className="text-sm text-destructive">That access code is not recognized.</p>
         ) : (
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Staff still sign in at the coach login to post.
+            Admins still sign in at Admin login to post.
           </p>
         )}
         <Button type="submit" className="h-10 w-full">
