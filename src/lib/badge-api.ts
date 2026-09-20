@@ -28,19 +28,19 @@
  *   attendanceLeadersFromCoder4Feed,
  * } from "@/lib/badge-api";
  *
- * // After Coder 4 Ready PR lands:
- * const feed = await listEventCheckinFeed({ alumId });
+ * const feed = await listEventCheckinFeed({ alumId }); // Coder 4 PR #15
  * const totals = await getAlumAttendanceTotals(alumId);
  * const eventBadge = eventBadgeFromCoder4Totals(totals);
  * const badges = await listPublicBadgesMany(ids, {
  *   attendanceLeaders: attendanceLeadersFromCoder4Feed(feed),
  * });
+ *
+ * // Until #15 is on this tree, loaders use consumeEventCheckinFeed
+ * // (SELECT-only Coder 4 shape from event_checkins — never INSERT).
  * ```
  *
  * HTTP: `GET /api/badges/:alumniId` → `{ alumniId, badges: PublicBadge[] }`
- *
- * Until Coder 4's feed is on main, loaders fall back to a SELECT-only
- * count of `event_checkins` (never INSERT).
+ * Coder 4 HTTP: `GET /api/events/attendance/feed` (+ `?alumId=` → `{ alum, feed }`)
  */
 export { HoyaBadge, HoyaBadgeRow } from "@/components/hoya-badges";
 export { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";
@@ -53,7 +53,9 @@ export {
   badgeLabel,
   computeDonorBadge,
   computeEventTopBadge,
+  consumeEventCheckinFeed,
   donorBadgeType,
+  eventSlugFromTitle,
   eventBadgeFromCoder4Row,
   eventBadgeFromCoder4Totals,
   eventTierFromCoder4Feed,
@@ -81,9 +83,3 @@ export {
   type EventBadgeTotals,
   type EventCheckinFeedRow,
 } from "@/lib/badge-event-feed";
-
-export {
-  coder4AttendanceFeedAvailable,
-  tryCoder4AlumAttendanceTotals,
-  tryCoder4AttendanceLeaders,
-} from "@/lib/consume-coder4-feed";

@@ -9,6 +9,7 @@ import {
   donorTierForAlumniId,
   eventBadgeFromCoder4Row,
   eventBadgeFromCoder4Totals,
+  eventSlugFromTitle,
   eventTierForAlumniId,
   eventTierFromCoder4Feed,
   percentileFromRank,
@@ -178,5 +179,10 @@ describe("badge primitives", () => {
     const leaders = attendanceLeadersFromCoder4Feed(payload);
     assert.deepEqual(leaders, [payload.alum]);
     assert.equal(JSON.stringify(leaders).includes("$"), false);
+  });
+
+  it("builds Coder 4 eventSlug from title + eventId", () => {
+    assert.equal(eventSlugFromTitle("Spring Game", "aaaaaaaa-bbbb-cccc-dddd-eeeeffff0000"), "spring-game-aaaaaaaa");
+    assert.equal(eventSlugFromTitle("", "evt-1"), "evt-1");
   });
 });
