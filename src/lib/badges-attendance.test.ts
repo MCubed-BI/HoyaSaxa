@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { attendanceLeadersFromLiveFeed } from "./badges-attendance";
+import { attendanceLeadersFromLiveFeed, eventBadgeFromAttendanceLeader } from "./badges-attendance";
 import { eventBadgeFromCoder4Totals } from "./badges";
+import { SEED_ADMIN_ALUMNI_ID } from "./platform-roles";
 import {
   ATTENDANCE_BADGE_FEED_VERSION,
   ATTENDANCE_BADGE_THRESHOLDS_NOTE,
@@ -101,5 +102,37 @@ describe("live attendance feed consume", () => {
       label: "Top Tailgate · Gold",
       tier: "gold",
     });
+  });
+
+  it("maps displayName Mike / Hoyas-style leaders to Top Tailgate chips", () => {
+    const leaders = attendanceLeadersFromLiveFeed({
+      version: ATTENDANCE_BADGE_FEED_VERSION,
+      attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
+      rankBasis: ATTENDANCE_RANK_BASIS,
+      thresholdsNote: ATTENDANCE_BADGE_THRESHOLDS_NOTE,
+      rows: [],
+      leaders: [
+        {
+          personKey: "user:mike",
+          alumId: null,
+          userId: "Mike",
+          displayName: "Mike",
+          attendanceCount: 4,
+          attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
+          lastCheckedInAt: "2026-04-01T16:00:00.000Z",
+          rank: 1,
+          percentile: 100,
+          cohortSize: 4,
+        },
+      ],
+    });
+    assert.deepEqual(leaders.map((row) => row.alumId), [SEED_ADMIN_ALUMNI_ID]);
+    assert.deepEqual(eventBadgeFromAttendanceLeader(leaders[0]!), {
+      type: "event_top_platinum",
+      label: "Top Tailgate · Platinum",
+      tier: "platinum",
+    });
+    assert.equal(JSON.stringify(eventBadgeFromAttendanceLeader(leaders[0]!)).includes("$"), false);
+    assert.equal(JSON.stringify(eventBadgeFromAttendanceLeader(leaders[0]!)).includes("#1"), false);
   });
 });

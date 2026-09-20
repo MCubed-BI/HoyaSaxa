@@ -61,6 +61,7 @@ export {
   eventBadgeFromCoder4Totals,
   eventTierFromCoder4Feed,
   eventTopBadgeType,
+  hasUsableAttendanceRank,
   grantVerifiedHoya,
   grantVerifiedHoyaForAlumSession,
   isBadgeType,

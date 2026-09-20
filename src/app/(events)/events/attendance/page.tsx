@@ -3,6 +3,8 @@ import { EventsChrome } from "@/components/events-chrome";
 import { PageHeader, PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { Button } from "@/components/ui/button";
+import { HoyaBadgeRow } from "@/components/hoya-badges";
+import { eventBadgeFromAttendanceLeader } from "@/lib/badges-attendance";
 import { attendancePersonFromActor, listAttendanceLeaders } from "@/lib/event-attendance";
 import { getEventActor } from "@/lib/event-actor";
 import { isMissingDatabaseConfig } from "@/lib/db";
@@ -32,7 +34,7 @@ export default async function EventAttendanceLeaderboardPage() {
           <PageHeader
             eyebrow="Events"
             title="Who attends the most"
-            description="Lifetime check-ins across all events (not a season window). Raw rank and percentile are exported for Coder 3 badges — this page is not the badge UI."
+            description="Lifetime check-ins across all events. Top Tailgate chips use the same ranks as GET /api/events/attendance/feed — never raw $."
             actions={
               <Button asChild variant="outline">
                 <Link href="/events/check-in">Check in</Link>
@@ -45,19 +47,22 @@ export default async function EventAttendanceLeaderboardPage() {
             <ol className="divide-y overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
               {leaders.map((row) => {
                 const mine = row.personKey === me;
+                const badge = eventBadgeFromAttendanceLeader(row);
                 return (
                   <li
                     key={row.personKey}
                     className="flex flex-wrap items-baseline justify-between gap-3 px-4 py-3"
                     aria-current={mine ? "true" : undefined}
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0 space-y-1">
                       <p className="font-medium">
-                        #{row.rank} {row.displayName}
+                        {row.displayName}
                         {mine ? " · you" : ""}
                       </p>
+                      {badge ? <HoyaBadgeRow badges={[badge]} /> : null}
                       <p className="text-sm text-muted-foreground">
-                        Lifetime {row.attendanceCount} · top {row.percentile.toFixed(1)}% of {row.cohortSize}
+                        Lifetime {row.attendanceCount}
+                        {badge ? "" : ` · #${row.rank}`}
                       </p>
                     </div>
                   </li>

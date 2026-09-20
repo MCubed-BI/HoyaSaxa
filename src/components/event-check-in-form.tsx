@@ -1,7 +1,9 @@
+import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { PublicBadge } from "@/lib/badges";
 
 export function EventCheckInForm({
   eventId,
@@ -12,6 +14,7 @@ export function EventCheckInForm({
   rank,
   percentile,
   checkedInAt,
+  eventBadge = null,
 }: {
   eventId: string;
   actorName: string;
@@ -21,6 +24,7 @@ export function EventCheckInForm({
   rank: number | null;
   percentile: number | null;
   checkedInAt: string | null;
+  eventBadge?: PublicBadge | null;
 }) {
   return (
     <Card>
@@ -29,16 +33,17 @@ export function EventCheckInForm({
       </CardHeader>
       <CardContent className="space-y-4">
         {alreadyCheckedIn ? (
-          <p className="text-sm text-muted-foreground">
-            {checkedInAt
-              ? `Recorded ${new Date(checkedInAt).toLocaleString("en-US", { timeZone: "America/New_York" })} ET.`
-              : "A durable attendance row already exists for you at this event."}
-            {lifetimeCount > 0
-              ? ` Lifetime attendance: ${lifetimeCount}${rank ? ` · rank #${rank}` : ""}${
-                  percentile != null ? ` · top ${percentile.toFixed(1)}%` : ""
-                }.`
-              : ""}
-          </p>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              {checkedInAt
+                ? `Recorded ${new Date(checkedInAt).toLocaleString("en-US", { timeZone: "America/New_York" })} ET.`
+                : "A durable attendance row already exists for you at this event."}
+              {lifetimeCount > 0 ? ` Lifetime attendance: ${lifetimeCount}.` : ""}
+              {!eventBadge && rank ? ` Rank #${rank}.` : ""}
+              {!eventBadge && percentile != null ? ` Top ${percentile.toFixed(1)}%.` : ""}
+            </p>
+            {eventBadge ? <HoyaBadgeRow badges={[eventBadge]} /> : null}
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">
             Checking in as <span className="font-medium text-foreground">{actorName}</span>. Repeat visits stay one
