@@ -37,5 +37,12 @@ export async function ensureGivingPledgesTable() {
     `);
   }
 
+  await sql.query(`ALTER TABLE giving_pledges ADD COLUMN IF NOT EXISTS alumni_id uuid`);
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS giving_pledges_alumni_id
+    ON giving_pledges (alumni_id)
+    WHERE alumni_id IS NOT NULL
+  `);
+
   ensured = true;
 }

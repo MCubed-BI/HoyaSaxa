@@ -66,9 +66,40 @@ describe("live attendance feed consume", () => {
     const badge = eventBadgeFromCoder4Totals(leaders[0]);
     assert.deepEqual(badge, {
       type: "event_top_platinum",
-      label: "Event top · Platinum",
+      label: "Top Tailgate · Platinum",
       tier: "platinum",
     });
     assert.equal(JSON.stringify(badge).includes("$"), false);
+  });
+
+  it("maps alum:<uuid> personKey leaders to Top Tailgate when alumId is null", () => {
+    const alumId = "c8fc1d9c-d5a7-445d-8e59-b2bddd53d136";
+    const leaders = attendanceLeadersFromLiveFeed({
+      version: ATTENDANCE_BADGE_FEED_VERSION,
+      attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
+      rankBasis: ATTENDANCE_RANK_BASIS,
+      thresholdsNote: ATTENDANCE_BADGE_THRESHOLDS_NOTE,
+      rows: [],
+      leaders: [
+        {
+          personKey: `alum:${alumId}`,
+          alumId: null,
+          userId: alumId,
+          displayName: "Mike",
+          attendanceCount: 3,
+          attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
+          lastCheckedInAt: "2026-04-01T16:00:00.000Z",
+          rank: 2,
+          percentile: 90,
+          cohortSize: 10,
+        },
+      ],
+    });
+    assert.deepEqual(leaders.map((row) => row.alumId), [alumId]);
+    assert.deepEqual(eventBadgeFromCoder4Totals(leaders[0]), {
+      type: "event_top_gold",
+      label: "Top Tailgate · Gold",
+      tier: "gold",
+    });
   });
 });

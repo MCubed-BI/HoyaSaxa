@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isPreviewAlumSession, readAlumSessionFromCookies } from "@/lib/alum-session";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import {
   MAX_PLEDGE_CENTS,
@@ -71,9 +72,12 @@ export async function POST(request: Request) {
   const wantsJson = contentType.includes("application/json");
 
   try {
+    const session = await readAlumSessionFromCookies();
+    const alumniId = session && !isPreviewAlumSession(session) ? session.alumniId : null;
     const pledge = await createGivingPledge({
       amountCents,
       donorLabel: normalizeDonorLabel(body.donorLabel ?? body.donor_label),
+      alumniId,
     });
     if (!wantsJson) {
       return NextResponse.redirect(new URL("/giving?recorded=1", request.url), { status: 303 });

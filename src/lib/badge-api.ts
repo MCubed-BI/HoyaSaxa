@@ -12,11 +12,11 @@
  * // or: import { HoyaBadge, HoyaBadgeRow } from "@/lib/badge-api";
  *
  * <HoyaBadge badge={badge} />                 // PublicBadge | BadgeType
- * <HoyaBadgeRow badges={badges} />            // labels only — no $
+ * <HoyaBadgeRow badges={badges} />            // Verified Hoya / Donor / Top Tailgate — no $
  * ```
  *
  * `PublicBadge` = `{ type, label, tier }` where type is
- *   verified_hoya | donor_platinum|gold|silver|bronze | event_top_*
+ *   verified_hoya | donor_platinum|gold|silver|bronze | event_top_* (Top Tailgate)
  *
  * --- Loaders ---
  *
@@ -79,6 +79,9 @@ export {
   EVENT_BADGE_FEED_VERSION,
   attendanceLeadersFromCoder4Feed,
   eventBadgeFeedFromCoder4Json,
+  isAlumniUuid,
+  normalizeAlumniId,
+  resolveFeedAlumId,
   type Coder4AttendanceFeedResponse,
   type EventBadgeFeed,
   type EventBadgeFeedRow,

@@ -15,6 +15,8 @@
 import { isPreviewAlumniId } from "@/lib/alum-preview";
 import {
   attendanceLeadersFromCoder4Feed,
+  isAlumniUuid,
+  normalizeAlumniId,
   type EventBadgeFeed,
   type EventBadgeFeedRow,
   type EventBadgeTotals,
@@ -50,10 +52,10 @@ export const BADGE_LABELS: Record<BadgeType, string> = {
   donor_gold: "Donor · Gold",
   donor_silver: "Donor · Silver",
   donor_bronze: "Donor · Bronze",
-  event_top_platinum: "Event top · Platinum",
-  event_top_gold: "Event top · Gold",
-  event_top_silver: "Event top · Silver",
-  event_top_bronze: "Event top · Bronze",
+  event_top_platinum: "Top Tailgate · Platinum",
+  event_top_gold: "Top Tailgate · Gold",
+  event_top_silver: "Top Tailgate · Silver",
+  event_top_bronze: "Top Tailgate · Bronze",
 };
 
 /** Public badge — no cents, no dollars, no raw rank numbers required by UI. */
@@ -273,7 +275,8 @@ async function loadDonorTotals(): Promise<DonorTotal[]> {
       `,
     )) as Array<{ key: string; total_cents: string | number }>;
     for (const row of rows) {
-      totals.set(row.key, Number(row.total_cents) || 0);
+      const key = normalizeAlumniId(row.key);
+      if (key) totals.set(key, Number(row.total_cents) || 0);
     }
   }
 
@@ -296,7 +299,33 @@ async function loadDonorTotals(): Promise<DonorTotal[]> {
         `,
       )) as Array<{ key: string; total_cents: string | number }>;
       for (const row of rows) {
-        totals.set(row.key, (totals.get(row.key) ?? 0) + (Number(row.total_cents) || 0));
+        const key = normalizeAlumniId(row.key);
+        if (key) totals.set(key, (totals.get(key) ?? 0) + (Number(row.total_cents) || 0));
+      }
+    }
+    if (names.has("donor_label")) {
+      try {
+        const rows = (await sql.query(
+          `
+          SELECT a.id::text AS key, COALESCE(SUM(g.amount_cents), 0)::bigint AS total_cents
+          FROM giving_pledges g
+          JOIN alumni a
+            ON ${names.has("alumni_id") ? "g.alumni_id IS NULL AND" : ""}
+              NULLIF(btrim(g.donor_label), '') IS NOT NULL
+              AND lower(btrim(g.donor_label)) IN (
+                lower(btrim(a.full_name)),
+                lower(btrim(concat_ws(' ', NULLIF(btrim(a.first_name), ''), NULLIF(btrim(a.last_name), '')))),
+                lower(btrim(concat_ws(' ', NULLIF(btrim(a.preferred_name), ''), NULLIF(btrim(a.last_name), ''))))
+              )
+          GROUP BY a.id
+          `,
+        )) as Array<{ key: string; total_cents: string | number }>;
+        for (const row of rows) {
+          const key = normalizeAlumniId(row.key);
+          if (key) totals.set(key, (totals.get(key) ?? 0) + (Number(row.total_cents) || 0));
+        }
+      } catch {
+        // Name match is a fallback for pre-alumni_id /giving intents.
       }
     }
   }
@@ -305,10 +334,11 @@ async function loadDonorTotals(): Promise<DonorTotal[]> {
 }
 
 export function donorTierForAlumniId(alumniId: string, totals: DonorTotal[]): BadgeTier | null {
+  const wanted = normalizeAlumniId(alumniId) || alumniId.trim();
   const scored = totals
     .filter((row) => row.total_cents > 0)
     .sort((a, b) => b.total_cents - a.total_cents || a.key.localeCompare(b.key));
-  const rank = scored.findIndex((row) => row.key === alumniId) + 1;
+  const rank = scored.findIndex((row) => (normalizeAlumniId(row.key) || row.key) === wanted) + 1;
   if (rank < 1) return null;
   return tierFromPercentile(percentileFromRank(rank, scored.length));
 }
@@ -478,57 +508,107 @@ export async function listPublicBadges(
   options?: { attendanceTotals?: EventBadgeTotals | null },
 ): Promise<PublicBadge[]> {
   const stored = await listStoredBadges(alumniId);
-  const [donor, eventTop] = await Promise.all([
+  const [donor, eventTop, claimed, flagged] = await Promise.all([
     computeDonorBadge(alumniId),
     options && "attendanceTotals" in options
       ? computeEventTopBadge(alumniId, { totals: options.attendanceTotals })
       : computeEventTopBadge(alumniId),
+    isAlumniClaimed(alumniId),
+    loadVerifiedFlagIds([alumniId]).then((set) => set.has(normalizeAlumniId(alumniId))),
   ]);
-  const claimed = await loadClaimedIds(uuidAlumniIds([alumniId]));
   return assemblePublicBadges({
     stored,
     donorTier: donor?.tier ?? null,
     eventTier: eventTop?.tier ?? null,
-    verified: stored.some((badge) => badge.type === "verified_hoya") || claimed.has(alumniId),
+    verified: stored.some((badge) => badge.type === "verified_hoya") || claimed || flagged,
   });
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 function uuidAlumniIds(ids: string[]) {
-  return [...new Set(ids.filter((id) => UUID_RE.test(id)))];
+  return [...new Set(ids.map((id) => normalizeAlumniId(id)).filter((id) => isAlumniUuid(id)))];
+}
+
+function uuidInClause(ids: string[], start = 1) {
+  const unique = uuidAlumniIds(ids);
+  return {
+    ids: unique,
+    sql: unique.map((_, index) => `$${start + index}::uuid`).join(", "),
+    params: unique,
+  };
 }
 
 async function listStoredBadgesMany(alumniIds: string[]): Promise<Map<string, PublicBadge[]>> {
   const out = new Map<string, PublicBadge[]>();
-  if (!alumniIds.length || !getDatabaseUrl()) return out;
+  const { ids, sql: inSql, params } = uuidInClause(alumniIds);
+  if (!ids.length || !getDatabaseUrl()) return out;
   await ensureAlumBadgesTable();
   const sql = getSql();
   const rows = (await sql.query(
-    `SELECT alumni_id::text AS id, badge_type AS type FROM alum_badges WHERE alumni_id = ANY($1::uuid[])`,
-    [alumniIds],
+    `SELECT alumni_id::text AS id, badge_type AS type FROM alum_badges WHERE alumni_id IN (${inSql})`,
+    params,
   )) as Array<{ id: string; type: string }>;
   for (const row of rows) {
     if (!isBadgeType(row.type)) continue;
-    const list = out.get(row.id) ?? [];
+    const id = normalizeAlumniId(row.id);
+    if (!id) continue;
+    const list = out.get(id) ?? [];
     list.push(toPublicBadge(row.type));
-    out.set(row.id, list);
+    out.set(id, list);
   }
   return out;
 }
 
 async function loadClaimedIds(alumniIds: string[]): Promise<Set<string>> {
   const claimed = new Set<string>();
-  if (!alumniIds.length || !getDatabaseUrl() || !(await tableExists("alumni_claims"))) return claimed;
+  const { ids, sql: inSql, params } = uuidInClause(alumniIds);
+  if (!ids.length || !getDatabaseUrl() || !(await tableExists("alumni_claims"))) return claimed;
   const sql = getSql();
   const rows = (await sql.query(
-    `SELECT DISTINCT alumni_id::text AS id FROM alumni_claims WHERE alumni_id = ANY($1::uuid[])`,
-    [alumniIds],
+    `SELECT DISTINCT alumni_id::text AS id FROM alumni_claims WHERE alumni_id IN (${inSql})`,
+    params,
   )) as Array<{ id: string }>;
   for (const row of rows) {
-    if (row.id) claimed.add(row.id);
+    const id = normalizeAlumniId(row.id);
+    if (id) claimed.add(id);
   }
   return claimed;
+}
+
+async function loadVerifiedFlagIds(alumniIds: string[]): Promise<Set<string>> {
+  const flagged = new Set<string>();
+  const { ids, sql: inSql, params } = uuidInClause(alumniIds);
+  if (!ids.length || !getDatabaseUrl() || !(await tableExists("alumni"))) return flagged;
+  try {
+    const sql = getSql();
+    const rows = (await sql.query(
+      `
+      SELECT id::text AS id
+      FROM alumni
+      WHERE id IN (${inSql})
+        AND (
+          source_flags->>'verified_hoya' = 'true'
+          OR source_flags @> '{"verified_hoya": true}'::jsonb
+        )
+      `,
+      params,
+    )) as Array<{ id: string }>;
+    for (const row of rows) {
+      const id = normalizeAlumniId(row.id);
+      if (id) flagged.add(id);
+    }
+  } catch {
+    // source_flags is additive; claims / alum_badges still grant Verified Hoya.
+  }
+  return flagged;
+}
+
+async function isAlumniClaimed(alumniId: string) {
+  try {
+    const claimed = await loadClaimedIds([alumniId]);
+    return claimed.has(normalizeAlumniId(alumniId));
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -547,35 +627,32 @@ export async function listPublicBadgesMany(
   if (!ids.length || !getDatabaseUrl()) return out;
 
   const uuidIds = uuidAlumniIds(ids);
-  try {
-    const [storedById, totals, feed, claimed] = await Promise.all([
-      listStoredBadgesMany(uuidIds),
-      loadDonorTotals(),
-      options.attendanceLeaders
-        ? Promise.resolve({ rows: [], leaders: options.attendanceLeaders })
-        : consumeEventCheckinFeed(),
-      loadClaimedIds(uuidIds),
-    ]);
-    const leadersByAlum = new Map(
-      attendanceLeadersFromCoder4Feed(feed)
-        .filter((row) => row.alumId)
-        .map((row) => [row.alumId, row]),
-    );
-    const extraVerified = new Set(options.verifiedAlumniIds ?? []);
-    for (const id of ids) {
-      const stored = storedById.get(id) ?? [];
-      out[id] = assemblePublicBadges({
-        stored,
-        donorTier: donorTierForAlumniId(id, totals),
-        eventTier: eventTierFromCoder4Feed(leadersByAlum.get(id) ?? {}),
-        verified:
-          extraVerified.has(id) ||
-          claimed.has(id) ||
-          stored.some((badge) => badge.type === "verified_hoya"),
-      });
-    }
-    return out;
-  } catch {
-    return out;
+  const storedById = await listStoredBadgesMany(uuidIds).catch(() => new Map<string, PublicBadge[]>());
+  const totals = await loadDonorTotals().catch(() => [] as Array<{ key: string; total_cents: number }>);
+  const feed = options.attendanceLeaders
+    ? { rows: [], leaders: options.attendanceLeaders }
+    : await consumeEventCheckinFeed().catch(() => ({ rows: [], leaders: [] }));
+  const claimed = await loadClaimedIds(uuidIds).catch(() => new Set<string>());
+  const flagged = await loadVerifiedFlagIds(uuidIds).catch(() => new Set<string>());
+  const leadersByAlum = new Map(
+    attendanceLeadersFromCoder4Feed(feed)
+      .map((row) => [normalizeAlumniId(row.alumId), row] as const)
+      .filter((entry): entry is [string, EventBadgeTotals] => Boolean(entry[0])),
+  );
+  const extraVerified = new Set((options.verifiedAlumniIds ?? []).map((id) => normalizeAlumniId(id) || id));
+  for (const id of ids) {
+    const key = normalizeAlumniId(id) || id;
+    const stored = storedById.get(key) ?? [];
+    out[id] = assemblePublicBadges({
+      stored,
+      donorTier: donorTierForAlumniId(key, totals),
+      eventTier: eventTierFromCoder4Feed(leadersByAlum.get(key) ?? {}),
+      verified:
+        extraVerified.has(key) ||
+        claimed.has(key) ||
+        flagged.has(key) ||
+        stored.some((badge) => badge.type === "verified_hoya"),
+    });
   }
+  return out;
 }

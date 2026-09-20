@@ -32,6 +32,7 @@ export type EventBadgeFeedRow = {
 export type EventBadgeTotals = {
   alumId: string;
   userId?: string;
+  personKey?: string;
   attendanceCount: number;
   rank: number | null;
   percentile: number | null;
@@ -46,7 +47,7 @@ export type EventBadgeFeed = {
   attendanceCountScope?: string;
   rankBasis?: string;
   rows?: EventBadgeFeedRow[];
-  leaders?: Array<EventBadgeTotals & { alumId?: string | null }>;
+  leaders?: Array<Omit<EventBadgeTotals, "alumId"> & { alumId?: string | null }>;
 };
 
 /** `GET /api/events/attendance/feed` or `?alumId=` → `{ alum, feed }`. */
@@ -57,23 +58,49 @@ export type Coder4AttendanceFeedResponse =
       feed?: EventBadgeFeed | null;
     };
 
-function alumKey(row: { alumId?: string | null }) {
-  return typeof row.alumId === "string" && row.alumId.trim() ? row.alumId : "";
+export const ALUMNI_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function normalizeAlumniId(value: string | null | undefined) {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+export function isAlumniUuid(value: string | null | undefined) {
+  return ALUMNI_UUID_RE.test(value?.trim() ?? "");
+}
+
+/** Roster id from Coder 4 `alumId`, `alum:<uuid>` personKey / userId, or UUID userId. */
+export function resolveFeedAlumId(row: {
+  alumId?: string | null;
+  userId?: string | null;
+  personKey?: string | null;
+}) {
+  const direct = row.alumId?.trim() ?? "";
+  if (direct) return isAlumniUuid(direct) ? direct.toLowerCase() : direct;
+  for (const value of [row.personKey, row.userId]) {
+    const text = value?.trim() ?? "";
+    const fromKey = text.match(/^alum:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
+    if (fromKey?.[1]) return fromKey[1].toLowerCase();
+    if (isAlumniUuid(text)) return text.toLowerCase();
+  }
+  return "";
 }
 
 function asTotals(row: {
   alumId?: string | null;
   userId?: string;
+  personKey?: string;
   attendanceCount?: number;
   rank?: number | null;
   percentile?: number | null;
   cohortSize?: number;
 }): EventBadgeTotals | null {
-  const alumId = alumKey(row);
+  const alumId = resolveFeedAlumId(row);
   if (!alumId) return null;
   return {
     alumId,
     userId: row.userId,
+    ...(row.personKey ? { personKey: row.personKey } : {}),
     attendanceCount: row.attendanceCount ?? 0,
     rank: row.rank ?? null,
     percentile: row.percentile ?? null,
