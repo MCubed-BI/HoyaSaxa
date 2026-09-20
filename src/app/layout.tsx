@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,8 +16,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Georgetown Alum",
-    template: "%s · Georgetown Alum",
+    default: PRODUCT_DISPLAY_NAME,
+    template: `%s · ${PRODUCT_DISPLAY_NAME}`,
   },
   description: "Coach Sgarlata's Georgetown football alumni directory and outreach lists.",
 };
