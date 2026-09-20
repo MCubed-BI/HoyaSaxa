@@ -19,7 +19,7 @@ import { displayName, jobLabel, positionLabel } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
 import { getLockerPersonById } from "@/lib/locker-directory";
 import { athleteHref, parseAthleteTab } from "@/lib/locker-paths";
-import { ATHLETE_TABS } from "@/lib/locker-types";
+import { ATHLETE_TABS, athleteTabLabel } from "@/lib/locker-types";
 import { requireLockerViewer } from "@/lib/locker-viewer";
 import { isBoardMember } from "@/lib/staff-roles";
 
@@ -147,7 +147,7 @@ export default async function AthleteProfilePage({
       {tab === "overview" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Overview</CardTitle>
+            <CardTitle>{athleteTabLabel("overview")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div>
@@ -171,7 +171,7 @@ export default async function AthleteProfilePage({
       {tab === "stats" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Years Active</CardTitle>
+            <CardTitle>{athleteTabLabel("stats")}</CardTitle>
           </CardHeader>
           <CardContent>
             {person.rosterYears.length === 0 ? (
@@ -194,7 +194,7 @@ export default async function AthleteProfilePage({
       {tab === "photos" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Photos</CardTitle>
+            <CardTitle>{athleteTabLabel("photos")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <AthletePhotoPair slots={photos} size="lg" />
@@ -211,7 +211,7 @@ export default async function AthleteProfilePage({
       {tab === "career" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Career</CardTitle>
+            <CardTitle>{athleteTabLabel("career")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <p>{jobLabel(person.companyName, person.jobTitle) || "Career shell — title and company will show here."}</p>
@@ -225,7 +225,7 @@ export default async function AthleteProfilePage({
       {tab === "qa" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Q&A</CardTitle>
+            <CardTitle>{athleteTabLabel("qa")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {person.qa.map((item) => (

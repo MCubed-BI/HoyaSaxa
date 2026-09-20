@@ -1,6 +1,7 @@
 import { BrandMark } from "@/components/brand";
 import { PageMain, PageShell } from "@/components/page-chrome";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HEADER_BRAND_SLOT_CLASS } from "@/lib/header-chrome";
 
 function HeaderSkeleton({ href = "/" }: { href?: string }) {
   return (
@@ -8,8 +9,8 @@ function HeaderSkeleton({ href = "/" }: { href?: string }) {
       <div className="h-0.5 w-full bg-navy">
         <div className="h-full w-16 bg-silver" />
       </div>
-      <div className="mx-auto flex w-full max-w-6xl items-center gap-3 overflow-visible px-4 py-2.5 sm:px-6">
-        <div className="@container/brand min-w-[11rem] flex-1">
+      <div className="mx-auto flex w-full max-w-6xl items-center gap-2 overflow-visible px-4 py-2.5 sm:px-6">
+        <div className={HEADER_BRAND_SLOT_CLASS}>
           <BrandMark href={href} compact />
         </div>
         <div className="hidden flex-1 items-center justify-end gap-2 md:flex">

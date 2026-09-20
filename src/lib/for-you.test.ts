@@ -24,6 +24,7 @@ import {
 import { readPlatformRole } from "./platform-session";
 import { canPostBoardSection, canPostBrothers } from "./platform-roles";
 import { DEMO_FEED, DEMO_NEWSFLASH, filterFeedPostsBySection, newsflashToFeedPost } from "./locker-data";
+import { DESKTOP_PRIMARY_NAV_CLASS, HEADER_BRAND_SLOT_CLASS } from "./header-chrome";
 import {
   alumPrimaryNavItems,
   headerShowsUpdateMe,
@@ -105,6 +106,13 @@ describe("for you myspace stack", () => {
       alumPrimaryNavItems().map((item) => item.label),
       ["Home", "Directory", "Events", "Giving", "Messages", "For You"],
     );
+    const navClasses = DESKTOP_PRIMARY_NAV_CLASS.split(/\s+/);
+    assert.equal(navClasses.includes("flex-nowrap"), true);
+    assert.equal(navClasses.includes("overflow-x-auto"), true);
+    assert.equal(navClasses.includes("flex-wrap"), false);
+    const brandClasses = HEADER_BRAND_SLOT_CLASS.split(/\s+/);
+    assert.equal(brandClasses.includes("shrink-0"), true);
+    assert.equal(brandClasses.includes("flex-1"), false);
     assert.equal(headerShowsUpdateMe(true), true);
     assert.equal(headerShowsUpdateMe(true, "me"), false);
     assert.equal(headerShowsUpdateMe(false), false);
