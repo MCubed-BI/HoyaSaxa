@@ -12,8 +12,9 @@
  *
  * Coder 4 / 5: import `@/lib/badge-api` (HoyaBadge + consume helpers).
  */
-import { getDatabaseUrl, getSql } from "@/lib/db";
 import type { EventBadgeFeedRow, EventBadgeTotals } from "@/lib/badge-event-feed";
+import { tryCoder4AlumAttendanceTotals, tryCoder4AttendanceLeaders } from "@/lib/consume-coder4-feed";
+import { getDatabaseUrl, getSql } from "@/lib/db";
 
 export const BADGE_TYPES = [
   "verified_hoya",
@@ -339,6 +340,10 @@ export async function computeEventTopBadge(
   if (coder4 && "totals" in coder4) {
     return eventBadgeFromCoder4Totals(coder4.totals);
   }
+  const fromFeed = await tryCoder4AlumAttendanceTotals(alumniId);
+  if (fromFeed !== undefined) {
+    return eventBadgeFromCoder4Totals(fromFeed);
+  }
   if (!getDatabaseUrl() || !alumniId.trim()) return null;
   try {
     const attendance = await loadEventAttendance();
@@ -443,9 +448,11 @@ export async function listPublicBadgesMany(
   if (!ids.length || !getDatabaseUrl()) return out;
 
   const uuidIds = uuidAlumniIds(ids);
-  const consumeCoder4 = options.attendanceLeaders !== undefined;
+  const injectedLeaders = options.attendanceLeaders;
+  const discoveredLeaders = injectedLeaders === undefined ? await tryCoder4AttendanceLeaders() : undefined;
+  const consumeCoder4 = injectedLeaders !== undefined || discoveredLeaders !== undefined;
   const leadersByAlum = new Map(
-    (options.attendanceLeaders ?? [])
+    (injectedLeaders ?? discoveredLeaders ?? [])
       .filter((row) => typeof row.alumId === "string" && row.alumId)
       .map((row) => [row.alumId, row]),
   );

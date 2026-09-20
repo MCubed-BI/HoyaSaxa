@@ -79,3 +79,9 @@ export {
   type EventBadgeTotals,
   type EventCheckinFeedRow,
 } from "@/lib/badge-event-feed";
+
+export {
+  coder4AttendanceFeedAvailable,
+  tryCoder4AlumAttendanceTotals,
+  tryCoder4AttendanceLeaders,
+} from "@/lib/consume-coder4-feed";

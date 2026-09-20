@@ -124,7 +124,7 @@ Coder 4 feed contract (consume-only): `eventId`, `eventSlug?`, `eventTitle?`, `a
 
 - One person: `listPublicBadges(alumniId, { attendanceTotals })` or `GET /api/badges/:alumniId` → `{ alumniId, badges: PublicBadge[] }`
 - Directory: `listPublicBadgesMany(ids, { verifiedAlumniIds, attendanceLeaders })`
-- Until Coder 4's feed is on main, loaders fall back to a **SELECT-only** count of `event_checkins` (never INSERT).
+- `listPublicBadges` / `listPublicBadgesMany` auto-call Coder 4 `listEventCheckinFeed` / `getAlumAttendanceTotals` when `src/lib/event-attendance-feed.ts` is on the tree (PR #15). Until then they fall back to a **SELECT-only** count of `event_checkins` (never INSERT).
 
 ---
 
