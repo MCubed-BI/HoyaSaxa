@@ -5,9 +5,12 @@ Foundational helpers for the Myspace / feed / badge stack. **Do not rebuild clai
 Live: https://georgetown-alum.vercel.app  
 Cookies stay `ga_session` (staff) and `hoya_alum_session` (alum / board). Extend; do not replace.
 
+**Product display name (locked):** Georgetown Football Alum Network. Import `PRODUCT_DISPLAY_NAME` from `@/lib/product` in chrome / metadata. Do not invent aliases; apply the rename in chrome PRs, not here.
+
 ## Shared imports
 
 ```ts
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 import { resolvePlatformRole, canEditAlumniRecord, SEED_ADMIN_ALUMNI_ID } from "@/lib/platform-roles";
 import { readPlatformRole } from "@/lib/platform-session";
 import { canonicalizeFeedSection, canPostToFeedSection } from "@/lib/feed-sections";
@@ -23,7 +26,7 @@ Viewer (`getCurrentViewer`) has `platformRole`. Locker viewer has `canPostNewsfl
 
 ## Coder 1 — Roles, middleware, session, chrome
 
-**Contract:** platform roles `admin` | `board` | `alum`.
+**Contract:** platform roles `admin` | `board` | `alum`. Suite titles / chrome: `PRODUCT_DISPLAY_NAME` (`Georgetown Football Alum Network`).
 
 | Platform role | Who | Can do |
 | --- | --- | --- |
