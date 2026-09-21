@@ -22,8 +22,8 @@ export default async function LockerHomePage() {
             <p className="app-kicker">{viewer.roleLabel}</p>
             <h1 className="app-title">{`Welcome back, ${viewer.label}.`}</h1>
             <p className="app-lede">
-              Home, For You, and Board. Directory, Events, and Giving stay with their lanes — the cards below just link
-              over.
+              Open Directory, Events, Giving, or Board from the cards below. For You has the latest from Brothers and
+              Board.
             </p>
           </div>
           <div className="app-masthead__actions">
@@ -36,7 +36,7 @@ export default async function LockerHomePage() {
           </div>
         </section>
 
-        <QuickActions canOpenStaffDirectory={viewer.source === "ga_session"} />
+        <QuickActions />
 
         <Suspense fallback={<HomeCardsSkeleton />}>
           <LockerHomeDashboard />

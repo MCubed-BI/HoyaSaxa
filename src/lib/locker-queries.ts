@@ -259,11 +259,11 @@ async function loadEventsLaneEvent(): Promise<UpcomingEvent | null> {
     if (!row?.title || !row.starts_at) return null;
     return {
       title: row.title,
-      body: row.body || "From the Events lane.",
+      body: row.body || "Open the event for details.",
       startsAt: row.starts_at,
       location: row.location ?? null,
       source: "events",
-      href: "/portal/events",
+      href: "/events",
     };
   } catch {
     return null;
