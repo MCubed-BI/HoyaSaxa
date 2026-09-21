@@ -5,6 +5,7 @@ import {
   parseClassYearInput,
 } from "@/lib/alumni-class-year";
 import { hashAlumniPassword, isValidEmail, readAlumniSessionFromCookies, verifyAlumniPassword } from "@/lib/alumni-auth";
+import { isNetIdUniqueConflict, normalizeNetId, parseAlumniLoginIdentifier } from "@/lib/alumni-net-id";
 import {
   duplicateDismissalActorKey,
   ensureAlumniDuplicateDismissalTable,
@@ -35,7 +36,23 @@ export type ClaimMatch = AlumniListItem & {
 export type AlumniAccount = {
   id: string;
   email: string;
+  netId: string | null;
 };
+
+type AlumniAccountRow = {
+  id: string;
+  email: string;
+  net_id?: string | null;
+  password_hash?: string;
+};
+
+function toAlumniAccount(row: AlumniAccountRow): AlumniAccount {
+  return {
+    id: row.id,
+    email: row.email,
+    netId: row.net_id?.trim() ? row.net_id.trim().toLowerCase() : null,
+  };
+}
 
 export type ClaimedRecord = AlumniDetail & {
   claimed_at: string;
@@ -77,13 +94,20 @@ export async function ensureAlumniAuthTables() {
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       email text NOT NULL,
       password_hash text NOT NULL,
+      net_id text,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  await sql.query(`ALTER TABLE alumni_accounts ADD COLUMN IF NOT EXISTS net_id text`);
   await sql.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS alumni_accounts_email_lower
     ON alumni_accounts (lower(email))
+  `);
+  await sql.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS alumni_accounts_net_id_lower
+    ON alumni_accounts (lower(net_id))
+    WHERE net_id IS NOT NULL AND btrim(net_id) <> ''
   `);
   await sql.query(`
     CREATE TABLE IF NOT EXISTS alumni_claims (
@@ -223,20 +247,82 @@ export async function findLikelyDuplicateCandidates(
 
 export async function getAccountByEmail(email: string) {
   await ensureAlumniAuthTables();
-  const rows = await query<Array<{ id: string; email: string; password_hash: string }>>(
-    `SELECT id, email, password_hash FROM alumni_accounts WHERE lower(email) = lower($1) LIMIT 1`,
+  const rows = await query<Array<AlumniAccountRow & { password_hash: string }>>(
+    `SELECT id, email, net_id, password_hash FROM alumni_accounts WHERE lower(email) = lower($1) LIMIT 1`,
     [email.trim()],
   );
   return rows[0] ?? null;
 }
 
-export async function getAccountById(id: string) {
+export async function getAccountByNetId(netId: string) {
   await ensureAlumniAuthTables();
-  const rows = await query<AlumniAccount[]>(
-    `SELECT id, email FROM alumni_accounts WHERE id = $1 LIMIT 1`,
-    [id],
+  const normalized = netId.trim().toLowerCase();
+  if (!normalized) return null;
+  const rows = await query<Array<AlumniAccountRow & { password_hash: string }>>(
+    `
+    SELECT id, email, net_id, password_hash
+    FROM alumni_accounts
+    WHERE net_id IS NOT NULL AND btrim(net_id) <> '' AND lower(net_id) = $1
+    LIMIT 1
+    `,
+    [normalized],
   );
   return rows[0] ?? null;
+}
+
+export async function getAccountByIdentifier(identifier: string) {
+  const parsed = parseAlumniLoginIdentifier(identifier);
+  if (parsed.kind === "email") return getAccountByEmail(parsed.value);
+  if (parsed.kind === "netId") return getAccountByNetId(parsed.value);
+  return null;
+}
+
+export async function getAccountById(id: string) {
+  await ensureAlumniAuthTables();
+  const rows = await query<AlumniAccountRow[]>(
+    `SELECT id, email, net_id FROM alumni_accounts WHERE id = $1 LIMIT 1`,
+    [id],
+  );
+  return rows[0] ? toAlumniAccount(rows[0]) : null;
+}
+
+export async function getAccountByAlumniId(alumniId: string) {
+  await ensureAlumniAuthTables();
+  const rows = await query<AlumniAccountRow[]>(
+    `
+    SELECT a.id, a.email, a.net_id
+    FROM alumni_accounts a
+    JOIN alumni_claims c ON c.account_id = a.id
+    WHERE c.alumni_id = $1
+    ORDER BY c.created_at DESC
+    LIMIT 1
+    `,
+    [alumniId],
+  );
+  return rows[0] ? toAlumniAccount(rows[0]) : null;
+}
+
+export async function updateAccountNetId(accountId: string, raw: string) {
+  await ensureAlumniAuthTables();
+  const netId = normalizeNetId(raw);
+  const existing = await getAccountByNetId(netId);
+  if (existing && existing.id !== accountId) {
+    throw new Error("That GTown NetID is already on another login.");
+  }
+  try {
+    const rows = await query<AlumniAccountRow[]>(
+      `UPDATE alumni_accounts SET net_id = $2, updated_at = now() WHERE id = $1 RETURNING id, email, net_id`,
+      [accountId, netId],
+    );
+    const account = rows[0];
+    if (!account) throw new Error("That alumni login was not found.");
+    return toAlumniAccount(account);
+  } catch (error) {
+    if (isNetIdUniqueConflict(error)) {
+      throw new Error("That GTown NetID is already on another login.");
+    }
+    throw error;
+  }
 }
 
 export async function registerAlumniAccount(input: {
@@ -283,11 +369,11 @@ export async function registerAlumniAccount(input: {
   }
 
   const passwordHash = hashAlumniPassword(input.password);
-  const createdAccount = await query<AlumniAccount[]>(
-    `INSERT INTO alumni_accounts (email, password_hash) VALUES ($1, $2) RETURNING id, email`,
+  const createdAccount = await query<AlumniAccountRow[]>(
+    `INSERT INTO alumni_accounts (email, password_hash) VALUES ($1, $2) RETURNING id, email, net_id`,
     [email, passwordHash],
   );
-  const account = createdAccount[0]!;
+  const account = toAlumniAccount(createdAccount[0]!);
   for (const alumniId of idsToClaim) {
     await query(`INSERT INTO alumni_claims (account_id, alumni_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [
       account.id,
@@ -301,12 +387,12 @@ export async function registerAlumniAccount(input: {
   return { account, claimedIds: idsToClaim, classYear, lastName };
 }
 
-export async function authenticateAlumni(email: string, password: string) {
-  const account = await getAccountByEmail(email);
+export async function authenticateAlumni(identifier: string, password: string) {
+  const account = await getAccountByIdentifier(identifier);
   if (!account || !verifyAlumniPassword(password, account.password_hash)) {
-    throw new Error("That email or password is not recognized.");
+    throw new Error("That GTown NetID, email, or password is not recognized.");
   }
-  return { id: account.id, email: account.email };
+  return { id: account.id, email: account.email, netId: account.net_id?.trim() ? account.net_id.trim().toLowerCase() : null };
 }
 
 export function alumDisplayName(

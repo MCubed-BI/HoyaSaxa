@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Button } from "@/components/ui/button";
 import { loadAlumniMeState } from "@/lib/alumni-claim";
+import { prefillNetId } from "@/lib/alumni-net-id";
 import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { getLockerViewer } from "@/lib/locker-viewer";
@@ -35,6 +36,8 @@ export default async function MePage() {
 
   const { identity, account, records, mergeCandidates } = state;
   const email = account?.email || identity.email || identity.name || "Alumnus";
+  const netId = account?.netId ?? null;
+  const netIdPrefill = prefillNetId(account?.email || identity.email);
 
   try {
     const badgesById =
@@ -69,6 +72,9 @@ export default async function MePage() {
           ) : (
             <AlumniMePanel
               email={email}
+              netId={netId}
+              netIdPrefill={netIdPrefill}
+              canEditNetId={Boolean(account)}
               records={records}
               mergeCandidates={mergeCandidates}
               badgesById={badgesById}

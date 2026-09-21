@@ -17,6 +17,7 @@ import {
   locationLabel,
   positionLabel,
 } from "@/lib/format";
+import { getAccountByAlumniId } from "@/lib/alumni-claim";
 import { getAlumniById } from "@/lib/queries";
 import { requireRole } from "@/lib/viewer";
 
@@ -44,6 +45,7 @@ export default async function AlumniDetailPage({
     const person = await getAlumniById(id);
     if (!person) notFound();
     const badges = await listPublicBadgesFromFeed(person.id);
+    const claimedAccount = await getAccountByAlumniId(person.id).catch(() => null);
 
     const emails = [
       ...(person.email_primary ? [{ email: person.email_primary, label: "Primary" }] : []),
@@ -106,6 +108,7 @@ export default async function AlumniDetailPage({
                 <Field label="Position" value={positionLabel(person.position)} />
                 <Field label="Seasons" value={person.seasons} />
                 <Field label="Class year" value={classYearLabel(person.class_year)} />
+                <Field label="GTown NetID" value={claimedAccount?.netId} />
                 <Field
                   label="Hometown"
                   value={locationLabel(person.hometown_city, person.hometown_state)}

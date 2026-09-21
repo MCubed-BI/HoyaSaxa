@@ -7,6 +7,7 @@ import { ClaimPhotoFields } from "@/components/claim-photo-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { prefillNetId } from "@/lib/alumni-net-id";
 import { emptyClaimPhotos, hasClaimPhotoValues, photosFromClaimMatch, type ClaimPhotoValues } from "@/lib/claim-photos";
 import { displayName } from "@/lib/format";
 
@@ -28,12 +29,16 @@ type Match = {
 export function RegisterMyself({
   initialStep = "roster",
   claimedAlumniId = null,
+  initialEmail = "",
+  initialNetId = "",
 }: {
-  initialStep?: "roster" | "account" | "photos";
+  initialStep?: "roster" | "account" | "photos" | "netid";
   claimedAlumniId?: string | null;
+  initialEmail?: string;
+  initialNetId?: string;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState<"roster" | "account" | "photos">(initialStep);
+  const [step, setStep] = useState<"roster" | "account" | "photos" | "netid">(initialStep);
   const [lastName, setLastName] = useState("");
   const [classYear, setClassYear] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -41,8 +46,9 @@ export function RegisterMyself({
   const [matches, setMatches] = useState<Match[]>([]);
   const [resolvedYear, setResolvedYear] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
+  const [netId, setNetId] = useState(initialNetId || prefillNetId(initialEmail));
   const [photos, setPhotos] = useState<ClaimPhotoValues>(emptyClaimPhotos());
   const [claimedIds, setClaimedIds] = useState<string[]>(claimedAlumniId ? [claimedAlumniId] : []);
   const [error, setError] = useState<string | null>(null);
@@ -137,10 +143,12 @@ export function RegisterMyself({
           ...(hasClaimPhotoValues(photos) ? photos : {}),
         }),
       });
-      const data = (await response.json()) as { error?: string; claimedIds?: string[] };
+      const data = (await response.json()) as { error?: string; claimedIds?: string[]; email?: string };
       if (!response.ok) throw new Error(data.error ?? "Registration failed");
       const nextIds = data.claimedIds?.filter(Boolean) ?? selected;
       setClaimedIds(nextIds);
+      if (data.email) setEmail(data.email);
+      setNetId((current) => current || prefillNetId(data.email || email));
       setStep("photos");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
@@ -175,6 +183,26 @@ export function RegisterMyself({
       setPhotoMessage("Saved photos.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function saveNetId(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setPending(true);
+    try {
+      const response = await fetch("/api/alum/net-id", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ netId }),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Could not save GTown NetID.");
+      finish();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save GTown NetID.");
     } finally {
       setPending(false);
     }
@@ -229,12 +257,39 @@ export function RegisterMyself({
     );
   }
 
+  if (step === "netid") {
+    return (
+      <form onSubmit={saveNetId} className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Add your Georgetown NetID so you can sign in with it later. It is the part of your @georgetown.edu email
+          before the @ — for example, mak264@georgetown.edu → mak264.
+        </p>
+        <div className="space-y-1.5">
+          <Label htmlFor="netId">GTown NetID</Label>
+          <Input
+            id="netId"
+            name="netId"
+            value={netId}
+            onChange={(event) => setNetId(event.target.value)}
+            autoComplete="username"
+            placeholder="mak264"
+            required
+          />
+        </div>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <Button type="submit" className="w-full" disabled={pending}>
+          {pending ? "Saving…" : "Save NetID and finish"}
+        </Button>
+      </form>
+    );
+  }
+
   if (step === "photos") {
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Your login is ready. Save roster and headshot photos now — you can upload a file or paste an image URL —
-          then finish registration.
+          then add your GTown NetID.
         </p>
         <ClaimPhotoFields values={photos} onChange={setPhotos} disabled={pending} idPrefix="validate" />
         {photoMessage ? <p className="text-sm text-navy">{photoMessage}</p> : null}
@@ -243,8 +298,8 @@ export function RegisterMyself({
           <Button type="button" variant="outline" className="flex-1" disabled={pending} onClick={() => void savePhotos()}>
             {pending ? "Saving…" : "Save photos"}
           </Button>
-          <Button type="button" className="flex-1" disabled={pending} onClick={finish}>
-            Finish registration
+          <Button type="button" className="flex-1" disabled={pending} onClick={() => setStep("netid")}>
+            Continue
           </Button>
         </div>
       </div>

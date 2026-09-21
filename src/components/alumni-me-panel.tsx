@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { Kpi, KpiGrid } from "@/components/kpi";
+import { NetIdForm } from "@/components/net-id-form";
 import { Notice } from "@/components/page-chrome";
 import { Timestamp } from "@/components/timestamp";
 import type { PublicBadge } from "@/lib/badges";
@@ -19,11 +20,17 @@ type MergeCandidate = AlumniListItem & { claimed: boolean; claimed_by_me: boolea
 
 export function AlumniMePanel({
   email,
+  netId = null,
+  netIdPrefill = "",
+  canEditNetId = false,
   records,
   mergeCandidates,
   badgesById = {},
 }: {
   email: string;
+  netId?: string | null;
+  netIdPrefill?: string;
+  canEditNetId?: boolean;
   records: AlumniDetail[];
   mergeCandidates: MergeCandidate[];
   badgesById?: Record<string, PublicBadge[]>;
@@ -150,6 +157,21 @@ export function AlumniMePanel({
 
   return (
     <div className="space-y-5">
+      {canEditNetId && !netId ? (
+        <Card className="border-navy/25">
+          <CardHeader>
+            <CardTitle>Add your GTown NetID</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Required to sign in with your Georgetown NetID. Use the part before @georgetown.edu — for example,
+              mak264@georgetown.edu → mak264.
+            </p>
+            <NetIdForm defaultValue={netIdPrefill} submitLabel="Save GTown NetID" onSaved={() => router.refresh()} />
+          </CardContent>
+        </Card>
+      ) : null}
+
       <KpiGrid>
         <Kpi
           tone="primary"
@@ -157,11 +179,15 @@ export function AlumniMePanel({
           label="Signed in as"
           value={<span className="block truncate text-xl sm:text-2xl">{email}</span>}
           hint={
-            active.updated_at ? (
-              <>
-                Last saved <Timestamp value={active.updated_at} />
-              </>
-            ) : null
+            <>
+              {netId ? `GTown NetID ${netId}` : "GTown NetID not set"}
+              {active.updated_at ? (
+                <>
+                  {" · "}
+                  Last saved <Timestamp value={active.updated_at} />
+                </>
+              ) : null}
+            </>
           }
         />
         <Kpi
@@ -210,6 +236,12 @@ export function AlumniMePanel({
         </CardHeader>
         <CardContent>
           <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
+            {canEditNetId && netId ? (
+              <div className="sm:col-span-2 rounded-lg border bg-muted/20 px-3 py-3">
+                <p className="mb-2 text-sm font-medium">GTown NetID</p>
+                <NetIdForm defaultValue={netId} submitLabel="Update NetID" onSaved={() => router.refresh()} />
+              </div>
+            ) : null}
             <Field label="First name" name="first_name" defaultValue={active.first_name} />
             <Field label="Preferred name" name="preferred_name" defaultValue={active.preferred_name} />
             <Field label="Email" name="email_primary" defaultValue={active.email_primary} />

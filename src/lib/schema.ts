@@ -221,6 +221,7 @@ export const alumniAccounts = pgTable("alumni_accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull(),
   passwordHash: text("password_hash").notNull(),
+  netId: text("net_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

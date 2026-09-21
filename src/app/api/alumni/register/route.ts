@@ -35,6 +35,8 @@ export async function POST(request: Request) {
       mode: "alum",
       claimedIds: result.claimedIds,
       classYear: result.classYear,
+      email: result.account.email,
+      netId: result.account.netId,
     });
     setAlumSessionCookies(response, await alumSessionIdentityForAccount(result.account));
     return response;
