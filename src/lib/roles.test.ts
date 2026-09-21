@@ -186,6 +186,10 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/directory"), true);
     assert.equal(isPublicPath("/directory"), false);
     assert.equal(isPublicPath("/athletes/demo"), false);
+    assert.equal(isAlumAllowedPath("/alumni/898108b1-e486-4fe3-9e13-9d8b64397bb8"), true);
+    assert.equal(isAlumAllowedPath("/alumni-login"), false);
+    assert.equal(loginPathFor("/alumni/898108b1-e486-4fe3-9e13-9d8b64397bb8"), "/home/login");
+    assert.equal(loginPathFor("/athletes/898108b1-e486-4fe3-9e13-9d8b64397bb8"), "/home/login");
     assert.equal(isAlumAllowedPath("/api/blast"), true);
     assert.equal(isAlumAllowedPath("/api/directory/people"), true);
     assert.equal(loginPathFor("/directory"), "/home/login");

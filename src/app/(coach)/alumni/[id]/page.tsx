@@ -1,10 +1,14 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { HoyaBadgeRow } from "@/lib/badge-api";
 import { PageMain, PageShell } from "@/components/page-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAccountByAlumniId } from "@/lib/alumni-claim";
+import { getAthleteActor } from "@/lib/athlete-access";
+import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
 import { listPublicBadgesFromFeed } from "@/lib/badges-attendance";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import {
@@ -12,14 +16,14 @@ import {
   displayName,
   displayPersonName,
   formatPhone,
-  initials,
   jobLabel,
   locationLabel,
   positionLabel,
 } from "@/lib/format";
-import { getAccountByAlumniId } from "@/lib/alumni-claim";
+import { athleteHref } from "@/lib/locker-paths";
+import { getLockerViewer } from "@/lib/locker-viewer";
 import { getAlumniById } from "@/lib/queries";
-import { requireRole } from "@/lib/viewer";
+import { getCurrentViewer, requireRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -38,14 +42,23 @@ export default async function AlumniDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole(["owner", "coach", "board"]);
   const { id } = await params;
+  const viewer = await getCurrentViewer();
+  const staff = viewer && (viewer.role === "owner" || viewer.role === "coach" || viewer.role === "board");
+  if (!staff) {
+    if (await getLockerViewer()) {
+      redirect(athleteHref(id));
+    }
+    await requireRole(["owner", "coach", "board"]);
+  }
 
   try {
     const person = await getAlumniById(id);
     if (!person) notFound();
     const badges = await listPublicBadgesFromFeed(person.id);
     const claimedAccount = await getAccountByAlumniId(person.id).catch(() => null);
+    const photos = athletePhotoSlots(person);
+    const actor = await getAthleteActor(person.id);
 
     const emails = [
       ...(person.email_primary ? [{ email: person.email_primary, label: "Primary" }] : []),
@@ -70,10 +83,10 @@ export default async function AlumniDetailPage({
 
           <Card>
             <CardContent className="flex flex-col gap-5 py-6 sm:flex-row sm:items-start">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-navy text-lg font-semibold text-white">
-                {initials(person)}
+              <div className="w-full max-w-xs shrink-0 sm:max-w-[14rem]">
+                <AthletePhotoPair slots={photos} />
               </div>
-              <div className="min-w-0 space-y-2">
+              <div className="min-w-0 flex-1 space-y-2">
                 <div>
                   <h2 className="font-heading text-3xl text-navy">{displayName(person)}</h2>
                   <p className="text-sm text-muted-foreground">
@@ -94,6 +107,18 @@ export default async function AlumniDetailPage({
                 </div>
                 <HoyaBadgeRow badges={badges} />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Photos</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <AthletePhotoPair slots={photos} size="lg" />
+              {actor.canEdit ? (
+                <AthletePhotoEditor alumniId={person.id} slots={photos} linkedinUrl={person.linkedin_url} />
+              ) : null}
             </CardContent>
           </Card>
 

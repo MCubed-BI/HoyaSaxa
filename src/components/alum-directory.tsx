@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HoyaAvatar } from "@/components/hoya-avatar";
 import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +9,6 @@ import { filtersToSearchParams, type AlumniFilters } from "@/lib/filters";
 import {
   classYearLabel,
   displayName,
-  initials,
   jobLabel,
   locationLabel,
   positionLabel,
@@ -62,11 +62,8 @@ export function AlumDirectory({
         {rows.map((person) => (
           <Card key={person.id}>
             <CardContent className="flex gap-3 py-4">
-              <Link
-                href={profileHref ?? athleteHref(person.id)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-white"
-              >
-                {initials(person)}
+              <Link href={profileHref ?? athleteHref(person.id)} className="shrink-0">
+                <HoyaAvatar person={person} />
               </Link>
               <div className="min-w-0 space-y-1">
                 <Link href={profileHref ?? athleteHref(person.id)} className="truncate font-medium text-navy hover:underline">

@@ -51,6 +51,14 @@ describe("alumni photo fields", () => {
       "https://example.com/li.jpg",
     );
     assert.equal(preferredAlumniPhotoUrl({ football_photo_url: "", linkedin_photo_url: "" }), null);
+    assert.equal(
+      preferredAlumniPhotoUrl({
+        football_photo_url: null,
+        linkedin_photo_url: null,
+        photoUrl: "https://example.com/legacy.jpg",
+      }),
+      "https://example.com/legacy.jpg",
+    );
   });
 
   it("allows claimed self or admin only — no ga_session required", () => {

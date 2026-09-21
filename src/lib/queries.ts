@@ -1,3 +1,4 @@
+import { ensureAlumniPhotoColumns } from "@/lib/alumni-photos";
 import { getSql } from "@/lib/db";
 import {
   expandAlumniFilters,
@@ -47,7 +48,9 @@ const LIST_COLUMNS = `
   a.headline,
   a.email_primary,
   a.phone_primary,
-  a.address_primary
+  a.address_primary,
+  a.football_photo_url,
+  a.linkedin_photo_url
 `;
 
 function asRawList(rows: Record<string, unknown>[], key: string) {
@@ -132,6 +135,7 @@ export async function getAlumniFacets(): Promise<AlumniFacets> {
 }
 
 export async function searchAlumni(filters: AlumniFilters, page: number): Promise<DirectoryResult> {
+  await ensureAlumniPhotoColumns();
   const index = await loadFacetIndex();
   const { whereSql, params } = buildAlumniWhere(expandAlumniFilters(filters, index.aliases));
   const offset = (page - 1) * PAGE_SIZE;
@@ -162,6 +166,7 @@ export async function searchAlumni(filters: AlumniFilters, page: number): Promis
 export async function searchAlumniByName(q: string, limit = 8): Promise<AlumniListItem[]> {
   const needle = q.trim();
   if (needle.length < 1) return [];
+  await ensureAlumniPhotoColumns();
   const cap = Math.max(1, Math.min(limit, 12));
   return query<AlumniListItem[]>(
     `
@@ -221,6 +226,7 @@ export async function getAlumniCount(filters: AlumniFilters) {
 }
 
 export async function getAlumniById(id: string): Promise<AlumniDetail | null> {
+  await ensureAlumniPhotoColumns();
   const people = await query<Array<AlumniDetail>>(
     `SELECT ${LIST_COLUMNS}, a.source_flags, a.created_at, a.updated_at
      FROM alumni a

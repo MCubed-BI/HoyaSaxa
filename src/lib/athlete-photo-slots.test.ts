@@ -21,5 +21,21 @@ describe("athlete photo slot mapping", () => {
       }),
       "https://example.com/roster.jpg",
     );
+    assert.equal(
+      primaryPhotoUrl({
+        football_photo_url: null,
+        linkedin_photo_url: null,
+        photoUrl: "https://example.com/legacy.jpg",
+      }),
+      "https://example.com/legacy.jpg",
+    );
+    assert.equal(
+      primaryPhotoUrl({
+        football_photo_url: "https://example.com/football.jpg",
+        linkedin_photo_url: "https://example.com/li.jpg",
+        photoUrl: "https://example.com/legacy.jpg",
+      }),
+      "https://example.com/football.jpg",
+    );
   });
 });

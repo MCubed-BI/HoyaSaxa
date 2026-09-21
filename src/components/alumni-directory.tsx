@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ResultPagination } from "@/components/result-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { HoyaAvatar } from "@/components/hoya-avatar";
 import { HoyaBadgeRow } from "@/components/hoya-badges";
 import type { PublicBadge } from "@/lib/badges";
 import { filtersToSearchParams, type AlumniFilters } from "@/lib/filters";
@@ -14,7 +15,6 @@ import {
   classYearLabel,
   displayName,
   formatCount,
-  initials,
   jobLabel,
   locationLabel,
   positionLabel,
@@ -116,9 +116,7 @@ export function AlumniDirectory({
                     aria-label={`Select ${displayName(person)} for blast`}
                   />
                   <Link href={`/alumni/${person.id}`} className="flex min-w-0 flex-1 gap-3">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-white">
-                      {initials(person)}
-                    </div>
+                    <HoyaAvatar person={person} />
                     <div className="min-w-0 flex-1 space-y-1">
                       <p className="truncate font-medium text-navy hover:underline">{displayName(person)}</p>
                       <p className="text-sm text-muted-foreground">
