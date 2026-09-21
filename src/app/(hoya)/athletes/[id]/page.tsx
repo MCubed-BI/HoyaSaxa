@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AthleteEmailField } from "@/components/athlete-emails";
+import { AthleteMessageCta } from "@/components/athlete-message-cta";
 import { AthleteMergePanel } from "@/components/athlete-merge-panel";
 import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { BoardMemberToggle } from "@/components/board-member-toggle";
@@ -21,6 +22,8 @@ import { getLockerPersonById } from "@/lib/locker-directory";
 import { athleteHref, parseAthleteTab } from "@/lib/locker-paths";
 import { ATHLETE_TABS, athleteTabLabel } from "@/lib/locker-types";
 import { requireLockerViewer } from "@/lib/locker-viewer";
+import { getMessageViewer } from "@/lib/messages-auth";
+import { canMessageAthlete } from "@/lib/messages-dm";
 import { isBoardMember } from "@/lib/staff-roles";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +58,11 @@ export default async function AthleteProfilePage({
   const name = displayName(toNameFields(person));
   const photos = athletePhotoSlots(person);
   const actor = await getAthleteActor(person.id);
+  const messageViewer = await getMessageViewer();
+  const canSendMessage = canMessageAthlete({
+    viewerAlumniId: messageViewer?.alumniId ?? actor.sessionAlumniId,
+    recipientAlumniId: person.id,
+  });
   const session = await readAlumSessionFromCookies();
   const viewingOwnClaim =
     session && !isPreviewAlumSession(session) && session.alumniId === person.id ? [person.id] : [];
@@ -114,6 +122,9 @@ export default async function AthleteProfilePage({
               {person.sport ? <Badge variant="outline">{person.sport}</Badge> : null}
             </div>
             <HoyaBadgeRow badges={badges} />
+            {canSendMessage ? (
+              <AthleteMessageCta alumniId={person.id} name={name} emails={person.emails} />
+            ) : null}
             <AthleteEmailField emails={person.emails} showEmpty={false} />
             <LinkedInProfileField url={person.linkedinUrl} showEmpty={false} />
             {actor.canEdit ? (

@@ -20,7 +20,7 @@ export default async function MessagesPage({
   let errorMessage: string | null = null;
 
   try {
-    channels = await listMessageChannels(viewer.viewerKey);
+    channels = await listMessageChannels(viewer.viewerKey, viewer.alumniId);
   } catch (error) {
     errorMessage = isMissingDatabaseConfig(error)
       ? "DATABASE_URL is not set. Add it to .env.local and reload."
@@ -32,9 +32,9 @@ export default async function MessagesPage({
   return (
     <PageMain width="narrow" className="pb-24 md:pb-8">
       <PageHeader
-        eyebrow={viewer.kind === "alum" ? "Alumni · read only" : "Staff · can post"}
+        eyebrow={viewer.kind === "alum" ? "Alumni · Messages" : "Staff · can post official notes"}
         title="Messages"
-        description="Filter All, Unread, or Groups. Message from Sgarlata is the pinned official channel."
+        description="Direct messages from Hoya profiles land here, next to Message from Sgarlata and group channels."
       />
       {errorMessage ? (
         <StatusCard title="Messages unavailable" body={errorMessage} />

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
-import { filterMessageChannels, type MessageChannelRow, type MessageFilter } from "@/lib/messages";
+import { filterMessageChannels, inboxChannelTitle, isDirectChannel, type MessageChannelRow, type MessageFilter } from "@/lib/messages";
 
 const FILTERS: Array<{ key: MessageFilter; label: string }> = [
   { key: "all", label: "All" },
   { key: "unread", label: "Unread" },
+  { key: "direct", label: "Direct" },
   { key: "groups", label: "Groups" },
 ];
 
@@ -49,7 +50,9 @@ export function MessagesInbox({
             ? "No unread channels."
             : filter === "groups"
               ? "No group channels."
-              : "No channels yet."}
+              : filter === "direct"
+                ? "No direct messages yet. Open a Hoya profile and choose Send message."
+                : "No channels yet."}
         </p>
       ) : (
         <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
@@ -57,9 +60,11 @@ export function MessagesInbox({
             <li key={channel.id}>
               <Link href={`/messages/${channel.slug}`} className="block px-4 py-3 hover:bg-muted/40">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium text-navy">{channel.name}</p>
+                  <p className="font-medium text-navy">{inboxChannelTitle(channel)}</p>
                   {channel.is_pinned || channel.kind === "official" ? (
                     <Badge variant="secondary">Official</Badge>
+                  ) : isDirectChannel(channel) ? (
+                    <Badge variant="outline">Direct</Badge>
                   ) : (
                     <Badge variant="outline">Group</Badge>
                   )}

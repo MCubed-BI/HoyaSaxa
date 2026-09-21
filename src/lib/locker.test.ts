@@ -149,3 +149,12 @@ describe("locker public paths", () => {
     assert.equal(isLockerPublicPath("/api/export"), false);
   });
 });
+
+describe("athlete profile messaging", () => {
+  it("offers Send message on Hoya profiles for other alums", () => {
+    const athletePage = readFileSync(join(process.cwd(), "src/app/(hoya)/athletes/[id]/page.tsx"), "utf8");
+    assert.match(athletePage, /AthleteMessageCta/);
+    assert.match(athletePage, /canMessageAthlete/);
+    assert.match(athletePage, /Send message|AthleteMessageCta/);
+  });
+});

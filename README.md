@@ -241,14 +241,17 @@ This lane does not change Register myself / claim or the portal shell.
 
 ## Messages
 
-Staff (existing `ga_session` coach gate) can post to **Message from Sgarlata**. Alumni with `hoya_alum_session` (or the Register/Claim `ga_alumni_session` cookie) can read Messages only — Data Sync and other owner tools stay locked.
+Staff (existing `ga_session` coach gate) can post to **Message from Sgarlata**. Alumni with `hoya_alum_session` (or the Register/Claim `ga_alumni_session` cookie) can read official and group channels — Data Sync and other owner tools stay locked.
 
-Tables (`message_channels`, `message_posts`, `message_reads`) are created on first use, same pattern as blast tables. The official Sgarlata channel is seeded pinned.
+Claimed / Verified Hoya alumni can also start an in-app **direct message** from any other Hoya profile (`Send message` on `/athletes/[id]`). Threads reuse `message_channels` / `message_posts` (`kind=dm`) plus `message_channel_members`, and show up in the same `/messages` inbox for both people. Email on the profile stays a secondary fallback.
+
+Tables (`message_channels`, `message_posts`, `message_reads`, `message_channel_members`) are created on first use, same pattern as blast tables. The official Sgarlata channel is seeded pinned. Admin/Board compose rules for Sgarlata are unchanged.
 
 ### Demo
 
 1. Staff: open `/login`, sign in as `Hoyas` / `Sgarlata35`, go to **Messages**, open **Message from Sgarlata**, post a note.
 2. Alum: sign out, open `/locker`, enter access code `HoyaSaxa` (local default). That sets `hoya_alum_session`. Read Messages and the Sgarlata channel — no compose box. Visiting `/sync` redirects back to Messages.
+3. Claimed alum: sign in as alum A (e.g. Patrick Finnegan), open Directory → Tim Barnes (or any other Hoya) → **Send message**, write a note. The thread appears under Messages for A, and for B after they claim that record.
 
 Filters are multi-select: state, city, position, class/grad year, season year, plus has email / phone / LinkedIn. Check alumni on the directory to add a manual blast list. That same list feeds both channels.
 

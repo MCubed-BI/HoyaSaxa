@@ -6,9 +6,12 @@ import {
 import { readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername, isValidSessionToken } from "@/lib/auth";
 import { isVerifiedHoyaIdentity } from "@/lib/access";
+import { getDatabaseUrl } from "@/lib/db";
 import { canPostToFeedSection } from "@/lib/feed-sections";
 import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
+import { previewMessagingAlumniId } from "@/lib/messages-dm";
 import { resolvePlatformRole } from "@/lib/platform-roles";
+import { lookupAlumniClaim } from "@/lib/portal-queries";
 import { canPostCoachMessage, resolveRoleFromEnv } from "@/lib/roles";
 
 export const SGARLATA_CHANNEL_SLUG = "sgarlata";
@@ -19,6 +22,7 @@ export type MessageViewer = {
   viewerKey: string;
   canPost: boolean;
   verifiedHoya?: boolean;
+  alumniId?: string | null;
 };
 
 const PUBLIC_PATHS = [
@@ -100,6 +104,7 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       viewerKey: staffUsername ? `staff:${staffUsername.toLowerCase()}` : "staff",
       canPost: canPostCoachMessage(role),
       verifiedHoya: false,
+      alumniId: null,
     };
   }
 
@@ -119,17 +124,29 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       viewerKey: `alum:contract:${contract.alumniId}`,
       canPost: canPostToFeedSection(platformRole, "sgarlata"),
       verifiedHoya: isVerifiedHoyaIdentity(contract),
+      alumniId: contract.alumniId,
     };
   }
 
   const alum = readAlumniSessionFromCookies((name) => jar.get(name)?.value);
   if (alum) {
+    let alumniId: string | null = null;
+    if (!alum.accountId.startsWith("locker:") && getDatabaseUrl()) {
+      try {
+        alumniId = (await lookupAlumniClaim(alum.accountId)).alumniId ?? alum.accountId;
+      } catch {
+        alumniId = alum.accountId;
+      }
+    } else if (!alum.accountId.startsWith("locker:")) {
+      alumniId = alum.accountId;
+    }
     return {
       kind: "alum",
       label: viewerLabelFromAccountId(alum.accountId),
       viewerKey: `alum:${alum.accountId}`,
       canPost: false,
       verifiedHoya: !alum.accountId.startsWith("locker:"),
+      alumniId,
     };
   }
 
@@ -147,6 +164,7 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       viewerKey: `alum:home:${locker.role}:${locker.label.toLowerCase()}`,
       canPost: canPostToFeedSection(platformRole, "sgarlata"),
       verifiedHoya: isVerifiedHoyaIdentity({ role: locker.role }),
+      alumniId: locker.role === "alum" ? previewMessagingAlumniId() : null,
     };
   }
 

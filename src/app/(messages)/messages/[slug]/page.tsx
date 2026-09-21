@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Timestamp } from "@/components/timestamp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { getMessageChannel, listMessagePosts, markChannelRead } from "@/lib/messages";
-import { canPostSgarlata } from "@/lib/messages-auth";
+import { inboxChannelTitle, isDirectChannel, getMessageChannel, listMessagePosts, markChannelRead } from "@/lib/messages";
 import { requireMessageViewer } from "@/lib/messages-viewer";
+import { canPostToMessageChannel } from "@/lib/messages-dm";
+import { athleteHref } from "@/lib/locker-paths";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +21,13 @@ export default async function MessageChannelPage({
 }) {
   const { slug } = await params;
   const viewer = await requireMessageViewer(`/messages/${slug}`);
-  const canPost = canPostSgarlata(viewer);
 
   let errorMessage: string | null = null;
   let channel: Awaited<ReturnType<typeof getMessageChannel>> = null;
   let posts: Awaited<ReturnType<typeof listMessagePosts>> = [];
 
   try {
-    channel = await getMessageChannel(slug, viewer.viewerKey);
+    channel = await getMessageChannel(slug, viewer.viewerKey, viewer.alumniId);
     if (!channel) notFound();
     posts = await listMessagePosts(channel.id);
     await markChannelRead(channel.id, viewer.viewerKey);
@@ -50,6 +50,10 @@ export default async function MessageChannelPage({
 
   if (!channel) notFound();
 
+  const canPost = canPostToMessageChannel(viewer, channel);
+  const direct = isDirectChannel(channel);
+  const title = inboxChannelTitle(channel);
+
   return (
     <PageMain width="narrow" className="pb-24 md:pb-8">
       <div className="space-y-3">
@@ -57,30 +61,43 @@ export default async function MessageChannelPage({
           ← Messages
         </Link>
         <PageHeader
-          title={channel.name}
+          title={title}
           description={
-            channel.description ||
-            (canPost
-              ? "Admin can post From Sgarlata. Board and alumni can read this channel."
-              : "Read only. Board and Alum cannot compose From Sgarlata.")
+            direct
+              ? `Direct message with ${title}. Both of you will see this thread in Messages.`
+              : channel.description ||
+                (canPost
+                  ? "Admin can post From Sgarlata. Board and alumni can read this channel."
+                  : "Read only. Board and Alum cannot compose From Sgarlata.")
           }
           actions={
             channel.kind === "official" ? (
               <Badge variant="secondary">Official</Badge>
+            ) : direct ? (
+              <Badge variant="outline">Direct</Badge>
             ) : (
               <Badge variant="outline">Group</Badge>
             )
           }
         />
+        {direct && channel.peer_alumni_id ? (
+          <Link href={athleteHref(channel.peer_alumni_id)} className="text-sm font-medium text-navy hover:underline">
+            View profile
+          </Link>
+        ) : null}
       </div>
 
       {canPost ? (
         <Card>
           <CardHeader>
-            <CardTitle>New message</CardTitle>
+            <CardTitle>{direct ? "Send message" : "New message"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <MessagesCompose slug={channel.slug} />
+            <MessagesCompose
+              slug={channel.slug}
+              variant={direct ? "dm" : "official"}
+              recipientName={direct ? title : undefined}
+            />
           </CardContent>
         </Card>
       ) : (
@@ -90,7 +107,10 @@ export default async function MessageChannelPage({
       )}
 
       {posts.length === 0 ? (
-        <StatusCard title="No posts yet" body="When staff publish, the note will show here." />
+        <StatusCard
+          title={direct ? "No messages yet" : "No posts yet"}
+          body={direct ? "Send the first note. It will appear here for both of you." : "When staff publish, the note will show here."}
+        />
       ) : (
         <div className="space-y-3">
           {posts.map((post) => (

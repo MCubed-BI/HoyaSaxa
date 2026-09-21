@@ -72,6 +72,19 @@ export async function ensureMessagesTables() {
       PRIMARY KEY (viewer_key, channel_id)
     )
   `);
+  await sql.query(`
+    CREATE TABLE IF NOT EXISTS message_channel_members (
+      channel_id uuid NOT NULL REFERENCES message_channels(id) ON DELETE CASCADE,
+      alumni_id text NOT NULL,
+      display_name text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (channel_id, alumni_id)
+    )
+  `);
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS message_channel_members_alumni
+    ON message_channel_members (alumni_id)
+  `);
 
   for (const channel of SEEDED_CHANNELS) {
     await sql.query(
