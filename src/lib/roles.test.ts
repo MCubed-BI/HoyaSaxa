@@ -13,6 +13,7 @@ import { toPublicAlumniCard } from "./portal-queries";
 import { allowRequest, isCoachComposePath } from "./access";
 import {
   accessModeForRole,
+  canOpenGiving,
   canPostBrothers,
   canPostCoachMessage,
   canPostNewsflash,
@@ -147,6 +148,11 @@ describe("roles", () => {
     assert.equal(homePathForRole("alum"), "/portal");
     assert.equal(homePathForRole("board"), "/portal");
     assert.equal(homePathForRole("owner"), "/");
+    assert.equal(canOpenGiving("alum"), true);
+    assert.equal(canOpenGiving("board"), true);
+    assert.equal(canOpenGiving("owner"), true);
+    assert.equal(canOpenGiving("coach"), true);
+    assert.equal(canOpenGiving(null), false);
   });
 });
 
@@ -192,8 +198,12 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/events"), true);
     assert.equal(isAlumAllowedPath("/events/check-in"), true);
     assert.equal(isAlumAllowedPath("/api/events/attendance/feed"), true);
+    assert.equal(isAlumAllowedPath("/giving"), true);
+    assert.equal(isAlumAllowedPath("/api/giving"), true);
+    assert.equal(isAlumAllowedPath("/api/giving/pledges"), true);
     assert.equal(isAlumAllowedPath("/sync"), false);
     assert.equal(isAlumAllowedPath("/blast"), false);
+    assert.equal(loginPathFor("/giving"), "/home/login");
     assert.equal(isPublicPath("/home/login"), true);
     assert.equal(isPublicPath("/manifest.webmanifest"), true);
     assert.equal(isPublicPath("/api/logout"), true);
