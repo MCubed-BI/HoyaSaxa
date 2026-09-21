@@ -58,7 +58,7 @@ export function LoginGate({
         <form action={action} method="post" className="space-y-4">
           {next ? <input type="hidden" name="next" value={next} /> : null}
           <div className="space-y-1.5">
-            <Label htmlFor="username">{isAlum ? "GTown NetID or email" : "Username"}</Label>
+            <Label htmlFor="username">{isAlum ? "Net ID" : "Username"}</Label>
             <Input id="username" name="username" autoComplete="username" required className="h-10" />
           </div>
           <div className="space-y-1.5">
@@ -81,7 +81,7 @@ export function LoginGate({
           ) : (
             <p className="text-sm leading-relaxed text-muted-foreground">
               {isAlum
-                ? "Use your GTown NetID or the email from Register myself."
+                ? "Enter your Net ID and password."
                 : "Enter the username and password issued to you."}
             </p>
           )}
