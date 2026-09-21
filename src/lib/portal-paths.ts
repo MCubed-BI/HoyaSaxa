@@ -116,7 +116,9 @@ export function loginPathFor(pathname: string) {
     pathname === "/board" ||
     pathname.startsWith("/board/") ||
     pathname === "/brothers" ||
-    pathname.startsWith("/brothers/")
+    pathname.startsWith("/brothers/") ||
+    pathname === "/giving" ||
+    pathname.startsWith("/giving/")
   ) {
     return "/home/login";
   }

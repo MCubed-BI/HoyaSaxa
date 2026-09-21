@@ -1,9 +1,13 @@
-import { AppHeader } from "@/components/app-header";
+import { redirect } from "next/navigation";
+import { GivingChrome } from "@/components/giving-chrome";
 import { GivingScreen } from "@/components/giving-screen";
-import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
+import { PageHeader, PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { emptyGivingSummary, listGivingSummary } from "@/lib/giving";
+import { getLockerViewer } from "@/lib/locker-viewer";
+import { canOpenGiving } from "@/lib/roles";
+import { getCurrentViewer } from "@/lib/viewer";
 
 export const metadata = {
   title: "Give",
@@ -17,6 +21,12 @@ export default async function GivingPage({
   searchParams: Promise<{ recorded?: string; error?: string }>;
 }) {
   const params = await searchParams;
+  const [viewer, locker] = await Promise.all([getCurrentViewer(), getLockerViewer()]);
+
+  if (!viewer || !canOpenGiving(viewer.role)) {
+    redirect("/home/login");
+  }
+
   let summary = emptyGivingSummary;
   let errorMessage: string | null = null;
 
@@ -30,9 +40,11 @@ export default async function GivingPage({
         : "Could not load pledges.";
   }
 
+  const alumDonorLabel =
+    locker && locker.source !== "ga_session" && locker.label ? locker.label : undefined;
+
   return (
-    <PageShell>
-      <AppHeader current="giving" />
+    <GivingChrome locker={locker}>
       <PageMain width="narrow">
         <PageHeader
           eyebrow="Fundraising"
@@ -46,9 +58,10 @@ export default async function GivingPage({
             initial={summary}
             recorded={params.recorded === "1"}
             amountError={params.error === "amount"}
+            defaultDonorLabel={alumDonorLabel}
           />
         )}
       </PageMain>
-    </PageShell>
+    </GivingChrome>
   );
 }

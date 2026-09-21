@@ -119,6 +119,11 @@ export function canManageFundraising(role: Role) {
   return isAdminRole(role) || role === "board";
 }
 
+/** Shared `/giving` page. Claimed alum, board, and staff. Campaign admin stays on `/fundraising`. */
+export function canOpenGiving(role: Role | null | undefined) {
+  return isAdminRole(role) || role === "board" || role === "alum";
+}
+
 export function canSeeFullContact(role: Role) {
   return isAdminRole(role) || role === "board";
 }

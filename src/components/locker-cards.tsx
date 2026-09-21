@@ -32,7 +32,7 @@ export function QuickActions({ canOpenStaffDirectory }: { canOpenStaffDirectory:
       body: "Board section — board and admin write, alumni read. /newsflash redirects here.",
     },
     {
-      href: "/portal/giving",
+      href: "/giving",
       title: "Giving",
       icon: "giving",
       body: "Pledge amounts now. Stripe and campaigns stay with the Giving lane.",

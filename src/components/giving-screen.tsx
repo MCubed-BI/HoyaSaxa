@@ -27,14 +27,16 @@ export function GivingScreen({
   initial,
   recorded,
   amountError,
+  defaultDonorLabel,
 }: {
   initial: GivingSummary;
   recorded?: boolean;
   amountError?: boolean;
+  defaultDonorLabel?: string;
 }) {
   const [tab, setTab] = useState<Tab>("impact");
   const [amountDollars, setAmountDollars] = useState("25");
-  const [donorLabel, setDonorLabel] = useState("");
+  const [donorLabel, setDonorLabel] = useState(defaultDonorLabel ?? "");
   const [summary, setSummary] = useState(initial);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(
