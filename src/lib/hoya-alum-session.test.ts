@@ -72,6 +72,7 @@ describe("locker paths", () => {
     assert.equal(isPublicPath("/home/login"), true);
     assert.equal(isPublicPath("/api/locker/login"), true);
     assert.equal(isPublicPath("/manifest.webmanifest"), true);
+    assert.equal(isPublicPath("/brand/hoya-bulldog.png"), true);
     assert.equal(isPublicPath("/directory"), false);
     assert.equal(isPublicPath("/athletes/abc"), false);
     assert.equal(isPublicPath("/home"), false);

@@ -19,8 +19,8 @@ export function AuthShell({
     <main className="auth-shell">
       <div className="auth-shell__field" aria-hidden="true" />
       <div className={wide ? "auth-shell__card auth-shell__card--wide" : "auth-shell__card"}>
-        <div className="auth-shell__brand overflow-visible">
-          <BrandMark href="/" eyebrow={eyebrow} />
+        <div className="auth-shell__brand auth-shell__brand--mark overflow-visible">
+          <BrandMark href="/" eyebrow={eyebrow} prominent inverted />
           <p className="sr-only">{PRODUCT_DISPLAY_NAME}</p>
         </div>
         <div className="auth-shell__copy">
