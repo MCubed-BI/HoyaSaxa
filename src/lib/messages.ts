@@ -1,4 +1,5 @@
 import { getSql } from "@/lib/db";
+import { DM_CHANNEL_KIND, dmPair } from "@/lib/messages-dm";
 import { ensureMessagesTables } from "@/lib/messages-schema";
 
 export const MESSAGE_FILTERS = ["all", "unread", "groups"] as const;
@@ -11,6 +12,8 @@ export type MessageChannelRow = {
   kind: string;
   description: string | null;
   is_pinned: boolean;
+  participant_a: string | null;
+  participant_b: string | null;
   created_at: string;
   last_post_at: string | null;
   last_post_preview: string | null;
@@ -53,7 +56,7 @@ export function filterMessageChannels(channels: MessageChannelRow[], filter: Mes
   return channels;
 }
 
-export async function listMessageChannels(viewerKey: string) {
+export async function listMessageChannels(viewerKey: string, viewerAlumniId?: string | null) {
   await ensureMessagesTables();
   return query<MessageChannelRow[]>(
     `
@@ -64,6 +67,8 @@ export async function listMessageChannels(viewerKey: string) {
       c.kind,
       c.description,
       c.is_pinned,
+      c.participant_a,
+      c.participant_b,
       c.created_at,
       latest.created_at AS last_post_at,
       latest.body AS last_post_preview,
@@ -85,15 +90,59 @@ export async function listMessageChannels(viewerKey: string) {
       WHERE p.channel_id = c.id
         AND (r.last_read_at IS NULL OR p.created_at > r.last_read_at)
     ) unread ON true
+    WHERE c.kind IS DISTINCT FROM 'dm'
+       OR (
+         $2::text IS NOT NULL
+         AND (
+           lower(c.participant_a) = lower($2)
+           OR lower(c.participant_b) = lower($2)
+         )
+       )
     ORDER BY c.is_pinned DESC, COALESCE(latest.created_at, c.created_at) DESC, c.name
     `,
-    [viewerKey],
+    [viewerKey, viewerAlumniId?.trim() || null],
   );
 }
 
-export async function getMessageChannel(slug: string, viewerKey: string) {
-  const channels = await listMessageChannels(viewerKey);
+export async function getMessageChannel(slug: string, viewerKey: string, viewerAlumniId?: string | null) {
+  const channels = await listMessageChannels(viewerKey, viewerAlumniId);
   return channels.find((channel) => channel.slug === slug) ?? null;
+}
+
+export async function findOrCreateDmChannel(input: {
+  fromAlumniId: string;
+  toAlumniId: string;
+  fromLabel: string;
+  toLabel: string;
+  viewerKey: string;
+}) {
+  await ensureMessagesTables();
+  const pair = dmPair(input.fromAlumniId, input.fromLabel, input.toAlumniId, input.toLabel);
+  await query(
+    `
+    INSERT INTO message_channels (slug, name, kind, description, is_pinned, participant_a, participant_b)
+    VALUES ($1, $2, $3, $4, false, $5, $6)
+    ON CONFLICT (slug) DO UPDATE
+    SET name = EXCLUDED.name,
+        description = EXCLUDED.description,
+        kind = EXCLUDED.kind,
+        participant_a = EXCLUDED.participant_a,
+        participant_b = EXCLUDED.participant_b
+    `,
+    [
+      pair.slug,
+      pair.name,
+      DM_CHANNEL_KIND,
+      `Direct message between ${pair.labelA} and ${pair.labelB}`,
+      pair.participantA,
+      pair.participantB,
+    ],
+  );
+  const channel = await getMessageChannel(pair.slug, input.viewerKey, input.fromAlumniId);
+  if (!channel) {
+    throw new Error("Could not open the direct message thread.");
+  }
+  return channel;
 }
 
 export async function listMessagePosts(channelId: string, limit = 80) {

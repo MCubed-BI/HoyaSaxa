@@ -2,6 +2,7 @@ import Link from "next/link";
 import { pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { filterMessageChannels, type MessageChannelRow, type MessageFilter } from "@/lib/messages";
+import { dmDisplayName, isDmChannel } from "@/lib/messages-dm";
 
 const FILTERS: Array<{ key: MessageFilter; label: string }> = [
   { key: "all", label: "All" },
@@ -17,9 +18,11 @@ function preview(text: string | null) {
 export function MessagesInbox({
   channels,
   filter,
+  viewerAlumniId,
 }: {
   channels: MessageChannelRow[];
   filter: MessageFilter;
+  viewerAlumniId?: string | null;
 }) {
   const rows = filterMessageChannels(channels, filter);
 
@@ -57,9 +60,13 @@ export function MessagesInbox({
             <li key={channel.id}>
               <Link href={`/messages/${channel.slug}`} className="block px-4 py-3 hover:bg-muted/40">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium text-navy">{channel.name}</p>
+                  <p className="font-medium text-navy">
+                    {isDmChannel(channel) ? dmDisplayName(channel, viewerAlumniId) : channel.name}
+                  </p>
                   {channel.is_pinned || channel.kind === "official" ? (
                     <Badge variant="secondary">Official</Badge>
+                  ) : isDmChannel(channel) ? (
+                    <Badge variant="outline">Direct</Badge>
                   ) : (
                     <Badge variant="outline">Group</Badge>
                   )}

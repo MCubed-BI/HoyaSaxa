@@ -8,7 +8,7 @@ import { Timestamp } from "@/components/timestamp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { getMessageChannel, listMessagePosts, markChannelRead } from "@/lib/messages";
-import { canPostSgarlata } from "@/lib/messages-auth";
+import { canPostToMessageChannel, dmDisplayName, isDmChannel } from "@/lib/messages-dm";
 import { requireMessageViewer } from "@/lib/messages-viewer";
 
 export const dynamic = "force-dynamic";
@@ -20,15 +20,16 @@ export default async function MessageChannelPage({
 }) {
   const { slug } = await params;
   const viewer = await requireMessageViewer(`/messages/${slug}`);
-  const canPost = canPostSgarlata(viewer);
+  let canPost = false;
 
   let errorMessage: string | null = null;
   let channel: Awaited<ReturnType<typeof getMessageChannel>> = null;
   let posts: Awaited<ReturnType<typeof listMessagePosts>> = [];
 
   try {
-    channel = await getMessageChannel(slug, viewer.viewerKey);
+    channel = await getMessageChannel(slug, viewer.viewerKey, viewer.alumniId);
     if (!channel) notFound();
+    canPost = canPostToMessageChannel(channel, viewer);
     posts = await listMessagePosts(channel.id);
     await markChannelRead(channel.id, viewer.viewerKey);
   } catch (error) {
@@ -57,16 +58,20 @@ export default async function MessageChannelPage({
           ← Messages
         </Link>
         <PageHeader
-          title={channel.name}
+          title={isDmChannel(channel) ? dmDisplayName(channel, viewer.alumniId) : channel.name}
           description={
-            channel.description ||
-            (canPost
-              ? "Admin can post From Sgarlata. Board and alumni can read this channel."
-              : "Read only. Board and Alum cannot compose From Sgarlata.")
+            isDmChannel(channel)
+              ? "Private direct message. Only the two of you can read or send."
+              : channel.description ||
+                (canPost
+                  ? "Admin can post From Sgarlata. Board and alumni can read this channel."
+                  : "Read only. Board and Alum cannot compose From Sgarlata.")
           }
           actions={
             channel.kind === "official" ? (
               <Badge variant="secondary">Official</Badge>
+            ) : isDmChannel(channel) ? (
+              <Badge variant="outline">Direct</Badge>
             ) : (
               <Badge variant="outline">Group</Badge>
             )
@@ -77,10 +82,10 @@ export default async function MessageChannelPage({
       {canPost ? (
         <Card>
           <CardHeader>
-            <CardTitle>New message</CardTitle>
+            <CardTitle>{isDmChannel(channel) ? "Send a message" : "New message"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <MessagesCompose slug={channel.slug} />
+            <MessagesCompose slug={channel.slug} mode={isDmChannel(channel) ? "dm" : "official"} />
           </CardContent>
         </Card>
       ) : (
@@ -90,7 +95,14 @@ export default async function MessageChannelPage({
       )}
 
       {posts.length === 0 ? (
-        <StatusCard title="No posts yet" body="When staff publish, the note will show here." />
+        <StatusCard
+          title={isDmChannel(channel) ? "No messages yet" : "No posts yet"}
+          body={
+            isDmChannel(channel)
+              ? "Send the first note to start this thread."
+              : "When staff publish, the note will show here."
+          }
+        />
       ) : (
         <div className="space-y-3">
           {posts.map((post) => (

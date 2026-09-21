@@ -6,6 +6,7 @@ import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photo
 import { BoardMemberToggle } from "@/components/board-member-toggle";
 import { HoyaAvatar } from "@/components/hoya-avatar";
 import { LinkedInProfileField } from "@/components/linkedin-profile-link";
+import { ProfileMessageCta } from "@/components/profile-message-cta";
 import { PageMain, pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import { getLockerPersonById } from "@/lib/locker-directory";
 import { athleteHref, parseAthleteTab } from "@/lib/locker-paths";
 import { ATHLETE_TABS, athleteTabLabel } from "@/lib/locker-types";
 import { requireLockerViewer } from "@/lib/locker-viewer";
+import { canMessageHoyaProfile } from "@/lib/messages-dm";
 import { isBoardMember } from "@/lib/staff-roles";
 
 export const dynamic = "force-dynamic";
@@ -116,6 +118,12 @@ export default async function AthleteProfilePage({
             <HoyaBadgeRow badges={badges} />
             <AthleteEmailField emails={person.emails} showEmpty={false} />
             <LinkedInProfileField url={person.linkedinUrl} showEmpty={false} />
+            {canMessageHoyaProfile({
+              viewerAlumniId: actor.sessionAlumniId,
+              targetAlumniId: person.id,
+            }) ? (
+              <ProfileMessageCta alumniId={person.id} name={name} />
+            ) : null}
             {actor.canEdit ? (
               <div className="pt-2">
                 <AthletePhotoEditor alumniId={person.id} slots={photos} />

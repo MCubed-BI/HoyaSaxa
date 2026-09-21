@@ -1,14 +1,16 @@
 import { cookies } from "next/headers";
+import { isVerifiedHoyaIdentity } from "@/lib/access";
+import { isPreviewAlumniId, readAlumSession } from "@/lib/alum-session";
 import {
   HOYA_ALUM_SESSION_COOKIE,
   readAlumniSessionFromCookies,
 } from "@/lib/alumni-auth";
-import { readAlumSession } from "@/lib/alum-session";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername, isValidSessionToken } from "@/lib/auth";
-import { isVerifiedHoyaIdentity } from "@/lib/access";
+import { getDatabaseUrl } from "@/lib/db";
 import { canPostToFeedSection } from "@/lib/feed-sections";
 import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
 import { resolvePlatformRole } from "@/lib/platform-roles";
+import { lookupAlumniClaim } from "@/lib/portal-queries";
 import { canPostCoachMessage, resolveRoleFromEnv } from "@/lib/roles";
 
 export const SGARLATA_CHANNEL_SLUG = "sgarlata";
@@ -19,6 +21,7 @@ export type MessageViewer = {
   viewerKey: string;
   canPost: boolean;
   verifiedHoya?: boolean;
+  alumniId?: string | null;
 };
 
 const PUBLIC_PATHS = [
@@ -100,17 +103,19 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       viewerKey: staffUsername ? `staff:${staffUsername.toLowerCase()}` : "staff",
       canPost: canPostCoachMessage(role),
       verifiedHoya: false,
+      alumniId: null,
     };
   }
 
   const token = jar.get(HOYA_ALUM_SESSION_COOKIE)?.value;
   const contract = readAlumSession(token);
   if (contract) {
+    const alumniId = isPreviewAlumniId(contract.alumniId) ? null : contract.alumniId;
     const platformRole = resolvePlatformRole({
       sessionRole: contract.role,
       source: "hoya_alum_session",
       email: contract.email,
-      alumniId: contract.alumniId,
+      alumniId,
       name: contract.name,
     });
     return {
@@ -119,17 +124,27 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       viewerKey: `alum:contract:${contract.alumniId}`,
       canPost: canPostToFeedSection(platformRole, "sgarlata"),
       verifiedHoya: isVerifiedHoyaIdentity(contract),
+      alumniId,
     };
   }
 
   const alum = readAlumniSessionFromCookies((name) => jar.get(name)?.value);
   if (alum) {
+    let alumniId: string | null = null;
+    if (!alum.accountId.startsWith("locker:") && getDatabaseUrl()) {
+      try {
+        alumniId = (await lookupAlumniClaim(alum.accountId)).alumniId;
+      } catch {
+        alumniId = null;
+      }
+    }
     return {
       kind: "alum",
       label: viewerLabelFromAccountId(alum.accountId),
       viewerKey: `alum:${alum.accountId}`,
       canPost: false,
       verifiedHoya: !alum.accountId.startsWith("locker:"),
+      alumniId,
     };
   }
 
@@ -147,6 +162,7 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       viewerKey: `alum:home:${locker.role}:${locker.label.toLowerCase()}`,
       canPost: canPostToFeedSection(platformRole, "sgarlata"),
       verifiedHoya: isVerifiedHoyaIdentity({ role: locker.role }),
+      alumniId: null,
     };
   }
 
