@@ -5,6 +5,7 @@ import { readAlumniSessionFromCookies } from "@/lib/alumni-auth";
 import { HOYA_ALUM_SESSION_COOKIE, isValidHoyaAlumSession } from "@/lib/hoya-alum-session";
 import { isLockerPath } from "@/lib/locker-paths";
 import {
+  athletePathForAlumniProfile,
   canAccessAlumniClaimPath,
   isAlumniClaimPath,
   isAlumAllowedPath,
@@ -90,6 +91,10 @@ export function proxy(request: NextRequest) {
   }
 
   if (alum && !alumFacing) {
+    const athletePath = athletePathForAlumniProfile(pathname);
+    if (athletePath) {
+      return NextResponse.redirect(new URL(athletePath, request.url));
+    }
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

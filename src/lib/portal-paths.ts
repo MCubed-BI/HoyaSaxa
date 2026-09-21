@@ -70,6 +70,14 @@ export function isAlumAllowedPath(pathname: string) {
   return ALUM_ALLOWED_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
+/** Claimed / preview alum hitting the staff record URL should land on the Hoya profile. */
+export function athletePathForAlumniProfile(pathname: string) {
+  const match = pathname.match(/^\/alumni\/([^/]+)\/?$/);
+  const id = match?.[1]?.trim() ?? "";
+  if (!id || id === "login") return null;
+  return `/athletes/${id}`;
+}
+
 /** Staff admin may merge or permanently dismiss a duplicate pair. Photos use POST /api/alum/photos. */
 export function isStaffAlumniMutationPath(pathname: string) {
   return pathname === "/api/alumni/merge" || pathname === "/api/alumni/dismiss-duplicate";

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import { navItemsForRole, portalMoreItems } from "./nav";
 import {
+  athletePathForAlumniProfile,
   canAccessAlumniClaimPath,
   isAlumniClaimPath,
   isAlumAllowedPath,
@@ -184,6 +185,9 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/portal"), true);
     assert.equal(isAlumAllowedPath("/portal/directory"), true);
     assert.equal(isAlumAllowedPath("/directory"), true);
+    assert.equal(athletePathForAlumniProfile("/alumni/898108b1-e486-4fe3-9e13-9d8b64397bb8"), "/athletes/898108b1-e486-4fe3-9e13-9d8b64397bb8");
+    assert.equal(athletePathForAlumniProfile("/alumni-login"), null);
+    assert.equal(athletePathForAlumniProfile("/alumni"), null);
     assert.equal(isPublicPath("/directory"), false);
     assert.equal(isPublicPath("/athletes/demo"), false);
     assert.equal(isAlumAllowedPath("/alumni/898108b1-e486-4fe3-9e13-9d8b64397bb8"), true);

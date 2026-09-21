@@ -3,7 +3,7 @@ import { seedAlumniIdForLabel } from "@/lib/badge-identity";
 import { SGARLATA_CHANNEL_SLUG, canPostSgarlata, type MessageViewer } from "@/lib/messages-auth";
 
 export const DM_CHANNEL_KIND = "dm";
-export const STAFF_DM_PARTICIPANT_PREFIX = "admin:";
+export const STAFF_DM_PARTICIPANT_PREFIX = "admin-";
 
 export type DmParticipantChannel = {
   kind?: string | null;

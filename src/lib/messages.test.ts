@@ -223,9 +223,9 @@ describe("alum to Hoya profile DM", () => {
       participant_a: staffDmParticipantId("Hoyas"),
       participant_b: tim,
     });
-    assert.equal(staffDmParticipantId("Hoyas"), "admin:hoyas");
-    assert.equal(staffDmParticipantId("Michael Kasten"), "admin:michael-kasten");
-    assert.equal(dmParticipantId(staff), "admin:hoyas");
+    assert.equal(staffDmParticipantId("Hoyas"), "admin-hoyas");
+    assert.equal(staffDmParticipantId("Michael Kasten"), "admin-michael-kasten");
+    assert.equal(dmParticipantId(staff), "admin-hoyas");
     assert.equal(dmAuthorLabel(staff), "Admin");
     assert.equal(dmAuthorLabel({ ...staff, alumniId: patrick, label: "Patrick Finnegan" }), "Patrick Finnegan");
     assert.equal(canViewMessageChannel(dm, patrick), true);
@@ -257,5 +257,8 @@ describe("alum to Hoya profile DM", () => {
     assert.match(alumni, /ProfileMessageCta/);
     assert.match(alumni, /canMessageHoyaProfile/);
     assert.match(alumni, /isAdminRole\(viewer\.role\)/);
+    assert.match(alumni, /redirect\(athleteHref\(id\)\)/);
+    const proxy = readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8");
+    assert.match(proxy, /athletePathForAlumniProfile/);
   });
 });
