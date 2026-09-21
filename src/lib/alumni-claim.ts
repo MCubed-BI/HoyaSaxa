@@ -339,6 +339,7 @@ export async function registerAlumniAccount(input: {
   firstName?: string;
   createIfMissing?: boolean;
   photos?: AlumniPhotoPatch;
+  linkedinUrl?: string | null;
 }) {
   await ensureAlumniAuthTables();
   const email = input.email.trim().toLowerCase();
@@ -385,6 +386,9 @@ export async function registerAlumniAccount(input: {
       alumniId,
     ]);
     await grantVerifiedHoyaForAlumSession(alumniId);
+    if (input.linkedinUrl) {
+      await updateOwnAlumniRecord(alumniId, { linkedin_url: input.linkedinUrl });
+    }
     if (input.photos && Object.keys(input.photos).length > 0) {
       await updateAlumniPhotos(alumniId, input.photos);
     }

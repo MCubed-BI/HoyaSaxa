@@ -1,32 +1,37 @@
 /**
  * Register / claim / validate photo helpers.
  * Persistence still goes through `canEditAlumniRecord` + `POST /api/alum/photos`.
- * Does not scrape LinkedIn (ToS) — alum pastes a photo URL or uploads a file.
+ * LinkedIn preview is best-effort public og:image only — upload/paste remains the fallback.
  */
 import {
   ALUMNI_PHOTO_FIELDS,
   parseAlumniPhotoPatch,
   type AlumniPhotoPatch,
 } from "@/lib/alumni-photos";
+import { classifyPhotoInput } from "@/lib/linkedin-photo";
+import { normalizeLinkedinProfileUrl } from "@/lib/linkedin-profile";
 
 export type ClaimPhotoValues = {
   football_photo_url: string;
   linkedin_photo_url: string;
+  linkedin_url: string;
 };
 
 export function emptyClaimPhotos(): ClaimPhotoValues {
-  return { football_photo_url: "", linkedin_photo_url: "" };
+  return { football_photo_url: "", linkedin_photo_url: "", linkedin_url: "" };
 }
 
 export function photosFromClaimMatch(
   row?: {
     football_photo_url?: string | null;
     linkedin_photo_url?: string | null;
+    linkedin_url?: string | null;
   } | null,
 ): ClaimPhotoValues {
   return {
     football_photo_url: row?.football_photo_url?.trim() || "",
     linkedin_photo_url: row?.linkedin_photo_url?.trim() || "",
+    linkedin_url: row?.linkedin_url?.trim() || "",
   };
 }
 
@@ -45,15 +50,31 @@ export function isClaimPhotoValidateStep(...values: Array<string | string[] | nu
   });
 }
 
-/** Include only non-empty slots so register does not wipe a farmed GUHoyas URL. */
+/** Include only non-empty image slots so register does not wipe a farmed GUHoyas URL. */
 export function photoPatchFromRegisterBody(body: Record<string, unknown> | null | undefined): AlumniPhotoPatch {
   const input: Record<string, unknown> = {};
   if (!body) return parseAlumniPhotoPatch(input);
   for (const field of ALUMNI_PHOTO_FIELDS) {
     const value = body[field];
-    if (typeof value === "string" && value.trim()) input[field] = value;
+    if (typeof value !== "string" || !value.trim()) continue;
+    if (field === "linkedin_photo_url") {
+      const classified = classifyPhotoInput(value);
+      if (classified.kind !== "upload" && classified.kind !== "image") continue;
+      input[field] = classified.value;
+      continue;
+    }
+    input[field] = value;
   }
   return parseAlumniPhotoPatch(input);
+}
+
+export function profileUrlFromRegisterBody(body: Record<string, unknown> | null | undefined) {
+  if (!body) return null;
+  const fromField = typeof body.linkedin_url === "string" ? normalizeLinkedinProfileUrl(body.linkedin_url) : null;
+  if (fromField) return fromField;
+  if (typeof body.linkedin_photo_url !== "string") return null;
+  const classified = classifyPhotoInput(body.linkedin_photo_url);
+  return classified.kind === "profile" ? classified.value : null;
 }
 
 export function hasClaimPhotoValues(values: ClaimPhotoValues) {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAthleteActor } from "@/lib/athlete-access";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { getAlumniPhotos, parseAlumniPhotoPatch, updateAlumniPhotos } from "@/lib/alumni-photos";
+import { optionalStringField, refreshFromLinkedinFlag, syncLinkedinPhotoOnSave } from "@/lib/linkedin-photo-sync";
 import { getCurrentViewer } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
@@ -41,8 +42,21 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
-    const photos = await updateAlumniPhotos(alumniId, parseAlumniPhotoPatch(body));
-    return NextResponse.json({ ok: true, photos });
+    const photoPatch = parseAlumniPhotoPatch(body);
+    if ("football_photo_url" in photoPatch) {
+      await updateAlumniPhotos(alumniId, { football_photo_url: photoPatch.football_photo_url });
+    }
+    const refresh = refreshFromLinkedinFlag(body);
+    if (!("linkedin_photo_url" in body) && !("linkedin_url" in body) && !refresh) {
+      return NextResponse.json({ ok: true, photos: await getAlumniPhotos(alumniId) });
+    }
+    const synced = await syncLinkedinPhotoOnSave({
+      alumniId,
+      incomingPhoto: optionalStringField(body, "linkedin_photo_url"),
+      incomingProfileUrl: optionalStringField(body, "linkedin_url"),
+      refreshFromLinkedin: refresh,
+    });
+    return NextResponse.json({ ok: true, photos: synced.photos, linkedinPhoto: synced.linkedinPhoto });
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {
       return NextResponse.json({ error: "DATABASE_URL is not set" }, { status: 503 });

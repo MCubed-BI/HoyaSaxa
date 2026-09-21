@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ClaimPhotoFields } from "@/components/claim-photo-fields";
 import { Notice } from "@/components/page-chrome";
+import { Button } from "@/components/ui/button";
 import type { AthletePhotoSlot } from "@/lib/athlete-photo-slots";
+import { photosFromClaimMatch, type ClaimPhotoValues } from "@/lib/claim-photos";
 
 export function AthletePhotoPair({
   slots,
@@ -38,39 +38,75 @@ export function AthletePhotoPair({
   );
 }
 
+function slotsToPhotos(slots: AthletePhotoSlot[], linkedinUrl?: string | null): ClaimPhotoValues {
+  return photosFromClaimMatch({
+    football_photo_url: slots.find((slot) => slot.id === "roster")?.url ?? "",
+    linkedin_photo_url: slots.find((slot) => slot.id === "headshot")?.url ?? "",
+    linkedin_url: linkedinUrl ?? "",
+  });
+}
+
 export function AthletePhotoEditor({
   alumniId,
   slots,
+  linkedinUrl = "",
 }: {
   alumniId: string;
   slots: AthletePhotoSlot[];
+  linkedinUrl?: string | null;
 }) {
   const router = useRouter();
-  const roster = slots.find((slot) => slot.id === "roster")?.url ?? "";
-  const headshot = slots.find((slot) => slot.id === "headshot")?.url ?? "";
+  const [photos, setPhotos] = useState<ClaimPhotoValues>(() => slotsToPhotos(slots, linkedinUrl));
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function save(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
+  const rosterUrl = slots.find((slot) => slot.id === "roster")?.url ?? "";
+  const headshotUrl = slots.find((slot) => slot.id === "headshot")?.url ?? "";
+
+  useEffect(() => {
+    setPhotos(
+      photosFromClaimMatch({
+        football_photo_url: rosterUrl,
+        linkedin_photo_url: headshotUrl,
+        linkedin_url: linkedinUrl ?? "",
+      }),
+    );
+  }, [alumniId, headshotUrl, linkedinUrl, rosterUrl]);
+
+  async function save(refreshFromLinkedin = false) {
     setPending(true);
     setError(null);
     setMessage(null);
+    setPhotoNotice(null);
     try {
       const response = await fetch("/api/alum/photos", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           alumniId,
-          football_photo_url: String(form.get("football_photo_url") ?? ""),
-          linkedin_photo_url: String(form.get("linkedin_photo_url") ?? ""),
+          football_photo_url: photos.football_photo_url,
+          linkedin_photo_url: photos.linkedin_photo_url,
+          linkedin_url: photos.linkedin_url,
+          refreshFromLinkedin,
         }),
       });
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as {
+        error?: string;
+        photos?: { football_photo_url?: string | null; linkedin_photo_url?: string | null };
+        linkedinPhoto?: { message?: string | null };
+      };
       if (!response.ok) throw new Error(data.error ?? "Save failed");
+      if (data.photos) {
+        setPhotos((current) => ({
+          ...current,
+          football_photo_url: data.photos?.football_photo_url?.trim() || current.football_photo_url,
+          linkedin_photo_url: data.photos?.linkedin_photo_url?.trim() || current.linkedin_photo_url,
+        }));
+      }
       setMessage("Saved photos.");
+      setPhotoNotice(data.linkedinPhoto?.message ?? null);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -80,17 +116,27 @@ export function AthletePhotoEditor({
   }
 
   return (
-    <form onSubmit={save} className="space-y-3">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void save();
+      }}
+      className="space-y-3"
+    >
       {message ? <Notice tone="success">{message}</Notice> : null}
+      {photoNotice ? (
+        <Notice tone={photoNotice.startsWith("Couldn't") ? "muted" : "success"}>{photoNotice}</Notice>
+      ) : null}
       {error ? <Notice tone="danger">{error}</Notice> : null}
-      <div className="space-y-1.5">
-        <Label htmlFor="football_photo_url">Football roster photo URL</Label>
-        <Input id="football_photo_url" name="football_photo_url" defaultValue={roster} placeholder="https://…" />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="linkedin_photo_url">Current LinkedIn / headshot URL</Label>
-        <Input id="linkedin_photo_url" name="linkedin_photo_url" defaultValue={headshot} placeholder="https://…" />
-      </div>
+      <ClaimPhotoFields
+        values={photos}
+        onChange={setPhotos}
+        disabled={pending}
+        idPrefix="athlete"
+        legend="Photos and LinkedIn"
+        onRefreshFromLinkedin={() => void save(true)}
+        refreshPending={pending}
+      />
       <Button type="submit" disabled={pending}>
         {pending ? "Saving…" : "Save photos"}
       </Button>

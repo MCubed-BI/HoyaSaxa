@@ -6,6 +6,7 @@ import {
   isClaimPhotoValidateStep,
   photoPatchFromRegisterBody,
   photosFromClaimMatch,
+  profileUrlFromRegisterBody,
 } from "./claim-photos";
 
 describe("claim / register photo helpers", () => {
@@ -14,10 +15,12 @@ describe("claim / register photo helpers", () => {
       photosFromClaimMatch({
         football_photo_url: " https://guhoyas.com/images/kasten.jpg ",
         linkedin_photo_url: null,
+        linkedin_url: "www.linkedin.com/in/hoya",
       }),
       {
         football_photo_url: "https://guhoyas.com/images/kasten.jpg",
         linkedin_photo_url: "",
+        linkedin_url: "www.linkedin.com/in/hoya",
       },
     );
     assert.deepEqual(photosFromClaimMatch(null), emptyClaimPhotos());
@@ -36,13 +39,37 @@ describe("claim / register photo helpers", () => {
     assert.deepEqual(
       photoPatchFromRegisterBody({
         football_photo_url: "https://example.com/new.jpg",
-        linkedin_photo_url: "   ",
+        linkedin_photo_url: "https://example.com/head.jpg",
         headline: "ignore",
+      }),
+      {
+        football_photo_url: "https://example.com/new.jpg",
+        linkedin_photo_url: "https://example.com/head.jpg",
+      },
+    );
+    assert.deepEqual(
+      photoPatchFromRegisterBody({
+        football_photo_url: "https://example.com/new.jpg",
+        linkedin_photo_url: "   ",
       }),
       { football_photo_url: "https://example.com/new.jpg" },
     );
     assert.deepEqual(photoPatchFromRegisterBody({}), {});
-    assert.equal(hasClaimPhotoValues({ football_photo_url: "", linkedin_photo_url: "" }), false);
-    assert.equal(hasClaimPhotoValues({ football_photo_url: "https://x", linkedin_photo_url: "" }), true);
+    assert.deepEqual(
+      photoPatchFromRegisterBody({
+        linkedin_photo_url: "https://www.linkedin.com/in/hoya",
+      }),
+      {},
+    );
+    assert.equal(hasClaimPhotoValues({ football_photo_url: "", linkedin_photo_url: "", linkedin_url: "" }), false);
+    assert.equal(hasClaimPhotoValues({ football_photo_url: "https://x", linkedin_photo_url: "", linkedin_url: "" }), true);
+    assert.equal(
+      profileUrlFromRegisterBody({ linkedin_url: "www.linkedin.com/in/hoya" }),
+      "https://www.linkedin.com/in/hoya",
+    );
+    assert.equal(
+      profileUrlFromRegisterBody({ linkedin_photo_url: "https://www.linkedin.com/in/hoya" }),
+      "https://www.linkedin.com/in/hoya",
+    );
   });
 });
