@@ -198,7 +198,7 @@ Alum chrome uses existing CRM styles (function over polish). Primary nav is **Ho
 - `/events/new` — Create Event (Admin, Board, or Alum)
 - `/messages` — inbox; `/messages/sgarlata` is the pinned official channel
 - `/directory` — Hoya Directory (search + All/Athletes/Alumni/Coaches/Staff). Requires `ga_session`, `hoya_alum_session`, or the claim session. Anonymous visitors are sent to `/login`. Emails stay hidden on these cards.
-- `/athletes/[id]` — public athlete profile (Overview/Years Active/Photos/Career/Q&A). Likely-duplicate panel: Merge duplicate is unchanged; **Not me** permanently hides that pair for the viewing claimed alum (`account:{id}`) or staff admin (`admin:{username}`). The other scope can still see it.
+- `/athletes/[id]` — public athlete profile (Overview/Years Active/Photos/Career/Q&A). Claimed / verified alum see a **Message** CTA that opens a 1:1 DM on the existing Messages tables. Likely-duplicate panel: Merge duplicate is unchanged; **Not me** permanently hides that pair for the viewing claimed alum (`account:{id}`) or staff admin (`admin:{username}`). The other scope can still see it.
 - `/portal/directory` / `/portal/profile` — aliases to `/directory`
 - `/portal/events` / `/portal/giving` — aliases to `/events` and `/giving`
 - `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases (`/portal/newsflash` → `/board`)
@@ -241,7 +241,9 @@ This lane does not change Register myself / claim or the portal shell.
 
 ## Messages
 
-Staff (existing `ga_session` coach gate) can post to **Message from Sgarlata**. Alumni with `hoya_alum_session` (or the Register/Claim `ga_alumni_session` cookie) can read Messages only — Data Sync and other owner tools stay locked.
+Staff (existing `ga_session` coach gate) can post to **Message from Sgarlata**. Alumni with `hoya_alum_session` (or the Register/Claim `ga_alumni_session` cookie) can read that official channel — Data Sync and other owner tools stay locked.
+
+Claimed / verified alum can also **Message** any Hoya from `/athletes/[id]`. That opens or reuses a `kind=dm` row on the same `message_channels` / `message_posts` / `message_reads` tables (slug `dm-{id}_{id}`). Participants only. Sgarlata compose stays admin-only.
 
 Tables (`message_channels`, `message_posts`, `message_reads`) are created on first use, same pattern as blast tables. The official Sgarlata channel is seeded pinned.
 
@@ -249,6 +251,7 @@ Tables (`message_channels`, `message_posts`, `message_reads`) are created on fir
 
 1. Staff: open `/login`, sign in as `Hoyas` / `Sgarlata35`, go to **Messages**, open **Message from Sgarlata**, post a note.
 2. Alum: sign out, open `/locker`, enter access code `HoyaSaxa` (local default). That sets `hoya_alum_session`. Read Messages and the Sgarlata channel — no compose box. Visiting `/sync` redirects back to Messages.
+3. Claimed alum (example Patrick Finnegan): sign in on `/alumni-login` or claim, open Tim Barnes on `/directory` → `/athletes/[id]`, tap **Message**. That creates or opens the DM thread. Both sides send from `/messages/{slug}`.
 
 Filters are multi-select: state, city, position, class/grad year, season year, plus has email / phone / LinkedIn. Check alumni on the directory to add a manual blast list. That same list feeds both channels.
 
