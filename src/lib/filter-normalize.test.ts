@@ -33,6 +33,8 @@ test("normalizes state case, junk, and repeated spreadsheet tokens", () => {
   assert.equal(normalizeFilterState("n/a"), null);
   assert.equal(normalizeFilterState("  "), null);
   assert.equal(normalizeFilterState("Ontario"), "Ontario");
+  assert.equal(normalizeFilterState("Phoenix, Arizona, United States"), "AZ");
+  assert.equal(normalizeFilterState("Amsterdam, North Holland, Netherlands"), null);
 });
 
 test("normalizes city case and strips address fragments", () => {

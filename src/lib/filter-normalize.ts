@@ -158,7 +158,7 @@ export function normalizeFilterState(value: string | null | undefined): string |
     ),
   ];
   if (codes.length === 1) return codes[0] ?? null;
-  if (tokens.length > 1 || /[:|/]{2,}/.test(cleaned)) return null;
+  if (tokens.length > 1 || /[:|/]{2,}/.test(cleaned) || cleaned.includes(",")) return null;
 
   if (cleaned.length <= 3) return cleaned.replace(/\./g, "").toUpperCase();
   return titleCaseWords(cleaned);
