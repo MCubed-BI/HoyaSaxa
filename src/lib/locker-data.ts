@@ -48,11 +48,11 @@ export function isFeedTab(value: string | null | undefined): value is FeedTab {
 
 export const DEMO_UPCOMING_EVENT: UpcomingEvent = {
   title: "Homecoming weekend at Cooper Field",
-  body: "Board gathering after kickoff. Events lane will own RSVP; this card reads the next dated Board note or an `events` row when that table lands.",
+  body: "Board gathering after kickoff. RSVP and details are on the event page.",
   startsAt: "2026-10-17T16:00:00.000Z",
   location: "Cooper Field · Georgetown",
   source: "demo",
-  href: "/portal/events",
+  href: "/events",
 };
 
 export const DEMO_NEWSFLASH: NewsflashPost[] = [

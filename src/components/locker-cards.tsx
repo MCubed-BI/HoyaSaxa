@@ -9,39 +9,42 @@ export function formatLockerDate(value: string) {
   return formatDateTime(value) ?? value;
 }
 
-export function QuickActions({ canOpenStaffDirectory }: { canOpenStaffDirectory: boolean }) {
-  const actions: Array<{ href: string; title: string; body: string; icon: AppIconName }> = [
-    {
-      href: canOpenStaffDirectory ? "/" : "/directory",
-      title: "Directory",
-      icon: "directory",
-      body: canOpenStaffDirectory
-        ? "Staff directory and athlete cards."
-        : "Read-only Hoya Directory. Profiles stay with the Directory lane.",
-    },
-    {
-      href: "/portal/events",
-      title: "Events",
-      icon: "events",
-      body: "Upcoming / Past / My Events stub until the Events lane lands.",
-    },
-    {
-      href: "/board",
-      title: "Board",
-      icon: "newsflash",
-      body: "Board section — board and admin write, alumni read. /newsflash redirects here.",
-    },
-    {
-      href: "/giving",
-      title: "Giving",
-      icon: "giving",
-      body: "Pledge amounts now. Stripe and campaigns stay with the Giving lane.",
-    },
-  ];
+export const LOCKER_QUICK_ACTIONS: Array<{
+  href: string;
+  title: string;
+  body: string;
+  icon: AppIconName;
+}> = [
+  {
+    href: "/directory",
+    title: "Directory",
+    icon: "directory",
+    body: "Search athletes, alumni, coaches, and staff.",
+  },
+  {
+    href: "/events",
+    title: "Events",
+    icon: "events",
+    body: "Upcoming, past, and your events — search, RSVP, and check in.",
+  },
+  {
+    href: "/board",
+    title: "Board",
+    icon: "newsflash",
+    body: "Board notes and game-week updates. Board and admin write; alumni read.",
+  },
+  {
+    href: "/giving",
+    title: "Giving",
+    icon: "giving",
+    body: "Record a pledge and track impact, funds, and leaderboards.",
+  },
+];
 
+export function QuickActions() {
   return (
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {actions.map((action) => (
+      {LOCKER_QUICK_ACTIONS.map((action) => (
         <Link key={action.title} href={action.href} className="app-tile">
           <span className="app-tile__icon">
             <AppIcon name={action.icon} className="size-4 text-silver-strong" />
@@ -69,11 +72,7 @@ export function UpcomingEventCard({ event }: { event: UpcomingEvent }) {
         <p className="text-sm text-muted-foreground">{event.body}</p>
         <p className="text-xs text-muted-foreground">
           Source:{" "}
-          {event.source === "events"
-            ? "Events lane"
-            : event.source === "newsflash"
-              ? "Board date"
-              : "Demo until Events/Board dates exist"}
+          {event.source === "events" ? "Events" : event.source === "newsflash" ? "Board" : "Sample event"}
         </p>
         <Link href={event.href} className="inline-flex text-sm underline underline-offset-2">
           Open details

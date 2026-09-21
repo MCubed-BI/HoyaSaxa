@@ -12,6 +12,7 @@ import {
   paginateItems,
   toNameFields,
 } from "./locker-classify";
+import { DEMO_UPCOMING_EVENT } from "./locker-data";
 import { athleteHref, directoryHref, isLockerPublicPath, parseAthleteTab, parseDirectoryPill } from "./locker-paths";
 import { ATHLETE_TABS, athleteTabLabel, YEARS_ACTIVE_LABEL } from "./locker-types";
 import { ALUM_SESSION_COOKIE_ALIASES, HOYA_ALUM_SESSION_COOKIE, hasAlumSessionCookie } from "./locker-session";
@@ -169,5 +170,32 @@ describe("locker public paths", () => {
     assert.equal(isLockerPublicPath("/locker"), true);
     assert.equal(isLockerPublicPath("/"), false);
     assert.equal(isLockerPublicPath("/api/export"), false);
+  });
+});
+
+describe("home quick actions and upcoming event copy", () => {
+  const stubCopy = /lane not landed|stub until|stay with (their|the) .* lane|Events lane|Giving lane|Directory lane/i;
+
+  it("points Directory / Events / Giving cards at live routes", () => {
+    const cards = readFileSync(join(process.cwd(), "src/components/locker-cards.tsx"), "utf8");
+    const home = readFileSync(join(process.cwd(), "src/app/(locker)/home/page.tsx"), "utf8");
+    assert.match(cards, /href:\s*"\/directory"/);
+    assert.match(cards, /href:\s*"\/events"/);
+    assert.match(cards, /href:\s*"\/giving"/);
+    assert.doesNotMatch(cards, /canOpenStaffDirectory/);
+    assert.doesNotMatch(cards, /href:\s*"\/"/);
+    assert.doesNotMatch(cards, /href:\s*"\/portal\/(events|giving)"/);
+    assert.doesNotMatch(home, /canOpenStaffDirectory/);
+    assert.doesNotMatch(cards, stubCopy);
+    assert.doesNotMatch(home, stubCopy);
+  });
+
+  it("treats the demo upcoming event as a live Events page", () => {
+    assert.equal(DEMO_UPCOMING_EVENT.href, "/events");
+    assert.doesNotMatch(DEMO_UPCOMING_EVENT.body, stubCopy);
+    const queries = readFileSync(join(process.cwd(), "src/lib/locker-queries.ts"), "utf8");
+    assert.match(queries, /href:\s*"\/events"/);
+    assert.doesNotMatch(queries, /From the Events lane/);
+    assert.doesNotMatch(queries, /href:\s*"\/portal\/events"/);
   });
 });
