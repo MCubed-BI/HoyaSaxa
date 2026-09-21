@@ -105,6 +105,14 @@ async function query<T>(text: string, params: unknown[] = []) {
   return (await sql.query(text, params)) as unknown as T;
 }
 
+export async function lookupStaffAlumniId(username: string): Promise<string | null> {
+  const trimmed = username.trim();
+  if (!trimmed) return null;
+  await ensurePortalTables();
+  const row = await findStaffRole(staffRoleIdentity({ username: trimmed }));
+  return row?.alumni_id ?? null;
+}
+
 export async function lookupAssignedRole(input: {
   username?: string | null;
   email?: string | null;

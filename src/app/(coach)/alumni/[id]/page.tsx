@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { HoyaBadgeRow } from "@/lib/badge-api";
 import { PageMain, PageShell } from "@/components/page-chrome";
+import { ProfileMessageCta } from "@/components/profile-message-cta";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,8 @@ import { getAthleteActor } from "@/lib/athlete-access";
 import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
 import { listPublicBadgesFromFeed } from "@/lib/badges-attendance";
 import { isMissingDatabaseConfig } from "@/lib/db";
+import { canMessageHoyaProfile, linkedAlumniIdForViewer } from "@/lib/messages-dm";
+import { isAdminRole } from "@/lib/roles";
 import {
   classYearLabel,
   displayName,
@@ -43,13 +46,16 @@ export default async function AlumniDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const viewer = await getCurrentViewer();
+  let viewer = await getCurrentViewer();
   const staff = viewer && (viewer.role === "owner" || viewer.role === "coach" || viewer.role === "board");
   if (!staff) {
     if (await getLockerViewer()) {
       redirect(athleteHref(id));
     }
-    await requireRole(["owner", "coach", "board"]);
+    viewer = await requireRole(["owner", "coach", "board"]);
+  }
+  if (!viewer) {
+    viewer = await requireRole(["owner", "coach", "board"]);
   }
 
   try {
@@ -106,6 +112,17 @@ export default async function AlumniDetailPage({
                   {person.industry ? <Badge variant="outline">{person.industry}</Badge> : null}
                 </div>
                 <HoyaBadgeRow badges={badges} />
+                {canMessageHoyaProfile({
+                  viewerAlumniId: linkedAlumniIdForViewer({
+                    alumniId: viewer.alumniId,
+                    username: viewer.username,
+                    label: viewer.label,
+                  }),
+                  targetAlumniId: person.id,
+                  isAdmin: isAdminRole(viewer.role),
+                }) ? (
+                  <ProfileMessageCta alumniId={person.id} name={displayName(person)} />
+                ) : null}
               </div>
             </CardContent>
           </Card>

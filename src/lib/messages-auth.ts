@@ -11,7 +11,9 @@ import { canPostToFeedSection } from "@/lib/feed-sections";
 import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
 import { resolvePlatformRole } from "@/lib/platform-roles";
 import { lookupAlumniClaim } from "@/lib/portal-queries";
+import { seedAlumniIdForLabel } from "@/lib/badge-identity";
 import { canPostCoachMessage, resolveRoleFromEnv } from "@/lib/roles";
+import { lookupStaffAlumniId } from "@/lib/staff-roles";
 
 export const SGARLATA_CHANNEL_SLUG = "sgarlata";
 
@@ -20,6 +22,7 @@ export type MessageViewer = {
   label: string;
   viewerKey: string;
   canPost: boolean;
+  isAdmin?: boolean;
   verifiedHoya?: boolean;
   alumniId?: string | null;
 };
@@ -97,13 +100,23 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
     const role = staffUsername
       ? resolveRoleFromEnv(staffUsername, getCoachCredentials().username)
       : "coach";
+    const isAdmin = canPostCoachMessage(role);
+    let alumniId = seedAlumniIdForLabel(staffUsername || "") ?? null;
+    if (!alumniId && staffUsername && getDatabaseUrl()) {
+      try {
+        alumniId = await lookupStaffAlumniId(staffUsername);
+      } catch {
+        alumniId = null;
+      }
+    }
     return {
       kind: "staff",
       label: staffUsername || "Staff",
       viewerKey: staffUsername ? `staff:${staffUsername.toLowerCase()}` : "staff",
-      canPost: canPostCoachMessage(role),
+      canPost: isAdmin,
+      isAdmin,
       verifiedHoya: false,
-      alumniId: null,
+      alumniId,
     };
   }
 
@@ -123,6 +136,7 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       label: contract.name || contract.email || "Alumnus",
       viewerKey: `alum:contract:${contract.alumniId}`,
       canPost: canPostToFeedSection(platformRole, "sgarlata"),
+      isAdmin: platformRole === "admin",
       verifiedHoya: isVerifiedHoyaIdentity(contract),
       alumniId,
     };
@@ -143,6 +157,7 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       label: viewerLabelFromAccountId(alum.accountId),
       viewerKey: `alum:${alum.accountId}`,
       canPost: false,
+      isAdmin: false,
       verifiedHoya: !alum.accountId.startsWith("locker:"),
       alumniId,
     };
@@ -161,8 +176,9 @@ export async function getMessageViewer(): Promise<MessageViewer | null> {
       label: locker.label,
       viewerKey: `alum:home:${locker.role}:${locker.label.toLowerCase()}`,
       canPost: canPostToFeedSection(platformRole, "sgarlata"),
+      isAdmin: platformRole === "admin",
       verifiedHoya: isVerifiedHoyaIdentity({ role: locker.role }),
-      alumniId: null,
+      alumniId: seedAlumniIdForLabel(locker.label),
     };
   }
 

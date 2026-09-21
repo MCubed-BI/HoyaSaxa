@@ -20,14 +20,20 @@ import {
   verifyAlumAccessCode,
 } from "./messages-auth";
 import { filterMessageChannels, parseMessageFilter, type MessageChannelRow } from "./messages";
+import { PREVIEW_ALUMNI_ID } from "./alum-preview";
+import { SEED_ADMIN_ALUMNI_ID } from "./platform-roles";
 import {
   canMessageHoyaProfile,
   canPostToMessageChannel,
   canViewMessageChannel,
+  dmAuthorLabel,
   dmChannelSlug,
   dmDisplayName,
   dmPair,
+  dmParticipantId,
   isDmChannel,
+  linkedAlumniIdForViewer,
+  staffDmParticipantId,
 } from "./messages-dm";
 
 function channel(partial: Partial<MessageChannelRow> & Pick<MessageChannelRow, "slug" | "kind" | "unread_count">) {
@@ -162,17 +168,33 @@ describe("alum to Hoya profile DM", () => {
     assert.equal(isDmChannel({ kind: "official", slug: "sgarlata" }), false);
   });
 
-  it("shows the Message CTA only for a claimed alum viewing another Hoya", () => {
+  it("shows the Message CTA for a claimed alum or Admin viewing another Hoya", () => {
     assert.equal(canMessageHoyaProfile({ viewerAlumniId: patrick, targetAlumniId: tim }), true);
     assert.equal(canMessageHoyaProfile({ viewerAlumniId: patrick, targetAlumniId: patrick }), false);
     assert.equal(canMessageHoyaProfile({ viewerAlumniId: null, targetAlumniId: tim }), false);
     assert.equal(
       canMessageHoyaProfile({
-        viewerAlumniId: "00000000-0000-0000-0000-000000000000",
+        viewerAlumniId: PREVIEW_ALUMNI_ID,
         targetAlumniId: tim,
       }),
       false,
     );
+    assert.equal(canMessageHoyaProfile({ viewerAlumniId: null, targetAlumniId: tim, isAdmin: true }), true);
+    assert.equal(
+      canMessageHoyaProfile({ viewerAlumniId: SEED_ADMIN_ALUMNI_ID, targetAlumniId: tim, isAdmin: true }),
+      true,
+    );
+    assert.equal(
+      canMessageHoyaProfile({
+        viewerAlumniId: SEED_ADMIN_ALUMNI_ID,
+        targetAlumniId: SEED_ADMIN_ALUMNI_ID,
+        isAdmin: true,
+      }),
+      false,
+    );
+    assert.equal(canMessageHoyaProfile({ viewerAlumniId: null, targetAlumniId: tim, isAdmin: false }), false);
+    assert.equal(linkedAlumniIdForViewer({ username: "Mike" }), SEED_ADMIN_ALUMNI_ID);
+    assert.equal(linkedAlumniIdForViewer({ username: "Hoyas" }), null);
   });
 
   it("keeps DM threads private to participants and lets both send", () => {
@@ -189,25 +211,54 @@ describe("alum to Hoya profile DM", () => {
       label: "Hoyas",
       viewerKey: "staff:hoyas",
       canPost: true,
+      isAdmin: true,
       alumniId: null,
     };
+    const staffWithoutAdminFlag = { ...staff, isAdmin: false };
+    const adminDm = channel({
+      slug: dmChannelSlug(staffDmParticipantId("Hoyas"), tim),
+      kind: "dm",
+      name: "Admin · Tim Barnes",
+      unread_count: 0,
+      participant_a: staffDmParticipantId("Hoyas"),
+      participant_b: tim,
+    });
+    assert.equal(staffDmParticipantId("Hoyas"), "admin-hoyas");
+    assert.equal(staffDmParticipantId("Michael Kasten"), "admin-michael-kasten");
+    assert.equal(dmParticipantId(staff), "admin-hoyas");
+    assert.equal(dmAuthorLabel(staff), "Admin");
+    assert.equal(dmAuthorLabel({ ...staff, alumniId: patrick, label: "Patrick Finnegan" }), "Patrick Finnegan");
     assert.equal(canViewMessageChannel(dm, patrick), true);
     assert.equal(canViewMessageChannel(dm, tim), true);
     assert.equal(canViewMessageChannel(dm, otherAlum.alumniId), false);
+    assert.equal(canViewMessageChannel(dm, staff), false);
     assert.equal(canViewMessageChannel({ kind: "official", slug: "sgarlata" }, null), true);
     assert.equal(canPostToMessageChannel(dm, alum), true);
     assert.equal(canPostToMessageChannel(dm, { ...alum, alumniId: tim, label: "Tim Barnes" }), true);
     assert.equal(canPostToMessageChannel(dm, otherAlum), false);
+    assert.equal(canPostToMessageChannel(dm, staffWithoutAdminFlag), false);
     assert.equal(canPostToMessageChannel(dm, staff), false);
+    assert.equal(canPostToMessageChannel(adminDm, staff), true);
+    assert.equal(canPostToMessageChannel(adminDm, alum), false);
+    assert.equal(canViewMessageChannel(adminDm, staff), true);
     assert.equal(canPostToMessageChannel({ kind: "official", slug: "sgarlata" }, staff), true);
     assert.equal(canPostToMessageChannel({ kind: "official", slug: "sgarlata" }, alum), false);
     assert.equal(dmDisplayName(dm, patrick), "Tim Barnes");
     assert.equal(dmDisplayName(dm, tim), "Patrick Finnegan");
+    assert.equal(dmDisplayName(adminDm, staffDmParticipantId("Hoyas")), "Tim Barnes");
   });
 
-  it("keeps the Message CTA on Hoya athlete profiles", () => {
-    const page = readFileSync(join(process.cwd(), "src/app/(hoya)/athletes/[id]/page.tsx"), "utf8");
-    assert.match(page, /ProfileMessageCta/);
-    assert.match(page, /canMessageHoyaProfile/);
+  it("keeps the Message CTA on Hoya athlete and alumni profiles", () => {
+    const athlete = readFileSync(join(process.cwd(), "src/app/(hoya)/athletes/[id]/page.tsx"), "utf8");
+    const alumni = readFileSync(join(process.cwd(), "src/app/(coach)/alumni/[id]/page.tsx"), "utf8");
+    assert.match(athlete, /ProfileMessageCta/);
+    assert.match(athlete, /canMessageHoyaProfile/);
+    assert.match(athlete, /isAdmin:\s*actor\.isAdmin/);
+    assert.match(alumni, /ProfileMessageCta/);
+    assert.match(alumni, /canMessageHoyaProfile/);
+    assert.match(alumni, /isAdminRole\(viewer\.role\)/);
+    assert.match(alumni, /redirect\(athleteHref\(id\)\)/);
+    const proxy = readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8");
+    assert.match(proxy, /athletePathForAlumniProfile/);
   });
 });

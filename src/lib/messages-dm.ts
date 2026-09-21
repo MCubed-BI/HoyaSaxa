@@ -1,7 +1,9 @@
 import { isPreviewAlumniId } from "@/lib/alum-preview";
+import { seedAlumniIdForLabel } from "@/lib/badge-identity";
 import { SGARLATA_CHANNEL_SLUG, canPostSgarlata, type MessageViewer } from "@/lib/messages-auth";
 
 export const DM_CHANNEL_KIND = "dm";
+export const STAFF_DM_PARTICIPANT_PREFIX = "admin-";
 
 export type DmParticipantChannel = {
   kind?: string | null;
@@ -45,25 +47,86 @@ export function isDmParticipant(channel: DmParticipantChannel, alumniId?: string
   return Boolean(parsed && parsed.includes(normalized));
 }
 
+export function staffDmParticipantId(username: string) {
+  const slug =
+    username
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "staff";
+  return `${STAFF_DM_PARTICIPANT_PREFIX}${slug}`;
+}
+
+export function linkedAlumniIdForViewer(input: {
+  alumniId?: string | null;
+  username?: string | null;
+  label?: string | null;
+}) {
+  const claimed = input.alumniId?.trim() ?? "";
+  if (claimed && !isPreviewAlumniId(claimed)) return claimed;
+  return seedAlumniIdForLabel(input.username || input.label || "") ?? null;
+}
+
+export function dmParticipantId(viewer: MessageViewer | null | undefined) {
+  if (!viewer) return null;
+  const claimed = linkedAlumniIdForViewer({
+    alumniId: viewer.alumniId,
+    username: viewer.label,
+    label: viewer.label,
+  });
+  if (claimed) return claimed;
+  if (viewer.isAdmin) {
+    const fromKey = viewer.viewerKey?.startsWith("staff:") ? viewer.viewerKey.slice("staff:".length) : viewer.label;
+    return staffDmParticipantId(fromKey || "staff");
+  }
+  return null;
+}
+
+export function dmAuthorLabel(viewer: MessageViewer | null | undefined) {
+  if (!viewer) return "Admin";
+  const claimed = linkedAlumniIdForViewer({
+    alumniId: viewer.alumniId,
+    username: viewer.label,
+    label: viewer.label,
+  });
+  if (claimed) return viewer.label.trim() || "Alumnus";
+  if (viewer.isAdmin) return "Admin";
+  return viewer.label.trim() || "Alumnus";
+}
+
 export function canMessageHoyaProfile(input: {
   viewerAlumniId?: string | null;
   targetAlumniId?: string | null;
+  isAdmin?: boolean;
 }) {
-  const viewer = input.viewerAlumniId?.trim() ?? "";
   const target = input.targetAlumniId?.trim() ?? "";
-  if (!viewer || !target) return false;
-  if (isPreviewAlumniId(viewer) || isPreviewAlumniId(target)) return false;
-  return normalizeAlumniId(viewer) !== normalizeAlumniId(target);
+  if (!target || isPreviewAlumniId(target)) return false;
+  const viewer = input.viewerAlumniId?.trim() ?? "";
+  if (viewer && !isPreviewAlumniId(viewer) && normalizeAlumniId(viewer) === normalizeAlumniId(target)) {
+    return false;
+  }
+  if (input.isAdmin) return true;
+  if (!viewer || isPreviewAlumniId(viewer)) return false;
+  return true;
 }
 
-export function canViewMessageChannel(channel: DmParticipantChannel, alumniId?: string | null) {
+function participantIdFrom(viewerOrAlumniId?: MessageViewer | string | null) {
+  if (!viewerOrAlumniId) return null;
+  if (typeof viewerOrAlumniId === "string") return viewerOrAlumniId;
+  return dmParticipantId(viewerOrAlumniId);
+}
+
+export function canViewMessageChannel(
+  channel: DmParticipantChannel,
+  viewerOrAlumniId?: MessageViewer | string | null,
+) {
   if (!isDmChannel(channel)) return true;
-  return isDmParticipant(channel, alumniId);
+  return isDmParticipant(channel, participantIdFrom(viewerOrAlumniId));
 }
 
 export function canPostToMessageChannel(channel: DmParticipantChannel, viewer: MessageViewer | null | undefined) {
   if (!viewer) return false;
-  if (isDmChannel(channel)) return isDmParticipant(channel, viewer.alumniId);
+  if (isDmChannel(channel)) return isDmParticipant(channel, dmParticipantId(viewer));
   if (channel.slug === SGARLATA_CHANNEL_SLUG || channel.kind === "official") {
     return canPostSgarlata(viewer);
   }
