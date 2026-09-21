@@ -1,10 +1,8 @@
 import { BoardMemberToggle } from "@/components/board-member-toggle";
 import { AppHeader } from "@/components/app-header";
-import { LockerHeader } from "@/components/locker-header";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { getLockerViewer } from "@/lib/locker-viewer";
 import { listBoardMembers } from "@/lib/staff-roles";
 import { requirePlatformRole } from "@/lib/viewer";
 
@@ -12,7 +10,6 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminBoardPage() {
   const viewer = await requirePlatformRole(["admin"]);
-  const locker = await getLockerViewer();
   let members: Awaited<ReturnType<typeof listBoardMembers>> = [];
   let loadError: string | null = null;
   try {
@@ -27,14 +24,10 @@ export default async function AdminBoardPage() {
 
   return (
     <PageShell>
-      {locker && locker.source !== "ga_session" ? (
-        <LockerHeader current="admin" viewer={locker} />
-      ) : (
-        <AppHeader current="admin" role={viewer.role} viewerLabel={viewer.label} />
-      )}
+      <AppHeader current="admin" role={viewer.role} viewerLabel={viewer.label} verifiedHoya={viewer.verifiedHoya} />
       <PageMain>
         <PageHeader
-          eyebrow="Admin portal"
+          eyebrow="Admin"
           title="Board grants"
           description="Toggle Board member on a claimed roster row. Board gets Alum Mode plus Message from the Board. From Sgarlata stays Admin only."
         />

@@ -2,7 +2,7 @@
 
 Georgetown Football Alum Network — Georgetown football alumni CRM (repo stays HoyaSaxa).
 
-Coach-facing CRM for Georgetown football alumni, plus an alumnus portal for claimed players. Head Coach Sgarlata can search the directory, open a player card, and send in-app text or email blasts. Claimed alumni see a separate alum shell.
+Coach-facing CRM for Georgetown football alumni and a claimed-alum experience in one app shell. Head Coach Sgarlata can search the directory, open a player card, and send in-app text or email blasts. Admin and Alum share the same header; operational tools are role-gated, not a second nav.
 
 The app reads the existing Neon schema in project **Sgarlata** (`alumni`, `alumni_emails`, `alumni_phones`, `alumni_roster_years`). It does not create those tables.
 
@@ -184,7 +184,7 @@ Claim / register pages are owned by another lane and are not touched here.
 
 ## Pages
 
-Alum chrome uses existing CRM styles (function over polish). Primary nav is **Home · Directory · Events · Giving · Messages**.
+One shared header for Admin and Alum. Primary nav is **For You · Directory · Events · Giving · Messages**. Role-gated tools (Find My Alum, Reports, Blast, Data Sync, Admin, Email classmates) sit in the same chrome. `/portal` remains a redirect alias to `/home`.
 
 - `/login` — Admin login (`ga_session` for owner/coach; alum preview usernames mint `hoya_alum_session`)
 - `/register` — alumni claim (last name + graduating class)

@@ -8,7 +8,7 @@ export default async function MessagesLayout({ children }: { children: React.Rea
     <PageShell>
       <AppHeader
         current="messages"
-        shell={viewer.kind}
+        role={viewer.kind === "alum" ? "alum" : "owner"}
         viewerLabel={viewer.label}
         verifiedHoya={viewer.verifiedHoya}
       />

@@ -15,7 +15,7 @@ import {
 import { viewerLabelFromAccountId } from "@/lib/messages-auth";
 import { identityFromViewer } from "@/lib/platform-session";
 import { platformRoleLabel, resolvePlatformRole, type PlatformRole } from "@/lib/platform-roles";
-import { resolveRoleFromEnv, type AccessMode } from "@/lib/roles";
+import { resolveRoleFromEnv, type AccessMode, type Role } from "@/lib/roles";
 import { lookupAssignedRole } from "@/lib/staff-roles";
 
 export type LockerViewer = {
@@ -164,4 +164,19 @@ export async function requireLockerViewer(loginPath = "/home/login") {
   const viewer = await getLockerViewer();
   if (!viewer) redirect(loginPath);
   return viewer;
+}
+
+/**
+ * Header role from locker session. Staff tools only when `ga_session` is present
+ * so a claimed platform-admin alum does not see Reports / Blast / Sync / Admin.
+ */
+export function roleFromLockerViewer(viewer: LockerViewer | null | undefined): Role | undefined {
+  if (!viewer) return undefined;
+  if (viewer.source === "ga_session") {
+    if (viewer.platformRole === "admin" || viewer.role === "coach") {
+      return viewer.platformRole === "admin" ? "owner" : "coach";
+    }
+  }
+  if (viewer.role === "board" || viewer.platformRole === "board") return "board";
+  return "alum";
 }

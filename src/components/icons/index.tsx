@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Rss,
   Search,
+  Settings,
   UserRound,
   Users,
 } from "lucide-react";
@@ -41,6 +42,7 @@ export const appIcons = {
   profile: UserRound,
   refresh: RefreshCw,
   alum: GraduationCap,
+  admin: Settings,
 } as const;
 
 export type AppIconName = keyof typeof appIcons;
@@ -63,6 +65,9 @@ const NAV_ICONS: Partial<Record<NavKey, AppIconName>> = {
   feed: "feed",
   profile: "profile",
   me: "profile",
+  admin: "admin",
+  board: "newsflash",
+  brothers: "feed",
 };
 
 export function AppIcon({

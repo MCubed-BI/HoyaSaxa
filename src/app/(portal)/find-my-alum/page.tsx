@@ -1,8 +1,7 @@
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { FindMyAlumMapLoader } from "@/components/find-my-alum-map-loader";
+import { AppHeader } from "@/components/app-header";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
-import { PortalShell } from "@/components/portal-shell";
-import { SiteHeader } from "@/components/site-header";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { parseAlumniFilters } from "@/lib/filters";
@@ -61,17 +60,14 @@ export default async function FindMyAlumPage({
     </>
   );
 
-  if (viewer.role === "alum" || viewer.role === "board") {
-    return (
-      <PortalShell viewer={viewer} current="find-my-alum">
-        {body}
-      </PortalShell>
-    );
-  }
-
   return (
     <PageShell>
-      <SiteHeader current="find-my-alum" />
+      <AppHeader
+        current="find-my-alum"
+        role={viewer.role}
+        viewerLabel={viewer.label}
+        verifiedHoya={viewer.verifiedHoya}
+      />
       <PageMain>{body}</PageMain>
     </PageShell>
   );

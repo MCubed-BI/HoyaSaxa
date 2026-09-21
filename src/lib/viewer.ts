@@ -105,7 +105,7 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
         accountId: null,
         alumniId,
         source: "alum-session",
-        homePath: "/portal",
+        homePath: "/home",
       },
       assignedRole,
     );
@@ -121,7 +121,7 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
       accountId: null,
       alumniId: null,
       source: "alum-session",
-      homePath: "/portal",
+      homePath: "/home",
     });
   }
 
@@ -149,7 +149,7 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
     accountId,
     alumniId,
     source: "alumni",
-    homePath: "/portal",
+    homePath: "/home",
   });
 }
 

@@ -22,8 +22,8 @@ export default async function LockerHomePage() {
             <p className="app-kicker">{viewer.roleLabel}</p>
             <h1 className="app-title">{`Welcome back, ${viewer.label}.`}</h1>
             <p className="app-lede">
-              Open Directory, Events, Giving, or Board from the cards below. For You has the latest from Brothers and
-              Board.
+              One app — Directory, Events, Giving, and Messages share this header. For You has the latest from Brothers
+              and Board.
             </p>
           </div>
           <div className="app-masthead__actions">
