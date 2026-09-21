@@ -24,6 +24,7 @@ type Match = {
   claimed_by_me: boolean;
   football_photo_url?: string | null;
   linkedin_photo_url?: string | null;
+  linkedin_url?: string | null;
 };
 
 export function RegisterMyself({
@@ -75,6 +76,7 @@ export function RegisterMyself({
         setPhotos((current) => ({
           football_photo_url: current.football_photo_url || data.photos?.football_photo_url?.trim() || "",
           linkedin_photo_url: current.linkedin_photo_url || data.photos?.linkedin_photo_url?.trim() || "",
+          linkedin_url: current.linkedin_url,
         }));
       })
       .catch(() => {
@@ -140,15 +142,29 @@ export function RegisterMyself({
           alumniIds: selected,
           firstName,
           createIfMissing: createIfMissing && selected.length === 0,
+          linkedin_url: photos.linkedin_url,
           ...(hasClaimPhotoValues(photos) ? photos : {}),
         }),
       });
-      const data = (await response.json()) as { error?: string; claimedIds?: string[]; email?: string };
+      const data = (await response.json()) as {
+        error?: string;
+        claimedIds?: string[];
+        email?: string;
+        linkedinPhoto?: { message?: string | null; imageUrl?: string | null };
+        photos?: { football_photo_url?: string | null; linkedin_photo_url?: string | null };
+      };
       if (!response.ok) throw new Error(data.error ?? "Registration failed");
       const nextIds = data.claimedIds?.filter(Boolean) ?? selected;
       setClaimedIds(nextIds);
       if (data.email) setEmail(data.email);
       setNetId((current) => current || prefillNetId(data.email || email));
+      if (data.photos?.linkedin_photo_url) {
+        setPhotos((current) => ({
+          ...current,
+          linkedin_photo_url: current.linkedin_photo_url || data.photos?.linkedin_photo_url?.trim() || "",
+        }));
+      }
+      setPhotoMessage(data.linkedinPhoto?.message ?? null);
       setStep("photos");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
@@ -157,7 +173,7 @@ export function RegisterMyself({
     }
   }
 
-  async function savePhotos() {
+  async function savePhotos(refreshFromLinkedin = false) {
     const ids = claimedIds.filter(Boolean);
     if (ids.length === 0) {
       setError("Claim a roster row before saving photos.");
@@ -167,6 +183,7 @@ export function RegisterMyself({
     setPhotoMessage(null);
     setPending(true);
     try {
+      let notice: string | null = "Saved photos.";
       for (const alumniId of ids) {
         const response = await fetch("/api/alum/photos", {
           method: "POST",
@@ -175,12 +192,26 @@ export function RegisterMyself({
             alumniId,
             football_photo_url: photos.football_photo_url,
             linkedin_photo_url: photos.linkedin_photo_url,
+            linkedin_url: photos.linkedin_url,
+            refreshFromLinkedin,
           }),
         });
-        const data = (await response.json()) as { error?: string };
+        const data = (await response.json()) as {
+          error?: string;
+          photos?: { football_photo_url?: string | null; linkedin_photo_url?: string | null };
+          linkedinPhoto?: { message?: string | null };
+        };
         if (!response.ok) throw new Error(data.error ?? "Save failed");
+        if (data.photos) {
+          setPhotos((current) => ({
+            ...current,
+            football_photo_url: data.photos?.football_photo_url?.trim() || current.football_photo_url,
+            linkedin_photo_url: data.photos?.linkedin_photo_url?.trim() || current.linkedin_photo_url,
+          }));
+        }
+        notice = data.linkedinPhoto?.message ?? notice;
       }
-      setPhotoMessage("Saved photos.");
+      setPhotoMessage(notice);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -288,10 +319,17 @@ export function RegisterMyself({
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Your login is ready. Save roster and headshot photos now — you can upload a file or paste an image URL —
-          then add your GTown NetID.
+          Your login is ready. Save a LinkedIn URL for a public preview, or upload / paste a photo, then add your
+          GTown NetID.
         </p>
-        <ClaimPhotoFields values={photos} onChange={setPhotos} disabled={pending} idPrefix="validate" />
+        <ClaimPhotoFields
+          values={photos}
+          onChange={setPhotos}
+          disabled={pending}
+          idPrefix="validate"
+          onRefreshFromLinkedin={() => void savePhotos(true)}
+          refreshPending={pending}
+        />
         {photoMessage ? <p className="text-sm text-navy">{photoMessage}</p> : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <div className="flex gap-2">

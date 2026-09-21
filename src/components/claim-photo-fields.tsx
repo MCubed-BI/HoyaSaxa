@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MAX_PHOTO_UPLOAD_BYTES } from "@/lib/alumni-photos";
@@ -15,11 +16,11 @@ const SLOTS = [
   {
     field: "linkedin_photo_url",
     label: "LinkedIn / headshot",
-    hint: "Upload a file or paste a direct image URL. We never scrape LinkedIn.",
+    hint: "Upload a file or paste an image URL. If a LinkedIn profile URL is saved and this slot is empty, we try a public preview.",
   },
 ] as const;
 
-function readImageFile(file: File) {
+export function readImageFile(file: File) {
   if (file.type === "image/svg+xml" || !/^image\/(jpeg|jpg|png|webp|gif)$/i.test(file.type)) {
     return Promise.reject(new Error("Choose a JPEG, PNG, WebP, or GIF photo."));
   }
@@ -58,11 +59,21 @@ export function ClaimPhotoFields({
   onChange,
   disabled = false,
   idPrefix = "claim",
+  legend = "Photos",
+  description = "Upload a file or paste an image URL. Saving a LinkedIn profile URL tries a public preview photo — we never log into LinkedIn.",
+  showLinkedinUrl = true,
+  onRefreshFromLinkedin,
+  refreshPending = false,
 }: {
   values: ClaimPhotoValues;
   onChange: (next: ClaimPhotoValues) => void;
   disabled?: boolean;
   idPrefix?: string;
+  legend?: string;
+  description?: string;
+  showLinkedinUrl?: boolean;
+  onRefreshFromLinkedin?: () => void;
+  refreshPending?: boolean;
 }) {
   const reactId = useId();
   const prefix = `${idPrefix}-${reactId}`;
@@ -81,16 +92,32 @@ export function ClaimPhotoFields({
 
   return (
     <fieldset className="space-y-3" disabled={disabled}>
-      <legend className="text-sm font-medium">Photos</legend>
-      <p className="text-xs text-muted-foreground">
-        Add or replace both slots before you finish registration. Paste a photo URL or upload a file — do not paste a
-        LinkedIn profile page.
-      </p>
+      <legend className="text-sm font-medium">{legend}</legend>
+      <p className="text-xs text-muted-foreground">{description}</p>
       <div className="grid grid-cols-2 gap-3">
         {SLOTS.map((slot) => (
           <PhotoPreview key={slot.field} url={values[slot.field]} label={slot.label} />
         ))}
       </div>
+      {showLinkedinUrl ? (
+        <div className="space-y-1.5">
+          <Label htmlFor={`${prefix}-linkedin_url`}>LinkedIn profile URL</Label>
+          <Input
+            id={`${prefix}-linkedin_url`}
+            name="linkedin_url"
+            value={values.linkedin_url}
+            onChange={(event) => onChange({ ...values, linkedin_url: event.target.value })}
+            placeholder="https://www.linkedin.com/in/…"
+            inputMode="url"
+            autoComplete="url"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs text-muted-foreground">
+              Best-effort public preview only. Upload or paste still works if LinkedIn blocks the fetch.
+            </p>
+          </div>
+        </div>
+      ) : null}
       {SLOTS.map((slot) => {
         const inputId = `${prefix}-${slot.field}`;
         const fileId = `${inputId}-file`;
@@ -115,7 +142,20 @@ export function ClaimPhotoFields({
                 event.target.value = "";
               }}
             />
-            <p className="text-xs text-muted-foreground">{slot.hint}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs text-muted-foreground">{slot.hint}</p>
+              {slot.field === "linkedin_photo_url" && onRefreshFromLinkedin ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={disabled || refreshPending}
+                  onClick={onRefreshFromLinkedin}
+                >
+                  {refreshPending ? "Refreshing…" : "Refresh from LinkedIn"}
+                </Button>
+              ) : null}
+            </div>
           </div>
         );
       })}

@@ -145,7 +145,7 @@ export default async function AthleteProfilePage({
             ) : null}
             {actor.canEdit ? (
               <div className="pt-2">
-                <AthletePhotoEditor alumniId={person.id} slots={photos} />
+                <AthletePhotoEditor alumniId={person.id} slots={photos} linkedinUrl={person.linkedinUrl} />
               </div>
             ) : null}
           </div>
@@ -243,7 +243,9 @@ export default async function AthleteProfilePage({
           </CardHeader>
           <CardContent className="space-y-4">
             <AthletePhotoPair slots={photos} size="lg" />
-            {actor.canEdit ? <AthletePhotoEditor alumniId={person.id} slots={photos} /> : null}
+            {actor.canEdit ? (
+              <AthletePhotoEditor alumniId={person.id} slots={photos} linkedinUrl={person.linkedinUrl} />
+            ) : null}
             {!actor.canEdit ? (
               <p className="text-sm text-muted-foreground">
                 Roster and current photos can be edited by this player after a claim login, or by staff admin.

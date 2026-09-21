@@ -8,6 +8,7 @@ import {
 } from "@/lib/alumni-claim";
 import { parseAlumniPhotoPatch, updateAlumniPhotos } from "@/lib/alumni-photos";
 import { isMissingDatabaseConfig } from "@/lib/db";
+import { optionalStringField, refreshFromLinkedinFlag, syncLinkedinPhotoOnSave } from "@/lib/linkedin-photo-sync";
 import { canEditAlumniRecord } from "@/lib/platform-roles";
 import { getCurrentViewer } from "@/lib/viewer";
 
@@ -19,7 +20,11 @@ export async function POST(request: Request) {
     if (!viewer && !identity.hasAlumSession) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const body = (await request.json()) as { alumniId?: string; patch?: AlumniEditInput & Record<string, unknown> };
+    const body = (await request.json()) as {
+      alumniId?: string;
+      patch?: AlumniEditInput & Record<string, unknown>;
+      refreshFromLinkedin?: boolean;
+    };
     if (!body.alumniId) return NextResponse.json({ error: "Missing alumniId" }, { status: 400 });
 
     const selfOrAdmin =
@@ -37,11 +42,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const photoPatch = parseAlumniPhotoPatch(body.patch ?? {});
-    if (Object.keys(photoPatch).length > 0) {
-      await updateAlumniPhotos(body.alumniId, photoPatch);
+    const patch = body.patch ?? {};
+    const photoPatch = parseAlumniPhotoPatch(patch);
+    if ("football_photo_url" in photoPatch) {
+      await updateAlumniPhotos(body.alumniId, { football_photo_url: photoPatch.football_photo_url });
     }
-    return NextResponse.json({ ok: true });
+    const refresh = refreshFromLinkedinFlag(body) || refreshFromLinkedinFlag(patch);
+    if (!("linkedin_url" in patch) && !("linkedin_photo_url" in patch) && !refresh) {
+      return NextResponse.json({ ok: true });
+    }
+    const synced = await syncLinkedinPhotoOnSave({
+      alumniId: body.alumniId,
+      incomingPhoto: optionalStringField(patch, "linkedin_photo_url"),
+      incomingProfileUrl: optionalStringField(patch, "linkedin_url"),
+      refreshFromLinkedin: refresh,
+    });
+    return NextResponse.json({ ok: true, photos: synced.photos, linkedinPhoto: synced.linkedinPhoto });
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {
       return NextResponse.json({ error: "DATABASE_URL is not set" }, { status: 503 });

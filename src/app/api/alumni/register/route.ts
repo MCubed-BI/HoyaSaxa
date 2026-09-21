@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { alumSessionIdentityForAccount, registerAlumniAccount } from "@/lib/alumni-claim";
-import { photoPatchFromRegisterBody } from "@/lib/claim-photos";
+import { photoPatchFromRegisterBody, profileUrlFromRegisterBody } from "@/lib/claim-photos";
+import { syncLinkedinPhotoOnSave } from "@/lib/linkedin-photo-sync";
 import { setAlumSessionCookies } from "@/lib/session";
 
 export async function POST(request: Request) {
@@ -16,8 +17,10 @@ export async function POST(request: Request) {
       createIfMissing?: boolean;
       football_photo_url?: string;
       linkedin_photo_url?: string;
+      linkedin_url?: string;
     };
     const photos = photoPatchFromRegisterBody(body);
+    const linkedinUrl = profileUrlFromRegisterBody(body);
     const result = await registerAlumniAccount({
       lastName: body.lastName ?? "",
       classYear: body.classYear ?? "",
@@ -27,7 +30,19 @@ export async function POST(request: Request) {
       firstName: body.firstName,
       createIfMissing: Boolean(body.createIfMissing),
       photos: Object.keys(photos).length > 0 ? photos : undefined,
+      linkedinUrl,
     });
+    let linkedinPhoto = null;
+    let savedPhotos = null;
+    for (const alumniId of result.claimedIds) {
+      const synced = await syncLinkedinPhotoOnSave({
+        alumniId,
+        incomingPhoto: typeof body.linkedin_photo_url === "string" ? body.linkedin_photo_url : undefined,
+        incomingProfileUrl: linkedinUrl ?? undefined,
+      });
+      linkedinPhoto ??= synced.linkedinPhoto;
+      savedPhotos = synced.photos;
+    }
     const response = NextResponse.json({
       ok: true,
       role: "alum",
@@ -37,6 +52,8 @@ export async function POST(request: Request) {
       classYear: result.classYear,
       email: result.account.email,
       netId: result.account.netId,
+      photos: savedPhotos,
+      linkedinPhoto,
     });
     setAlumSessionCookies(response, await alumSessionIdentityForAccount(result.account));
     return response;

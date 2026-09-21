@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ClaimPhotoFields } from "@/components/claim-photo-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import { Notice } from "@/components/page-chrome";
 import { Timestamp } from "@/components/timestamp";
 import { overviewFormValues, overviewPatchFromForm } from "@/lib/alumni-overview";
 import type { PublicBadge } from "@/lib/badges";
+import { photosFromClaimMatch, type ClaimPhotoValues } from "@/lib/claim-photos";
 import { displayName, formatCount } from "@/lib/format";
 import type { AlumniDetail, AlumniListItem } from "@/lib/types";
 
@@ -42,7 +44,9 @@ export function AlumniMePanel({
   const active = useMemo(() => records.find((row) => row.id === activeId) ?? records[0], [activeId, records]);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<ClaimPhotoValues>(() => photosFromClaimMatch(records[0]));
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const visibleCandidates = useMemo(
     () => mergeCandidates.filter((row) => !hiddenIds.includes(row.id)),
@@ -53,43 +57,63 @@ export function AlumniMePanel({
     ? sourceId
     : (visibleCandidates[0]?.id ?? "");
 
-  async function save(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  useEffect(() => {
     if (!active) return;
-    const form = new FormData(event.currentTarget);
+    setPhotos(photosFromClaimMatch(active));
+  }, [active]);
+
+  async function saveRecord(event?: React.FormEvent<HTMLFormElement>, refreshFromLinkedin = false) {
+    event?.preventDefault();
+    if (!active) return;
+    const formEl =
+      event?.currentTarget ?? (typeof document !== "undefined" ? document.getElementById("me-overview-form") : null);
+    const form = formEl instanceof HTMLFormElement ? new FormData(formEl) : null;
     const patch = {
-      ...overviewPatchFromForm(form),
-      first_name: String(form.get("first_name") ?? ""),
-      preferred_name: String(form.get("preferred_name") ?? ""),
-      phone_primary: String(form.get("phone_primary") ?? ""),
-      company_name: String(form.get("company_name") ?? ""),
-      job_title: String(form.get("job_title") ?? ""),
-      industry: String(form.get("industry") ?? ""),
-      address_primary: String(form.get("address_primary") ?? ""),
+      ...(form
+        ? {
+            ...overviewPatchFromForm(form),
+            first_name: String(form.get("first_name") ?? ""),
+            preferred_name: String(form.get("preferred_name") ?? ""),
+            phone_primary: String(form.get("phone_primary") ?? ""),
+            company_name: String(form.get("company_name") ?? ""),
+            job_title: String(form.get("job_title") ?? ""),
+            industry: String(form.get("industry") ?? ""),
+            address_primary: String(form.get("address_primary") ?? ""),
+          }
+        : {}),
+      linkedin_url: form ? String(form.get("linkedin_url") ?? photos.linkedin_url) : photos.linkedin_url,
+      football_photo_url: photos.football_photo_url,
+      linkedin_photo_url: photos.linkedin_photo_url,
     };
     setPending(true);
     setError(null);
     setMessage(null);
+    setPhotoNotice(null);
     try {
       const response = await fetch("/api/alumni/update", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ alumniId: active.id, patch }),
-      });
-      const data = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(data.error ?? "Save failed");
-      const photos = await fetch("/api/alum/photos", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
         body: JSON.stringify({
           alumniId: active.id,
-          football_photo_url: String(form.get("football_photo_url") ?? ""),
-          linkedin_photo_url: String(form.get("linkedin_photo_url") ?? ""),
+          refreshFromLinkedin,
+          patch,
         }),
       });
-      const photoData = (await photos.json()) as { error?: string };
-      if (!photos.ok) throw new Error(photoData.error ?? "Save failed");
+      const data = (await response.json()) as {
+        error?: string;
+        photos?: { football_photo_url?: string | null; linkedin_photo_url?: string | null };
+        linkedinPhoto?: { message?: string | null };
+      };
+      if (!response.ok) throw new Error(data.error ?? "Save failed");
+      if (data.photos) {
+        setPhotos((current) => ({
+          ...current,
+          football_photo_url: data.photos?.football_photo_url?.trim() || current.football_photo_url,
+          linkedin_photo_url: data.photos?.linkedin_photo_url?.trim() || current.linkedin_photo_url,
+        }));
+      }
       setMessage("Saved your record.");
+      setPhotoNotice(data.linkedinPhoto?.message ?? null);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -224,6 +248,7 @@ export function AlumniMePanel({
       </div>
 
       {message ? <Notice tone="success">{message}</Notice> : null}
+      {photoNotice ? <Notice tone={photoNotice.startsWith("Couldn't") ? "muted" : "success"}>{photoNotice}</Notice> : null}
       {error ? <Notice tone="danger">{error}</Notice> : null}
 
       <Card>
@@ -231,7 +256,7 @@ export function AlumniMePanel({
           <CardTitle>Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
+          <form id="me-overview-form" onSubmit={(event) => void saveRecord(event)} className="grid gap-3 sm:grid-cols-2">
             {canEditNetId && netId ? (
               <div className="sm:col-span-2 rounded-lg border bg-muted/20 px-3 py-3">
                 <p className="mb-2 text-sm font-medium">GTown NetID</p>
@@ -257,8 +282,18 @@ export function AlumniMePanel({
             <Field label="Company" name="company_name" defaultValue={active.company_name} />
             <Field label="Title" name="job_title" defaultValue={active.job_title} />
             <Field label="Industry" name="industry" defaultValue={active.industry} />
-            <Field label="Football roster photo URL" name="football_photo_url" defaultValue={active.football_photo_url} />
-            <Field label="Current LinkedIn / headshot URL" name="linkedin_photo_url" defaultValue={active.linkedin_photo_url} />
+            <div className="sm:col-span-2">
+              <ClaimPhotoFields
+                values={photos}
+                onChange={setPhotos}
+                disabled={pending}
+                idPrefix="me"
+                legend="Photos"
+                showLinkedinUrl={false}
+                onRefreshFromLinkedin={() => void saveRecord(undefined, true)}
+                refreshPending={pending}
+              />
+            </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="address_primary">Address</Label>
               <Textarea id="address_primary" name="address_primary" defaultValue={active.address_primary ?? ""} />
