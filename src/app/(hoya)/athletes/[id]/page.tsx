@@ -25,7 +25,7 @@ import { getLockerPersonById } from "@/lib/locker-directory";
 import { athleteHref, parseAthleteTab } from "@/lib/locker-paths";
 import { ATHLETE_TABS, athleteTabLabel } from "@/lib/locker-types";
 import { requireLockerViewer } from "@/lib/locker-viewer";
-import { canMessageHoyaProfile } from "@/lib/messages-dm";
+import { canMessageHoyaProfile, linkedAlumniIdForViewer } from "@/lib/messages-dm";
 import { isBoardMember } from "@/lib/staff-roles";
 
 export const dynamic = "force-dynamic";
@@ -138,8 +138,13 @@ export default async function AthleteProfilePage({
               </div>
             ) : null}
             {canMessageHoyaProfile({
-              viewerAlumniId: actor.sessionAlumniId,
+              viewerAlumniId: linkedAlumniIdForViewer({
+                alumniId: actor.sessionAlumniId,
+                username: actor.label,
+                label: actor.label,
+              }),
               targetAlumniId: person.id,
+              isAdmin: actor.isAdmin,
             }) ? (
               <ProfileMessageCta alumniId={person.id} name={name} />
             ) : null}

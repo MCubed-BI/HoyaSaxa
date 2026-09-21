@@ -8,7 +8,7 @@ import { Timestamp } from "@/components/timestamp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { getMessageChannel, listMessagePosts, markChannelRead } from "@/lib/messages";
-import { canPostToMessageChannel, dmDisplayName, isDmChannel } from "@/lib/messages-dm";
+import { canPostToMessageChannel, dmDisplayName, dmParticipantId, isDmChannel } from "@/lib/messages-dm";
 import { requireMessageViewer } from "@/lib/messages-viewer";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export default async function MessageChannelPage({
   let posts: Awaited<ReturnType<typeof listMessagePosts>> = [];
 
   try {
-    channel = await getMessageChannel(slug, viewer.viewerKey, viewer.alumniId);
+    channel = await getMessageChannel(slug, viewer.viewerKey, dmParticipantId(viewer));
     if (!channel) notFound();
     canPost = canPostToMessageChannel(channel, viewer);
     posts = await listMessagePosts(channel.id);
@@ -58,7 +58,7 @@ export default async function MessageChannelPage({
           ← Messages
         </Link>
         <PageHeader
-          title={isDmChannel(channel) ? dmDisplayName(channel, viewer.alumniId) : channel.name}
+          title={isDmChannel(channel) ? dmDisplayName(channel, dmParticipantId(viewer)) : channel.name}
           description={
             isDmChannel(channel)
               ? "Private direct message. Only the two of you can read or send."

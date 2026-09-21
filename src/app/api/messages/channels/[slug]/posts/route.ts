@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { getMessageViewer } from "@/lib/messages-auth";
-import { canPostToMessageChannel, isDmChannel } from "@/lib/messages-dm";
+import { canPostToMessageChannel, dmAuthorLabel, dmParticipantId, isDmChannel } from "@/lib/messages-dm";
 import { createMessagePost, getMessageChannel } from "@/lib/messages";
 
 function channelPath(slug: string) {
@@ -21,7 +21,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   }
 
   try {
-    const channel = await getMessageChannel(slug, viewer.viewerKey, viewer.alumniId);
+    const channel = await getMessageChannel(slug, viewer.viewerKey, dmParticipantId(viewer));
     if (!channel || !canPostToMessageChannel(channel, viewer)) {
       if (!channel) {
         return NextResponse.redirect(new URL("/messages", request.url), { status: 303 });
@@ -32,8 +32,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
       channelId: channel.id,
       title,
       body,
-      authorRole: isDmChannel(channel) ? viewer.kind : "staff",
-      authorLabel: viewer.label,
+      authorRole: isDmChannel(channel) ? (viewer.isAdmin && !viewer.alumniId ? "admin" : viewer.kind) : "staff",
+      authorLabel: isDmChannel(channel) ? dmAuthorLabel(viewer) : viewer.label,
     });
     return NextResponse.redirect(new URL(channelPath(slug), request.url), { status: 303 });
   } catch (error) {
