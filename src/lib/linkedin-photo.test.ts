@@ -161,5 +161,14 @@ describe("resolveLinkedinPreviewImage", () => {
     });
     assert.equal(timedOut.imageUrl, null);
     assert.equal(timedOut.reason, "timeout");
+
+    const blocked: typeof fetch = async () => new Response("authwall", { status: 403 });
+    const refreshed = await resolveLinkedinPreviewImage(PROFILE, {
+      fetch: blocked,
+      now: 3_000,
+      bypassCache: true,
+    });
+    assert.equal(refreshed.imageUrl, null);
+    assert.equal(refreshed.reason, "http_403");
   });
 });

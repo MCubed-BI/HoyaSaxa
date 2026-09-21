@@ -273,6 +273,7 @@ export type ResolveLinkedinPreviewOptions = {
   now?: number;
   timeoutMs?: number;
   cacheTtlMs?: number;
+  bypassCache?: boolean;
 };
 
 export async function resolveLinkedinPreviewImage(
@@ -284,7 +285,7 @@ export async function resolveLinkedinPreviewImage(
 
   const now = options.now ?? Date.now();
   const cached = previewCache.get(normalized);
-  if (cached && cached.expiresAt > now) {
+  if (!options.bypassCache && cached && cached.expiresAt > now) {
     return { imageUrl: cached.imageUrl, cached: true, reason: cached.imageUrl ? "cache_hit" : "cache_miss" };
   }
 

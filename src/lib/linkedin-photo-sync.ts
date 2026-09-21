@@ -11,6 +11,7 @@ import {
   planLinkedinPhotoSave,
   resolveLinkedinPreviewImage,
   type LinkedinPhotoNotice,
+  type ResolveLinkedinPreviewOptions,
 } from "@/lib/linkedin-photo";
 
 export type LinkedinPhotoSaveResult = {
@@ -49,6 +50,7 @@ export async function syncLinkedinPhotoOnSave(input: {
   incomingPhoto?: string | null;
   incomingProfileUrl?: string | null;
   refreshFromLinkedin?: boolean;
+  resolve?: ResolveLinkedinPreviewOptions;
 }): Promise<LinkedinPhotoSaveResult> {
   const existing = await getAlumniPhotos(input.alumniId);
   const existingProfileUrl = await getAlumniLinkedinUrl(input.alumniId);
@@ -65,7 +67,10 @@ export async function syncLinkedinPhotoOnSave(input: {
   }
 
   if (plan.fetchProfileUrl) {
-    const resolved = await resolveLinkedinPreviewImage(plan.fetchProfileUrl);
+    const resolved = await resolveLinkedinPreviewImage(plan.fetchProfileUrl, {
+      ...input.resolve,
+      bypassCache: Boolean(input.refreshFromLinkedin) || Boolean(input.resolve?.bypassCache),
+    });
     if (resolved.imageUrl) {
       const photos = await updateAlumniPhotos(input.alumniId, { linkedin_photo_url: resolved.imageUrl });
       return {
