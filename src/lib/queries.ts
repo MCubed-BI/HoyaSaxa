@@ -1,5 +1,19 @@
 import { getSql } from "@/lib/db";
-import { PAGE_SIZE, buildAlumniWhere, emptyFilters, type AlumniFilters } from "@/lib/filters";
+import {
+  expandAlumniFilters,
+  PAGE_SIZE,
+  buildAlumniWhere,
+  emptyFilters,
+  type AlumniFilterAliases,
+  type AlumniFilters,
+} from "@/lib/filters";
+import {
+  groupFilterOptions,
+  normalizeFilterCity,
+  normalizeFilterClassYear,
+  normalizeFilterPosition,
+  normalizeFilterState,
+} from "@/lib/filter-normalize";
 import type { AlumniLocationRow } from "@/lib/geocode";
 import type {
   AlumniDetail,
@@ -36,22 +50,20 @@ const LIST_COLUMNS = `
   a.address_primary
 `;
 
-function asStringList(rows: Record<string, unknown>[], key: string) {
+function asRawList(rows: Record<string, unknown>[], key: string) {
   return rows
     .map((row) => (typeof row[key] === "string" ? row[key] : null))
-    .filter((value): value is string => Boolean(value && value.trim()))
-    .sort((a, b) => a.localeCompare(b));
+    .filter((value): value is string => Boolean(value && value.trim()));
 }
 
-async function query<T>(text: string, params: unknown[] = []) {
-  const sql = getSql();
-  const rows = await sql.query(text, params);
-  return rows as unknown as T;
-}
+type AlumniFacetIndex = {
+  facets: AlumniFacets;
+  aliases: AlumniFilterAliases;
+};
 
-export async function getAlumniFacets(): Promise<AlumniFacets> {
+async function loadRawFacetRows() {
   const sql = getSql();
-  const [states, cities, positions, classYears, seasonYears] = await Promise.all([
+  return Promise.all([
     sql`SELECT DISTINCT current_state AS value FROM alumni WHERE current_state IS NOT NULL AND btrim(current_state) <> ''
         UNION
         SELECT DISTINCT hometown_state AS value FROM alumni WHERE hometown_state IS NOT NULL AND btrim(hometown_state) <> ''
@@ -68,18 +80,60 @@ export async function getAlumniFacets(): Promise<AlumniFacets> {
     sql`SELECT DISTINCT class_year AS value FROM alumni WHERE class_year IS NOT NULL AND btrim(class_year) <> '' ORDER BY 1 DESC`,
     sql`SELECT DISTINCT year::text AS value FROM alumni_roster_years ORDER BY 1 DESC`,
   ]);
+}
+
+async function loadFacetIndex(): Promise<AlumniFacetIndex> {
+  const [states, cities, positions, classYears, seasonYears] = await loadRawFacetRows();
+  const groupedStates = groupFilterOptions(asRawList(states as Record<string, unknown>[], "value"), normalizeFilterState);
+  const groupedCities = groupFilterOptions(asRawList(cities as Record<string, unknown>[], "value"), normalizeFilterCity);
+  const groupedPositions = groupFilterOptions(
+    asRawList(positions as Record<string, unknown>[], "value"),
+    normalizeFilterPosition,
+  );
+  const groupedClassYears = groupFilterOptions(
+    asRawList(classYears as Record<string, unknown>[], "value"),
+    normalizeFilterClassYear,
+    "desc",
+  );
+  const seasons = [...new Set(asRawList(seasonYears as Record<string, unknown>[], "value"))].sort((a, b) =>
+    b.localeCompare(a, undefined, { numeric: true }),
+  );
 
   return {
-    states: asStringList(states as Record<string, unknown>[], "value"),
-    cities: asStringList(cities as Record<string, unknown>[], "value"),
-    positions: asStringList(positions as Record<string, unknown>[], "value"),
-    classYears: asStringList(classYears as Record<string, unknown>[], "value"),
-    seasonYears: asStringList(seasonYears as Record<string, unknown>[], "value"),
+    facets: {
+      states: groupedStates.options,
+      cities: groupedCities.options,
+      positions: groupedPositions.options,
+      classYears: groupedClassYears.options,
+      seasonYears: seasons,
+    },
+    aliases: {
+      states: groupedStates.aliases,
+      cities: groupedCities.aliases,
+      positions: groupedPositions.aliases,
+      classYears: groupedClassYears.aliases,
+    },
   };
 }
 
+async function filtersForQuery(filters: AlumniFilters): Promise<AlumniFilters> {
+  const index = await loadFacetIndex();
+  return expandAlumniFilters(filters, index.aliases);
+}
+
+async function query<T>(text: string, params: unknown[] = []) {
+  const sql = getSql();
+  const rows = await sql.query(text, params);
+  return rows as unknown as T;
+}
+
+export async function getAlumniFacets(): Promise<AlumniFacets> {
+  return (await loadFacetIndex()).facets;
+}
+
 export async function searchAlumni(filters: AlumniFilters, page: number): Promise<DirectoryResult> {
-  const { whereSql, params } = buildAlumniWhere(filters);
+  const index = await loadFacetIndex();
+  const { whereSql, params } = buildAlumniWhere(expandAlumniFilters(filters, index.aliases));
   const offset = (page - 1) * PAGE_SIZE;
 
   const countQuery = `SELECT COUNT(*)::int AS total FROM alumni a ${whereSql}`;
@@ -91,10 +145,9 @@ export async function searchAlumni(filters: AlumniFilters, page: number): Promis
     LIMIT ${PAGE_SIZE} OFFSET ${offset}
   `;
 
-  const [countRows, rows, facets] = await Promise.all([
+  const [countRows, rows] = await Promise.all([
     query<Array<{ total: number }>>(countQuery, params),
     query<AlumniListItem[]>(listQuery, params),
-    getAlumniFacets(),
   ]);
 
   return {
@@ -102,12 +155,12 @@ export async function searchAlumni(filters: AlumniFilters, page: number): Promis
     total: countRows[0]?.total ?? 0,
     page,
     pageSize: PAGE_SIZE,
-    facets,
+    facets: index.facets,
   };
 }
 
 export async function getAlumniLocationRows(filters: AlumniFilters): Promise<AlumniLocationRow[]> {
-  const { whereSql, params } = buildAlumniWhere(filters);
+  const { whereSql, params } = buildAlumniWhere(await filtersForQuery(filters));
   return query<AlumniLocationRow[]>(
     `
     SELECT
@@ -132,7 +185,7 @@ export async function getAlumniLocationRows(filters: AlumniFilters): Promise<Alu
 }
 
 export async function getAlumniCount(filters: AlumniFilters) {
-  const { whereSql, params } = buildAlumniWhere(filters);
+  const { whereSql, params } = buildAlumniWhere(await filtersForQuery(filters));
   const rows = await query<Array<{ total: number }>>(`SELECT COUNT(*)::int AS total FROM alumni a ${whereSql}`, params);
   return rows[0]?.total ?? 0;
 }
@@ -167,7 +220,7 @@ export async function getAlumniById(id: string): Promise<AlumniDetail | null> {
 }
 
 export async function getReportSummary(filters: AlumniFilters) {
-  const { whereSql, params } = buildAlumniWhere(filters);
+  const { whereSql, params } = buildAlumniWhere(await filtersForQuery(filters));
   const rows = await query<
     Array<{ alumni: number; emails: number; phones: number }>
   >(
@@ -191,7 +244,7 @@ export async function getReportSummary(filters: AlumniFilters) {
 }
 
 export async function getContactExportRows(filters: AlumniFilters, limit?: number): Promise<ContactExportRow[]> {
-  const { whereSql, params } = buildAlumniWhere(filters);
+  const { whereSql, params } = buildAlumniWhere(await filtersForQuery(filters));
   const rows = await query<ContactExportRow[]>(
     `
     SELECT
@@ -240,7 +293,7 @@ export type RecipientQuery = {
   includeIds?: boolean;
 };
 
-function recipientWhere(input: RecipientQuery) {
+async function recipientWhere(input: RecipientQuery) {
   const ids = [...new Set((input.ids ?? []).filter(Boolean))];
   const includeIds = Boolean(input.includeIds && ids.length);
   const includeFilters = Boolean(input.includeFilters);
@@ -250,20 +303,21 @@ function recipientWhere(input: RecipientQuery) {
   if (includeIds && !includeFilters) {
     return buildAlumniWhere(emptyFilters(), 1, { ids, idsOnly: true });
   }
+  const filters = await filtersForQuery(input.filters);
   if (includeIds && includeFilters) {
-    return buildAlumniWhere(input.filters, 1, { ids });
+    return buildAlumniWhere(filters, 1, { ids });
   }
-  return buildAlumniWhere(input.filters);
+  return buildAlumniWhere(filters);
 }
 
 export async function getAlumniIds(input: RecipientQuery) {
-  const { whereSql, params } = recipientWhere(input);
+  const { whereSql, params } = await recipientWhere(input);
   const rows = await query<Array<{ id: string }>>(`SELECT a.id FROM alumni a ${whereSql}`, params);
   return rows.map((row) => row.id);
 }
 
 export async function getBlastRecipients(input: RecipientQuery): Promise<BlastRecipient[]> {
-  const { whereSql, params } = recipientWhere(input);
+  const { whereSql, params } = await recipientWhere(input);
   return query<BlastRecipient[]>(
     `
     SELECT

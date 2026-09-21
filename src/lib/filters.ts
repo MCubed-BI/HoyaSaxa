@@ -1,3 +1,13 @@
+import {
+  expandFilterSelection,
+  normalizeFilterCity,
+  normalizeFilterClassYear,
+  normalizeFilterPosition,
+  normalizeFilterState,
+  uniqueCanonicalValues,
+  type FilterAliasMap,
+} from "@/lib/filter-normalize";
+
 export type AlumniFilters = {
   q: string;
   states: string[];
@@ -8,6 +18,13 @@ export type AlumniFilters = {
   hasEmail: boolean;
   hasPhone: boolean;
   hasLinkedin: boolean;
+};
+
+export type AlumniFilterAliases = {
+  states: FilterAliasMap;
+  cities: FilterAliasMap;
+  positions: FilterAliasMap;
+  classYears: FilterAliasMap;
 };
 
 export const PAGE_SIZE = 40;
@@ -45,10 +62,33 @@ export function searchParamsToRecord(params: URLSearchParams) {
   return record;
 }
 
+export function canonicalizeAlumniFilters(filters: AlumniFilters): AlumniFilters {
+  return {
+    ...filters,
+    q: filters.q.trim(),
+    states: uniqueCanonicalValues(filters.states, normalizeFilterState),
+    cities: uniqueCanonicalValues(filters.cities, normalizeFilterCity),
+    positions: uniqueCanonicalValues(filters.positions, normalizeFilterPosition),
+    classYears: uniqueCanonicalValues(filters.classYears, normalizeFilterClassYear),
+    seasonYears: [...new Set(filters.seasonYears.map((value) => value.trim()).filter(Boolean))],
+  };
+}
+
+export function expandAlumniFilters(filters: AlumniFilters, aliases: AlumniFilterAliases): AlumniFilters {
+  const canonical = canonicalizeAlumniFilters(filters);
+  return {
+    ...canonical,
+    states: expandFilterSelection(canonical.states, aliases.states, normalizeFilterState),
+    cities: expandFilterSelection(canonical.cities, aliases.cities, normalizeFilterCity),
+    positions: expandFilterSelection(canonical.positions, aliases.positions, normalizeFilterPosition),
+    classYears: expandFilterSelection(canonical.classYears, aliases.classYears, normalizeFilterClassYear),
+  };
+}
+
 export function parseAlumniFilters(
   searchParams: Record<string, string | string[] | undefined>,
 ): AlumniFilters {
-  return {
+  return canonicalizeAlumniFilters({
     q: first(searchParams, "q"),
     states: asList(searchParams.state ?? searchParams.states),
     cities: asList(searchParams.city ?? searchParams.cities),
@@ -58,7 +98,7 @@ export function parseAlumniFilters(
     hasEmail: flag(searchParams, "hasEmail", "has_email"),
     hasPhone: flag(searchParams, "hasPhone", "has_phone"),
     hasLinkedin: flag(searchParams, "hasLinkedin", "has_linkedin"),
-  };
+  });
 }
 
 export function parseSelectedIds(searchParams: Record<string, string | string[] | undefined>) {
@@ -308,7 +348,7 @@ export function coerceAlumniFilters(input: unknown): AlumniFilters {
     Array.isArray(rec.classYears) ||
     Array.isArray(rec.seasonYears)
   ) {
-    return {
+    return canonicalizeAlumniFilters({
       q: typeof rec.q === "string" ? rec.q : "",
       states: asStringArray(rec.states),
       cities: asStringArray(rec.cities),
@@ -318,7 +358,7 @@ export function coerceAlumniFilters(input: unknown): AlumniFilters {
       hasEmail: Boolean(rec.hasEmail),
       hasPhone: Boolean(rec.hasPhone),
       hasLinkedin: Boolean(rec.hasLinkedin),
-    };
+    });
   }
   return parseAlumniFilters(rec as Record<string, string | string[] | undefined>);
 }

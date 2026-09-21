@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/multi-select";
 import {
+  canonicalizeAlumniFilters,
   filtersToSearchParams,
   hasActiveFilters,
   type AlumniFilters,
@@ -26,11 +27,15 @@ export function AlumniFiltersForm({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [local, setLocal] = useState(filters);
+  const [local, setLocal] = useState(() => canonicalizeAlumniFilters(filters));
+  const filtersKey = JSON.stringify(filters);
 
   useEffect(() => {
-    setLocal(filters);
-  }, [filters]);
+    setLocal(canonicalizeAlumniFilters(filters));
+    // Sync only when URL-derived filter values change so in-progress
+    // multi-selects survive search typing and parent re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey]);
 
   return (
     <form
@@ -38,10 +43,10 @@ export function AlumniFiltersForm({
       className="grid gap-4 rounded-xl border bg-card p-5 shadow-[var(--shadow-card)]"
       onSubmit={(event) => {
         event.preventDefault();
-        const next: AlumniFilters = {
+        const next = canonicalizeAlumniFilters({
           ...local,
           q: local.q.trim(),
-        };
+        });
         const qs = filtersToSearchParams(next);
         const channel = new URLSearchParams(window.location.search).get("channel");
         if (channel) qs.set("channel", channel);
@@ -72,6 +77,8 @@ export function AlumniFiltersForm({
           options={facets.states}
           value={local.states}
           onChange={(states) => setLocal((current) => ({ ...current, states }))}
+          searchable
+          dropdown
         />
         <MultiSelect
           label="City"
@@ -80,6 +87,7 @@ export function AlumniFiltersForm({
           value={local.cities}
           onChange={(cities) => setLocal((current) => ({ ...current, cities }))}
           searchable
+          dropdown
         />
         <MultiSelect
           label="Position"
