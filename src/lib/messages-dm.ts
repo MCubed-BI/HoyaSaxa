@@ -48,7 +48,7 @@ export function canMessageAthlete(input: {
 }
 
 export function canPostToMessageChannel(
-  viewer: MessageViewer | null | undefined,
+  viewer: { canPost?: boolean; alumniId?: string | null } | null | undefined,
   channel: { kind?: string | null; slug?: string | null } | null | undefined,
 ) {
   if (!viewer || !channel) return false;
