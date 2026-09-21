@@ -138,6 +138,14 @@ function parsePackedPlace(value: string): { city: string | null; state: string |
   if (parts.length === 0) return { city: null, state: null };
   if (parts.length === 1) {
     const only = parts[0]!;
+    const words = only.split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+      const code = stateCode(words[words.length - 1]);
+      if (code) {
+        const city = displayPersonName(words.slice(0, -1).join(" "));
+        return { city, state: code };
+      }
+    }
     const code = stateCode(only);
     return code ? { city: null, state: code } : { city: displayPersonName(only), state: null };
   }
@@ -148,6 +156,13 @@ function parsePackedPlace(value: string): { city: string | null; state: string |
     return { city, state: code };
   }
   return { city: displayPersonName(parts[0]!), state: null };
+}
+
+/** Parse a typed place such as "New York, NY" or "New York NY". */
+export function parseLocationInput(value?: string | null): { city: string | null; state: string | null } {
+  const text = cleanDisplay(value);
+  if (!text) return { city: null, state: null };
+  return parsePackedPlace(text);
 }
 
 export function locationLabel(city?: string | null, state?: string | null) {
