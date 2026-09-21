@@ -25,8 +25,11 @@ export const metadata: Metadata = {
     title: PRODUCT_DISPLAY_NAME,
   },
   icons: {
-    icon: [{ url: BRAND_MARK_SRC, type: "image/png" }],
-    apple: [{ url: BRAND_MARK_SRC, type: "image/png" }],
+    icon: [
+      { url: "/icon.png", type: "image/png", sizes: "192x192" },
+      { url: BRAND_MARK_SRC, type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
   },
 };
 

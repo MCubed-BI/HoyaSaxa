@@ -28,7 +28,7 @@ export function BrandMark({
   prominent?: boolean;
 }) {
   const lines = wordmarkLines(title);
-  const markPx = prominent ? 88 : compact ? 36 : 40;
+  const markPx = prominent ? 128 : compact ? 36 : 40;
 
   return (
     <Link
@@ -43,11 +43,14 @@ export function BrandMark({
       <span
         aria-hidden
         className={cn(
-          "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white",
-          prominent ? "size-[5.5rem] p-1.5 ring-1 ring-white/25" : compact ? "size-9 p-0.5" : "size-10 p-0.5",
-          inverted
-            ? "ring-1 ring-white/25"
-            : "shadow-[var(--shadow-xs)] ring-1 ring-silver/80",
+          "relative flex shrink-0 items-center justify-center overflow-hidden",
+          prominent
+            ? "size-32 bg-transparent"
+            : cn(
+                "rounded-lg bg-white",
+                compact ? "size-9 p-0.5" : "size-10 p-0.5",
+                inverted ? "ring-1 ring-white/25" : "shadow-[var(--shadow-xs)] ring-1 ring-silver/80",
+              ),
         )}
       >
         <Image
