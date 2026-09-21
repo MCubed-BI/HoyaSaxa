@@ -82,7 +82,7 @@ export function proxy(request: NextRequest) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.redirect(new URL("/portal", request.url));
+    return NextResponse.redirect(new URL("/home", request.url));
   }
 
   if (alum && alumFacing) {
@@ -93,7 +93,7 @@ export function proxy(request: NextRequest) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.redirect(new URL("/portal", request.url));
+    return NextResponse.redirect(new URL("/home", request.url));
   }
 
   if (pathname.startsWith("/api/")) {

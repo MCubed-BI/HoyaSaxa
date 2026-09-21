@@ -129,7 +129,7 @@ export function canSeeFullContact(role: Role) {
 }
 
 export function homePathForRole(role: Role) {
-  return role === "alum" || role === "board" ? "/portal" : "/";
+  return role === "alum" || role === "board" ? "/home" : "/";
 }
 
 export function roleLabel(role: Role) {

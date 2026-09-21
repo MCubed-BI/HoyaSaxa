@@ -72,7 +72,7 @@ export function FundraisingPledgeForm({ campaignId, defaultName }: { campaignId:
   return (
     <form action="/api/portal/fundraising/pledges" method="post" className="space-y-3">
       <input type="hidden" name="campaign_id" value={campaignId} />
-      <input type="hidden" name="next" value="/portal/giving" />
+      <input type="hidden" name="next" value="/giving" />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor={`name-${campaignId}`}>Name</Label>

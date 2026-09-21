@@ -7,14 +7,14 @@ import { NavIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";
 import { DESKTOP_PRIMARY_NAV_CLASS, HEADER_BRAND_SLOT_CLASS } from "@/lib/header-chrome";
-import { headerShowsUpdateMe, type NavItem, type NavKey } from "@/lib/nav";
+import { headerShowsUpdateMe, navKeyMatches, type NavItem, type NavKey } from "@/lib/nav";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 import { cn } from "cn";
 
 function shortLabel(item: NavItem) {
   if (item.key === "find-my-alum") return "Map";
-  if (item.key === "board") return "Board";
-  if (item.key === "alum") return "Portal";
+  if (item.key === "sync") return "Sync";
+  if (item.key === "feed") return "For You";
   return item.label;
 }
 
@@ -25,6 +25,7 @@ export function ProductHeader({
   roleLabel,
   viewerLabel,
   secondaryItems = [],
+  toolItems = [],
   showSignOut = false,
   signOutAction = "/api/logout",
   signOutFrom,
@@ -39,6 +40,7 @@ export function ProductHeader({
   roleLabel?: string;
   viewerLabel?: string;
   secondaryItems?: NavItem[];
+  toolItems?: NavItem[];
   showSignOut?: boolean;
   signOutAction?: string;
   signOutFrom?: string;
@@ -47,11 +49,11 @@ export function ProductHeader({
   verifiedHoya?: boolean;
   updateMeHref?: string;
 }) {
-  const desktopItems = [...items, ...secondaryItems];
+  const tools = toolItems.length > 0 ? toolItems : secondaryItems;
+  const desktopItems = items;
   const tabItems = items.slice(0, 5);
-  const stacked = mobileNav === "scroll" && desktopItems.length > 0;
   const showUpdateMe = headerShowsUpdateMe(verifiedHoya, current);
-  const hasIdentity = Boolean(roleLabel || viewerLabel || verifiedHoya || trailing || showUpdateMe);
+  const hasIdentity = Boolean(roleLabel || viewerLabel || verifiedHoya || trailing || showUpdateMe || tools.length > 0);
 
   return (
     <>
@@ -64,7 +66,7 @@ export function ProductHeader({
             <div className={HEADER_BRAND_SLOT_CLASS}>
               <BrandMark href={homeHref} compact title={PRODUCT_DISPLAY_NAME} />
             </div>
-            {!stacked && desktopItems.length > 0 ? (
+            {desktopItems.length > 0 ? (
               <nav
                 className={DESKTOP_PRIMARY_NAV_CLASS}
                 aria-label="Primary"
@@ -105,42 +107,49 @@ export function ProductHeader({
                 </Button>
               ) : null}
               {trailing}
+              {tools.length > 0 ? (
+                <nav
+                  className="ml-auto flex min-w-0 flex-1 flex-wrap items-center justify-end gap-0.5"
+                  aria-label="Tools"
+                  data-tools-nav
+                >
+                  {tools.map((item) => (
+                    <NavLink key={`${item.key}-${item.href}`} item={item} current={current} />
+                  ))}
+                </nav>
+              ) : null}
             </div>
-          ) : null}
-          {stacked ? (
-            <nav className="-mx-1 flex items-center gap-0.5 overflow-x-auto border-t py-1.5" aria-label="Primary">
-              {desktopItems.map((item) => (
-                <NavLink key={`${item.key}-${item.href}`} item={item} current={current} compact />
-              ))}
-            </nav>
           ) : null}
         </div>
       </header>
       {mobileNav === "tabs" ? (
-        <nav
-          className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-card)] md:hidden"
-          aria-label="Primary"
-        >
-          <div className="mx-auto grid max-w-6xl grid-cols-5">
-            {tabItems.map((item) => {
-              const active = current === item.key;
-              return (
-                <Link
-                  key={`${item.key}-${item.href}`}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "flex flex-col items-center gap-1 px-1 py-2.5 text-[10px] font-medium uppercase tracking-wide",
-                    active ? "text-navy" : "text-muted-foreground",
-                  )}
-                >
-                  <NavIcon navKey={item.key} className="size-4" />
-                  {shortLabel(item)}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
+        <>
+          <nav
+            className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-card)] md:hidden"
+            aria-label="Primary"
+          >
+            <div className="mx-auto grid max-w-6xl grid-cols-5">
+              {tabItems.map((item) => {
+                const active = navKeyMatches(current, item.key);
+                return (
+                  <Link
+                    key={`${item.key}-${item.href}`}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex flex-col items-center gap-1 px-1 py-2.5 text-[10px] font-medium uppercase tracking-wide",
+                      active ? "text-navy" : "text-muted-foreground",
+                    )}
+                  >
+                    <NavIcon navKey={item.key} className="size-4" />
+                    {shortLabel(item)}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+          <div className="h-16 md:hidden" aria-hidden />
+        </>
       ) : null}
     </>
   );
@@ -155,7 +164,7 @@ function NavLink({
   current?: NavKey;
   compact?: boolean;
 }) {
-  const active = current === item.key;
+  const active = navKeyMatches(current, item.key);
   return (
     <Link
       href={item.href}

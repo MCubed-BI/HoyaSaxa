@@ -7,14 +7,8 @@ export default async function HoyaLayout({ children }: { children: React.ReactNo
   const signedIn = Boolean(locker);
 
   return (
-    <div className={signedIn ? "flex min-h-full flex-col pb-24 md:pb-0" : "flex min-h-full flex-col"}>
-      <HoyaDirectoryHeader
-        signedIn={signedIn}
-        roleLabel={locker?.roleLabel}
-        viewerLabel={locker?.label}
-        canEmailClassmates={locker?.role !== "coach"}
-        verifiedHoya={locker?.verifiedHoya}
-      />
+    <div className="flex min-h-full flex-col">
+      <HoyaDirectoryHeader locker={locker} signedIn={signedIn} />
       <SelectionProvider>{children}</SelectionProvider>
     </div>
   );

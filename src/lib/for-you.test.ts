@@ -98,13 +98,13 @@ describe("for you myspace stack", () => {
       navItemsForRole("owner").some((item) => item.href === "/newsflash" || item.key === "newsflash"),
       false,
     );
-    assert.equal(portalSecondaryItems().some((item) => item.key === "feed"), true);
+    assert.equal(portalSecondaryItems().some((item) => item.key === "feed"), false);
     assert.equal(portalSecondaryItems().some((item) => item.key === "board"), false);
     assert.equal(alumPrimaryNavItems().some((item) => item.key === "board"), false);
     assert.equal(portalMoreItems("alum").some((item) => item.key === "board"), false);
     assert.deepEqual(
       alumPrimaryNavItems().map((item) => item.label),
-      ["Home", "Directory", "Events", "Giving", "Messages", "For You"],
+      ["For You", "Directory", "Events", "Giving", "Messages"],
     );
     const navClasses = DESKTOP_PRIMARY_NAV_CLASS.split(/\s+/);
     assert.equal(navClasses.includes("flex-nowrap"), true);

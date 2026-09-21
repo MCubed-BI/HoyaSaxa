@@ -122,7 +122,7 @@ describe("roles", () => {
     assert.equal(canUseAlumEmailBlast("alum"), true);
     assert.equal(canUseAlumEmailBlast("board"), true);
     assert.equal(
-      navItemsForRole("alum").some((item) => item.key === "blast"),
+      navItemsForRole("alum").some((item) => item.href === "/blast"),
       false,
     );
     assert.equal(
@@ -130,8 +130,8 @@ describe("roles", () => {
       true,
     );
     assert.deepEqual(
-      navItemsForRole("alum").map((item) => item.href),
-      ["/home", "/directory", "/events", "/giving", "/messages"],
+      navItemsForRole("alum").filter((item) => item.key !== "blast" && item.key !== "find-my-alum").map((item) => item.href),
+      ["/feed", "/directory", "/events", "/giving", "/messages"],
     );
     assert.equal(
       navItemsForRole("owner").some((item) => item.href === "/find-my-alum"),
@@ -143,10 +143,14 @@ describe("roles", () => {
     );
     assert.equal(
       portalMoreItems("owner").some((item) => item.label === "Admin portal"),
-      true,
+      false,
     );
-    assert.equal(homePathForRole("alum"), "/portal");
-    assert.equal(homePathForRole("board"), "/portal");
+    assert.equal(
+      navItemsForRole("owner").some((item) => item.label === "Alum view" || item.href === "/portal"),
+      false,
+    );
+    assert.equal(homePathForRole("alum"), "/home");
+    assert.equal(homePathForRole("board"), "/home");
     assert.equal(homePathForRole("owner"), "/");
     assert.equal(canOpenGiving("alum"), true);
     assert.equal(canOpenGiving("board"), true);
