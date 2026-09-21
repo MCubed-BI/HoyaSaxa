@@ -114,7 +114,7 @@ export function ProductHeader({
                   data-tools-nav
                 >
                   {tools.map((item) => (
-                    <NavLink key={`${item.key}-${item.href}`} item={item} current={current} compact />
+                    <NavLink key={`${item.key}-${item.href}`} item={item} current={current} />
                   ))}
                 </nav>
               ) : null}
