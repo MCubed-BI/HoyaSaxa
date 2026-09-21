@@ -14,6 +14,15 @@ test("normalizes state case, junk, and repeated spreadsheet tokens", () => {
   assert.equal(normalizeFilterState("CA"), "CA");
   assert.equal(normalizeFilterState("ca"), "CA");
   assert.equal(normalizeFilterState("CA ::: CA"), "CA");
+  assert.equal(normalizeFilterState("CA ::: CA ::: CA"), "CA");
+  assert.equal(normalizeFilterState("::: TX"), "TX");
+  assert.equal(normalizeFilterState("FL :::"), "FL");
+  assert.equal(normalizeFilterState("Texas :::"), "TX");
+  assert.equal(normalizeFilterState("NJ ::: New Jersey"), "NJ");
+  assert.equal(normalizeFilterState("75249 ::: IA"), "IA");
+  assert.equal(normalizeFilterState("CT ::: NY"), null);
+  assert.equal(normalizeFilterState("--"), null);
+  assert.equal(normalizeFilterState(":::"), null);
   assert.equal(normalizeFilterState("GA"), "GA");
   assert.equal(normalizeFilterState("Ga"), "GA");
   assert.equal(normalizeFilterState("ga"), "GA");
@@ -30,6 +39,11 @@ test("normalizes city case and strips address fragments", () => {
   assert.equal(normalizeFilterCity("Boston"), "Boston");
   assert.equal(normalizeFilterCity("BOston"), "Boston");
   assert.equal(normalizeFilterCity("boston"), "Boston");
+  assert.equal(normalizeFilterCity("Arlington ::: Arlington"), "Arlington");
+  assert.equal(normalizeFilterCity("::: Fort Collins ::: ::: Fort Collins"), "Fort Collins");
+  assert.equal(normalizeFilterCity("Dallas :::"), "Dallas");
+  assert.equal(normalizeFilterCity("Dallas ::: Iowa City"), null);
+  assert.equal(normalizeFilterCity(":::"), null);
   assert.equal(normalizeFilterCity("Boston, MA"), "Boston");
   assert.equal(normalizeFilterCity("Boston MA 02115"), "Boston");
   assert.equal(normalizeFilterCity("123 Main St, Boston, MA"), "Boston");

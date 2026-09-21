@@ -109,6 +109,17 @@ function stripZip(value: string) {
   return value.replace(/\s+\d{5}(?:-\d{4})?\s*$/i, "").trim();
 }
 
+function isSeparatorJunk(value: string) {
+  return /^[\d\s:|/.\-—]+$/.test(value);
+}
+
+function splitArtifactParts(value: string) {
+  return value
+    .split(/\s*[:|/]{2,}\s*/)
+    .map((part) => stripZip(part.trim()))
+    .filter(Boolean);
+}
+
 function positionKey(value: string) {
   return value
     .toLowerCase()
@@ -117,43 +128,47 @@ function positionKey(value: string) {
     .trim();
 }
 
+function stateFromPackedPlace(value: string) {
+  if (!value.includes(",")) return null;
+  const parts = value
+    .split(",")
+    .map((part) => stripZip(part.trim()))
+    .filter(Boolean);
+  while (parts.length && isCountryToken(parts[parts.length - 1]!)) parts.pop();
+  const last = parts[parts.length - 1];
+  return last ? normalizeState(last) : null;
+}
+
 export function normalizeFilterState(value: string | null | undefined): string | null {
   const cleaned = cleanDisplay(value);
-  if (!cleaned) return null;
+  if (!cleaned || isSeparatorJunk(cleaned)) return null;
 
   const direct = normalizeState(cleaned);
   if (direct) return direct;
 
-  if (cleaned.includes(",")) {
-    const parts = cleaned
-      .split(",")
-      .map((part) => stripZip(part.trim()))
-      .filter(Boolean);
-    while (parts.length && isCountryToken(parts[parts.length - 1]!)) parts.pop();
-    const last = parts[parts.length - 1];
-    if (last) {
-      const fromLast = normalizeState(last);
-      if (fromLast) return fromLast;
-    }
-  }
+  const packed = stateFromPackedPlace(cleaned);
+  if (packed) return packed;
 
-  const tokens = cleaned.split(/\s*[:|/]+\s*/).map((token) => token.trim()).filter(Boolean);
-  const codes = [...new Set(tokens.map((token) => normalizeState(token)).filter((code): code is string => Boolean(code)))];
+  const tokens = splitArtifactParts(cleaned);
+  const codes = [
+    ...new Set(
+      tokens
+        .flatMap((token) => [normalizeState(token), stateFromPackedPlace(token)])
+        .filter((code): code is string => Boolean(code)),
+    ),
+  ];
   if (codes.length === 1) return codes[0] ?? null;
-  if (tokens.length > 1) return null;
+  if (tokens.length > 1 || /[:|/]{2,}/.test(cleaned)) return null;
 
   if (cleaned.length <= 3) return cleaned.replace(/\./g, "").toUpperCase();
   return titleCaseWords(cleaned);
 }
 
-export function normalizeFilterCity(value: string | null | undefined): string | null {
-  const cleaned = cleanDisplay(value);
-  if (!cleaned) return null;
-
-  const withoutZip = stripZip(cleaned);
-  const tokens = withoutZip.split(/[^A-Za-z.]+/).filter(Boolean);
-  if (tokens.length > 0 && tokens.every((token) => isBareStateCode(token))) return null;
-  if (isBareStateCode(withoutZip)) return null;
+function cityFromSingleValue(value: string): string | null {
+  const withoutZip = stripZip(value);
+  const letterTokens = withoutZip.split(/[^A-Za-z.]+/).filter(Boolean);
+  if (letterTokens.length > 0 && letterTokens.every((token) => isBareStateCode(token))) return null;
+  if (isBareStateCode(withoutZip) || isSeparatorJunk(withoutZip)) return null;
 
   let city = withoutZip;
 
@@ -173,15 +188,28 @@ export function normalizeFilterCity(value: string | null | undefined): string | 
   }
 
   city = city.replace(/\s+/g, " ").trim();
-  if (!city || isBareStateCode(city) || looksLikeStreet(city)) return null;
-  if (normalizeFilterState(city) && city.length <= 3) return null;
+  if (!city || isBareStateCode(city) || looksLikeStreet(city) || isSeparatorJunk(city)) return null;
+  if (city.length <= 3 && normalizeState(city)) return null;
 
   return titleCaseWords(city);
 }
 
+export function normalizeFilterCity(value: string | null | undefined): string | null {
+  const cleaned = cleanDisplay(value);
+  if (!cleaned || isSeparatorJunk(cleaned)) return null;
+
+  const parts = splitArtifactParts(cleaned);
+  if (parts.length > 1) {
+    const cities = [...new Set(parts.map((part) => cityFromSingleValue(part)).filter((city): city is string => Boolean(city)))];
+    return cities.length === 1 ? (cities[0] ?? null) : null;
+  }
+
+  return cityFromSingleValue(parts[0] ?? cleaned);
+}
+
 export function normalizeFilterPosition(value: string | null | undefined): string | null {
   const cleaned = cleanDisplay(value);
-  if (!cleaned) return null;
+  if (!cleaned || /^pos\.?$/i.test(cleaned)) return null;
 
   const labeled = positionLabel(cleaned);
   if (!labeled) return null;
