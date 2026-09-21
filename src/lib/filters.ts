@@ -112,10 +112,9 @@ export function parsePage(searchParams: Record<string, string | string[] | undef
   return Number.isFinite(page) && page > 0 ? page : 1;
 }
 
-export function hasActiveFilters(filters: AlumniFilters) {
+export function hasFacetFilters(filters: AlumniFilters) {
   return Boolean(
-    filters.q ||
-      filters.states.length ||
+    filters.states.length ||
       filters.cities.length ||
       filters.positions.length ||
       filters.classYears.length ||
@@ -124,6 +123,27 @@ export function hasActiveFilters(filters: AlumniFilters) {
       filters.hasPhone ||
       filters.hasLinkedin,
   );
+}
+
+export function facetFilterCount(filters: AlumniFilters) {
+  return (
+    filters.states.length +
+    filters.cities.length +
+    filters.positions.length +
+    filters.classYears.length +
+    filters.seasonYears.length +
+    (filters.hasEmail ? 1 : 0) +
+    (filters.hasPhone ? 1 : 0) +
+    (filters.hasLinkedin ? 1 : 0)
+  );
+}
+
+export function hasActiveFilters(filters: AlumniFilters) {
+  return Boolean(filters.q || hasFacetFilters(filters));
+}
+
+export function parseHighlightId(searchParams: Record<string, string | string[] | undefined>) {
+  return first(searchParams, "highlight") || first(searchParams, "person");
 }
 
 export type FilterChip = {

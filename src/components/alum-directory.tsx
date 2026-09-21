@@ -3,6 +3,7 @@ import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { PublicBadge } from "@/lib/badges";
+import { athleteHref } from "@/lib/locker-paths";
 import { filtersToSearchParams, type AlumniFilters } from "@/lib/filters";
 import {
   classYearLabel,
@@ -22,7 +23,7 @@ export function AlumDirectory({
   pageSize,
   filters,
   basePath = "/alum",
-  profileHref = "/portal/profile",
+  profileHref,
   badgesById = {},
 }: {
   rows: AlumniListItem[];
@@ -62,13 +63,13 @@ export function AlumDirectory({
           <Card key={person.id}>
             <CardContent className="flex gap-3 py-4">
               <Link
-                href={profileHref}
+                href={profileHref ?? athleteHref(person.id)}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-white"
               >
                 {initials(person)}
               </Link>
               <div className="min-w-0 space-y-1">
-                <Link href={profileHref} className="truncate font-medium text-navy hover:underline">
+                <Link href={profileHref ?? athleteHref(person.id)} className="truncate font-medium text-navy hover:underline">
                   {displayName(person)}
                 </Link>
                 <p className="text-sm text-muted-foreground">

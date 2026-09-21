@@ -45,6 +45,7 @@ const ALUM_ALLOWED_PREFIXES = [
   "/api/events",
   "/api/giving",
   "/api/blast",
+  "/api/directory",
   "/api/feed",
   "/api/badges",
   "/api/admin",

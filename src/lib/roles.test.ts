@@ -187,6 +187,7 @@ describe("portal paths", () => {
     assert.equal(isPublicPath("/directory"), false);
     assert.equal(isPublicPath("/athletes/demo"), false);
     assert.equal(isAlumAllowedPath("/api/blast"), true);
+    assert.equal(isAlumAllowedPath("/api/directory/people"), true);
     assert.equal(loginPathFor("/directory"), "/home/login");
     assert.equal(isAlumAllowedPath("/home"), true);
     assert.equal(isAlumAllowedPath("/feed"), true);

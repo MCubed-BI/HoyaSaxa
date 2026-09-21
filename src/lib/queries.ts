@@ -159,6 +159,36 @@ export async function searchAlumni(filters: AlumniFilters, page: number): Promis
   };
 }
 
+export async function searchAlumniByName(q: string, limit = 8): Promise<AlumniListItem[]> {
+  const needle = q.trim();
+  if (needle.length < 1) return [];
+  const cap = Math.max(1, Math.min(limit, 12));
+  return query<AlumniListItem[]>(
+    `
+    SELECT ${LIST_COLUMNS}
+    FROM alumni a
+    WHERE
+      coalesce(a.full_name, '') ILIKE $1
+      OR coalesce(a.first_name, '') ILIKE $1
+      OR coalesce(a.last_name, '') ILIKE $1
+      OR coalesce(a.preferred_name, '') ILIKE $1
+    ORDER BY
+      CASE
+        WHEN lower(coalesce(a.last_name, '')) = lower($2) THEN 0
+        WHEN lower(coalesce(a.preferred_name, '')) = lower($2) THEN 1
+        WHEN lower(coalesce(a.first_name, '')) = lower($2) THEN 2
+        WHEN lower(coalesce(a.last_name, '')) LIKE lower($2) || '%' THEN 3
+        WHEN lower(coalesce(a.preferred_name, '')) LIKE lower($2) || '%' THEN 4
+        ELSE 5
+      END,
+      lower(a.last_name),
+      lower(coalesce(a.first_name, ''))
+    LIMIT ${cap}
+    `,
+    [`%${needle}%`, needle],
+  );
+}
+
 export async function getAlumniLocationRows(filters: AlumniFilters): Promise<AlumniLocationRow[]> {
   const { whereSql, params } = buildAlumniWhere(await filtersForQuery(filters));
   return query<AlumniLocationRow[]>(

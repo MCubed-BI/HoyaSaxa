@@ -6,8 +6,11 @@ import {
   coerceAlumniFilters,
   emptyFilters,
   expandAlumniFilters,
+  facetFilterCount,
   hasActiveFilters,
+  hasFacetFilters,
   parseAlumniFilters,
+  parseHighlightId,
 } from "./filters";
 
 test("alumniFilterChips builds removable chips", () => {
@@ -22,6 +25,10 @@ test("alumniFilterChips builds removable chips", () => {
   assert.ok(chips.some((chip) => chip.id === "state-VA" && !chip.href.includes("state=VA")));
   assert.ok(hasActiveFilters({ ...emptyFilters(), q: "Kasten" }));
   assert.equal(hasActiveFilters(emptyFilters()), false);
+  assert.equal(hasFacetFilters({ ...emptyFilters(), q: "Kasten" }), false);
+  assert.equal(hasFacetFilters({ ...emptyFilters(), states: ["VA"] }), true);
+  assert.equal(facetFilterCount({ ...emptyFilters(), states: ["VA", "DC"], hasEmail: true }), 3);
+  assert.equal(parseHighlightId({ highlight: "abc" }), "abc");
 });
 
 test("parseAlumniFilters canonicalizes dirty state and city values", () => {

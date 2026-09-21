@@ -42,6 +42,28 @@ export function BlastBar({
 
   const blastHref = `/blast${query ? `?${query}` : ""}`;
 
+  if (count === 0) {
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => addMany(pageIds)}
+          disabled={pageIds.length === 0}
+        >
+          Add this page to blast
+        </Button>
+        <Button type="button" variant="outline" onClick={addFilteredGroup} disabled={busy || totalMatching === 0}>
+          {busy ? "Adding…" : "Add filtered group"}
+        </Button>
+        <Button asChild variant="ghost">
+          <Link href={hasActiveFilters(filters) ? blastHref : "/blast"}>Blast</Link>
+        </Button>
+        {status ? <p className="w-full text-right text-xs text-muted-foreground">{status}</p> : null}
+      </div>
+    );
+  }
+
   return (
     <div className="sticky bottom-3 z-20 rounded-2xl border border-navy/20 bg-navy px-4 py-3.5 text-white shadow-[var(--shadow-elevated)]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
