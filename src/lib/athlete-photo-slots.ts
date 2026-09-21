@@ -22,6 +22,7 @@ function filledUrl(...values: Array<string | null | undefined>) {
   return null;
 }
 
+/** Always two slots. An empty LinkedIn URL must not hide a football photo. */
 export function athletePhotoSlots(source: AthletePhotoSource): AthletePhotoSlot[] {
   return [
     {

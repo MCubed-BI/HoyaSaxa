@@ -38,4 +38,23 @@ describe("athlete photo slot mapping", () => {
       "https://example.com/football.jpg",
     );
   });
+
+  it("keeps both slots when only football_photo_url is set (Tim Barnes)", () => {
+    const slots = athletePhotoSlots({
+      football_photo_url: "https://guhoyas.com/images/2018/5/15/12825855.jpeg",
+      linkedin_photo_url: null,
+    });
+    assert.equal(slots.length, 2);
+    assert.equal(slots[0]?.id, "roster");
+    assert.equal(slots[0]?.url, "https://guhoyas.com/images/2018/5/15/12825855.jpeg");
+    assert.equal(slots[1]?.id, "headshot");
+    assert.equal(slots[1]?.url, null);
+    assert.equal(
+      primaryPhotoUrl({
+        football_photo_url: "https://guhoyas.com/images/2018/5/15/12825855.jpeg",
+        linkedin_photo_url: null,
+      }),
+      "https://guhoyas.com/images/2018/5/15/12825855.jpeg",
+    );
+  });
 });

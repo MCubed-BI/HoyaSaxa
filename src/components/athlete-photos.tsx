@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ClaimPhotoFields } from "@/components/claim-photo-fields";
 import { Notice } from "@/components/page-chrome";
 import { Button } from "@/components/ui/button";
-import type { AthletePhotoSlot } from "@/lib/athlete-photo-slots";
+import { athletePhotoSlots, type AthletePhotoSlot } from "@/lib/athlete-photo-slots";
 import { photosFromClaimMatch, type ClaimPhotoValues } from "@/lib/claim-photos";
 
 export function AthletePhotoPair({
@@ -15,10 +15,14 @@ export function AthletePhotoPair({
   slots: AthletePhotoSlot[];
   size?: "md" | "lg";
 }) {
+  const pair = athletePhotoSlots({
+    football_photo_url: slots.find((slot) => slot.id === "roster")?.url,
+    linkedin_photo_url: slots.find((slot) => slot.id === "headshot")?.url,
+  });
   const frame = size === "lg" ? "aspect-[4/5] w-full" : "h-28 w-24 sm:h-32 sm:w-28";
   return (
     <div className="grid grid-cols-2 gap-3">
-      {slots.map((slot) => (
+      {pair.map((slot) => (
         <figure key={slot.id} className="min-w-0">
           <div className={`${frame} overflow-hidden rounded-lg bg-muted/40 ring-1 ring-navy/10`}>
             {slot.url ? (
@@ -27,7 +31,7 @@ export function AthletePhotoPair({
               <img src={slot.url} alt={slot.caption} className="h-full w-full object-cover object-top" />
             ) : (
               <div className="flex h-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
-                {slot.caption} — empty
+                {slot.id === "headshot" ? "Empty — upload or paste a URL" : `${slot.caption} — empty`}
               </div>
             )}
           </div>

@@ -121,6 +121,8 @@ describe("directory pills and search", () => {
     assert.match(alumniPage, /athletePhotoSlots/);
     assert.match(alumniPage, /Football roster photo|athletePhotoSlots/);
     assert.doesNotMatch(alumniPage, /\{initials\(person\)\}/);
+    assert.doesNotMatch(athletePage, /slots\.filter/);
+    assert.doesNotMatch(alumniPage, /slots\.filter/);
     const mePanel = readFileSync(join(process.cwd(), "src/components/alumni-me-panel.tsx"), "utf8");
     assert.match(mePanel, /AthleteOverviewFields/);
     assert.match(mePanel, /overviewPatchFromForm/);
