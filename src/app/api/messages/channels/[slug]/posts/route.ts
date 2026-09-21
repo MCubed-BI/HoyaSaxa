@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { canPostSgarlata, getMessageViewer } from "@/lib/messages-auth";
+import { getMessageViewer } from "@/lib/messages-auth";
+import { canPostToMessageChannel, isDmChannel } from "@/lib/messages-dm";
 import { createMessagePost, getMessageChannel } from "@/lib/messages";
 
 function channelPath(slug: string) {
@@ -10,10 +11,7 @@ function channelPath(slug: string) {
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const viewer = await getMessageViewer();
   const { slug } = await params;
-  if (!viewer || !canPostSgarlata(viewer)) {
-    if (!viewer) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    return NextResponse.redirect(new URL(channelPath(slug), request.url), { status: 303 });
-  }
+  if (!viewer) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const form = await request.formData();
   const title = String(form.get("title") ?? "");
@@ -23,15 +21,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   }
 
   try {
-    const channel = await getMessageChannel(slug, viewer.viewerKey);
-    if (!channel) {
-      return NextResponse.redirect(new URL("/messages", request.url), { status: 303 });
+    const channel = await getMessageChannel(slug, viewer.viewerKey, viewer.alumniId);
+    if (!channel || !canPostToMessageChannel(channel, viewer)) {
+      if (!channel) {
+        return NextResponse.redirect(new URL("/messages", request.url), { status: 303 });
+      }
+      return NextResponse.redirect(new URL(channelPath(slug), request.url), { status: 303 });
     }
     await createMessagePost({
       channelId: channel.id,
       title,
       body,
-      authorRole: "staff",
+      authorRole: isDmChannel(channel) ? viewer.kind : "staff",
       authorLabel: viewer.label,
     });
     return NextResponse.redirect(new URL(channelPath(slug), request.url), { status: 303 });

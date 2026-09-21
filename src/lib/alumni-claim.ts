@@ -15,6 +15,11 @@ import {
   type DuplicateDismissalActor,
 } from "@/lib/alumni-duplicate-dismissals";
 import { isLikelyDuplicate } from "@/lib/alumni-duplicates";
+import {
+  OVERVIEW_COLUMN_FIELDS,
+  overviewInputToAlumniPatch,
+  type OverviewInput,
+} from "@/lib/alumni-overview";
 import { ensureAlumniPhotoColumns, updateAlumniPhotos, type AlumniPhotoPatch } from "@/lib/alumni-photos";
 import { grantVerifiedHoyaForAlumSession } from "@/lib/badges";
 import {
@@ -604,38 +609,60 @@ export async function claimAdditionalRecord(accountId: string, alumniId: string)
   await grantVerifiedHoyaForAlumSession(alumniId);
 }
 
-const EDITABLE_FIELDS = [
-  "first_name",
-  "preferred_name",
-  "email_primary",
-  "phone_primary",
-  "current_city",
-  "current_state",
-  "company_name",
-  "job_title",
-  "industry",
-  "linkedin_url",
-  "headline",
-  "address_primary",
-] as const;
+const EDITABLE_FIELDS = OVERVIEW_COLUMN_FIELDS;
 
-export type AlumniEditInput = Partial<Record<(typeof EDITABLE_FIELDS)[number], string | null>>;
+export type AlumniEditInput = OverviewInput;
+
+async function replaceAlumniOverviewEmails(alumniId: string, emails: string[]) {
+  const keep = emails.map((email) => email.toLowerCase());
+  if (keep.length === 0) {
+    await query(`DELETE FROM alumni_emails WHERE alumni_id = $1`, [alumniId]);
+    return;
+  }
+  await query(
+    `
+    DELETE FROM alumni_emails
+    WHERE alumni_id = $1
+      AND NOT (lower(email) = ANY($2::text[]))
+    `,
+    [alumniId, keep],
+  );
+  for (const email of emails) {
+    await query(
+      `
+      INSERT INTO alumni_emails (alumni_id, email, label)
+      SELECT $1, $2, 'profile'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM alumni_emails
+        WHERE alumni_id = $1 AND lower(email) = lower($2)
+      )
+      `,
+      [alumniId, email],
+    );
+  }
+}
 
 async function applyAlumniEdit(alumniId: string, patch: AlumniEditInput) {
+  const { columns, emails } = overviewInputToAlumniPatch(patch);
   const sets: string[] = [];
   const params: unknown[] = [];
   for (const field of EDITABLE_FIELDS) {
-    if (!(field in patch)) continue;
-    const value = typeof patch[field] === "string" ? patch[field]!.trim() : patch[field];
-    params.push(value ? value : null);
+    if (!(field in columns)) continue;
+    params.push(columns[field] ?? null);
     sets.push(`${field} = $${params.length}`);
   }
-  if (sets.length === 0) return;
-  params.push(alumniId);
-  await query(
-    `UPDATE alumni SET ${sets.join(", ")}, updated_at = now() WHERE id = $${params.length}`,
-    params,
-  );
+  if (sets.length > 0) {
+    params.push(alumniId);
+    await query(
+      `UPDATE alumni SET ${sets.join(", ")}, updated_at = now() WHERE id = $${params.length}`,
+      params,
+    );
+  } else if (emails !== undefined) {
+    await query(`UPDATE alumni SET updated_at = now() WHERE id = $1`, [alumniId]);
+  }
+  if (emails !== undefined) {
+    await replaceAlumniOverviewEmails(alumniId, emails);
+  }
 }
 
 export async function updateOwnAlumniRecord(alumniId: string, patch: AlumniEditInput) {

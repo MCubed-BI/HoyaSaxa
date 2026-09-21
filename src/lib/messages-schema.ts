@@ -46,8 +46,23 @@ export async function ensureMessagesTables() {
       kind text NOT NULL DEFAULT 'group',
       description text,
       is_pinned boolean NOT NULL DEFAULT false,
+      participant_a text,
+      participant_b text,
       created_at timestamptz NOT NULL DEFAULT now()
     )
+  `);
+  await sql.query(`
+    ALTER TABLE message_channels
+      ADD COLUMN IF NOT EXISTS participant_a text
+  `);
+  await sql.query(`
+    ALTER TABLE message_channels
+      ADD COLUMN IF NOT EXISTS participant_b text
+  `);
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS message_channels_dm_participants
+    ON message_channels (participant_a, participant_b)
+    WHERE kind = 'dm'
   `);
   await sql.query(`
     CREATE TABLE IF NOT EXISTS message_posts (

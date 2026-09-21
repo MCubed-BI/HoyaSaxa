@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AthleteEmailField } from "@/components/athlete-emails";
 import { AthleteMergePanel } from "@/components/athlete-merge-panel";
+import { AthleteOverviewEditor } from "@/components/athlete-overview-editor";
 import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { BoardMemberToggle } from "@/components/board-member-toggle";
 import { HoyaAvatar } from "@/components/hoya-avatar";
 import { LinkedInProfileField } from "@/components/linkedin-profile-link";
+import { ProfileMessageCta } from "@/components/profile-message-cta";
 import { PageMain, pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,12 +18,14 @@ import { getAthleteActor } from "@/lib/athlete-access";
 import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
 import { HoyaBadgeRow } from "@/lib/badge-api";
 import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
+import { overviewFormValues } from "@/lib/alumni-overview";
 import { displayName, jobLabel, positionLabel } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
 import { getLockerPersonById } from "@/lib/locker-directory";
 import { athleteHref, parseAthleteTab } from "@/lib/locker-paths";
 import { ATHLETE_TABS, athleteTabLabel } from "@/lib/locker-types";
 import { requireLockerViewer } from "@/lib/locker-viewer";
+import { canMessageHoyaProfile } from "@/lib/messages-dm";
 import { isBoardMember } from "@/lib/staff-roles";
 
 export const dynamic = "force-dynamic";
@@ -133,6 +137,12 @@ export default async function AthleteProfilePage({
                 />
               </div>
             ) : null}
+            {canMessageHoyaProfile({
+              viewerAlumniId: actor.sessionAlumniId,
+              targetAlumniId: person.id,
+            }) ? (
+              <ProfileMessageCta alumniId={person.id} name={name} />
+            ) : null}
             {actor.canEdit ? (
               <div className="pt-2">
                 <AthletePhotoEditor alumniId={person.id} slots={photos} />
@@ -181,6 +191,24 @@ export default async function AthleteProfilePage({
             </div>
             <AthleteEmailField emails={person.emails} />
             <LinkedInProfileField url={person.linkedinUrl} />
+            {actor.canEdit ? (
+              <div className="border-t pt-4">
+                <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">
+                  {actor.isAdmin && !actor.isClaimedSelf ? "Admin edit Overview" : "Edit Overview"}
+                </p>
+                <AthleteOverviewEditor
+                  alumniId={person.id}
+                  defaults={overviewFormValues({
+                    headline: person.headline,
+                    position: person.position,
+                    current_city: person.city,
+                    current_state: person.state,
+                    emails: person.emails,
+                    linkedin_url: person.linkedinUrl,
+                  })}
+                />
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}

@@ -55,7 +55,7 @@ export default async function MePage() {
           <PageHeader
             eyebrow="Profile"
             title="My record"
-            description="Alum Mode: edit your photos and contact record, search the Directory, and post Brothers on For You. A successful claim shows Verified Hoya."
+            description="Alum Mode: edit Overview (About, Sport, Location, Email, LinkedIn) plus photos. Saved values show on your athlete profile after reload."
             actions={records.length > 0 ? <VerifiedHoyaBadge /> : undefined}
           />
           {records.length === 0 ? (

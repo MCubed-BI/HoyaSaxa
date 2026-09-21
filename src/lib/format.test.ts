@@ -5,6 +5,7 @@ import {
   displayName,
   formatCount,
   locationLabel,
+  parseLocationInput,
   positionLabel,
   residenceLabel,
   formatCurrency,
@@ -68,6 +69,12 @@ test("parses packed current_state and hides empty city/state", () => {
   assert.equal(locationLabel(null, null), null);
   assert.equal(locationLabel("", "n/a"), null);
   assert.equal(residenceLabel({ current_city: null, current_state: null, hometown_city: "Boston", hometown_state: "MA" }), "Boston, MA");
+});
+
+test("parses typed Overview locations", () => {
+  assert.deepEqual(parseLocationInput("New York, NY"), { city: "New York", state: "NY" });
+  assert.deepEqual(parseLocationInput("New York NY"), { city: "New York", state: "NY" });
+  assert.deepEqual(parseLocationInput("  "), { city: null, state: null });
 });
 
 test("omits empty positions and only title-cases long forms", () => {

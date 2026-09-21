@@ -6,6 +6,7 @@ import { displayName } from "./format";
 import {
   classLabel,
   classifyLockerKind,
+  composeAbout,
   matchesDirectoryPill,
   matchesLockerSearch,
   paginateItems,
@@ -37,6 +38,23 @@ describe("classifyLockerKind", () => {
 
   it("treats graduated class years as alumni", () => {
     assert.equal(classifyLockerKind({ classYear: "2015", latestRosterYear: 2014, now }), "alumni");
+  });
+
+  it("uses a saved headline as Overview About", () => {
+    assert.equal(
+      composeAbout({
+        firstName: "Patrick",
+        lastName: "Finnegan",
+        preferredName: null,
+        fullName: null,
+        kind: "alumni",
+        position: "WR",
+        sport: "Football",
+        headline: "Growth Strategy @ Charlie Health | LBS MBA | Published Author",
+        about: null,
+      }),
+      "Growth Strategy @ Charlie Health | LBS MBA | Published Author",
+    );
   });
 });
 
@@ -94,6 +112,10 @@ describe("directory pills and search", () => {
     const athletePage = readFileSync(join(process.cwd(), "src/app/(hoya)/athletes/[id]/page.tsx"), "utf8");
     assert.match(athletePage, /athleteTabLabel\("stats"\)/);
     assert.match(athletePage, /item\.label/);
+    assert.match(athletePage, /AthleteOverviewEditor/);
+    const mePanel = readFileSync(join(process.cwd(), "src/components/alumni-me-panel.tsx"), "utf8");
+    assert.match(mePanel, /AthleteOverviewFields/);
+    assert.match(mePanel, /overviewPatchFromForm/);
   });
 
   it("exposes football roster and current photo slots", () => {

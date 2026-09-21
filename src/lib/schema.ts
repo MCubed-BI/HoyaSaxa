@@ -190,6 +190,8 @@ export const messageChannels = pgTable("message_channels", {
   kind: text("kind").notNull().default("group"),
   description: text("description"),
   isPinned: boolean("is_pinned").notNull().default(false),
+  participantA: text("participant_a"),
+  participantB: text("participant_b"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

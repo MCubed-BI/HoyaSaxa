@@ -7,11 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AthleteOverviewFields } from "@/components/athlete-overview-editor";
 import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { Kpi, KpiGrid } from "@/components/kpi";
 import { NetIdForm } from "@/components/net-id-form";
 import { Notice } from "@/components/page-chrome";
 import { Timestamp } from "@/components/timestamp";
+import { overviewFormValues, overviewPatchFromForm } from "@/lib/alumni-overview";
 import type { PublicBadge } from "@/lib/badges";
 import { displayName, formatCount } from "@/lib/format";
 import type { AlumniDetail, AlumniListItem } from "@/lib/types";
@@ -55,22 +57,16 @@ export function AlumniMePanel({
     event.preventDefault();
     if (!active) return;
     const form = new FormData(event.currentTarget);
-    const patch = Object.fromEntries(
-      [
-        "first_name",
-        "preferred_name",
-        "email_primary",
-        "phone_primary",
-        "current_city",
-        "current_state",
-        "company_name",
-        "job_title",
-        "industry",
-        "linkedin_url",
-        "headline",
-        "address_primary",
-      ].map((key) => [key, String(form.get(key) ?? "")]),
-    );
+    const patch = {
+      ...overviewPatchFromForm(form),
+      first_name: String(form.get("first_name") ?? ""),
+      preferred_name: String(form.get("preferred_name") ?? ""),
+      phone_primary: String(form.get("phone_primary") ?? ""),
+      company_name: String(form.get("company_name") ?? ""),
+      job_title: String(form.get("job_title") ?? ""),
+      industry: String(form.get("industry") ?? ""),
+      address_primary: String(form.get("address_primary") ?? ""),
+    };
     setPending(true);
     setError(null);
     setMessage(null);
@@ -232,7 +228,7 @@ export function AlumniMePanel({
 
       <Card>
         <CardHeader>
-          <CardTitle>Edit my record</CardTitle>
+          <CardTitle>Overview</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
@@ -242,22 +238,27 @@ export function AlumniMePanel({
                 <NetIdForm defaultValue={netId} submitLabel="Update NetID" onSaved={() => router.refresh()} />
               </div>
             ) : null}
+            <div className="sm:col-span-2">
+              <AthleteOverviewFields
+                defaults={overviewFormValues({
+                  headline: active.headline,
+                  position: active.position,
+                  current_city: active.current_city,
+                  current_state: active.current_state,
+                  email_primary: active.email_primary,
+                  emails: active.emails,
+                  linkedin_url: active.linkedin_url,
+                })}
+              />
+            </div>
             <Field label="First name" name="first_name" defaultValue={active.first_name} />
             <Field label="Preferred name" name="preferred_name" defaultValue={active.preferred_name} />
-            <Field label="Email" name="email_primary" defaultValue={active.email_primary} />
             <Field label="Phone" name="phone_primary" defaultValue={active.phone_primary} />
-            <Field label="Current city" name="current_city" defaultValue={active.current_city} />
-            <Field label="Current state" name="current_state" defaultValue={active.current_state} />
             <Field label="Company" name="company_name" defaultValue={active.company_name} />
             <Field label="Title" name="job_title" defaultValue={active.job_title} />
             <Field label="Industry" name="industry" defaultValue={active.industry} />
-            <Field label="LinkedIn" name="linkedin_url" defaultValue={active.linkedin_url} />
             <Field label="Football roster photo URL" name="football_photo_url" defaultValue={active.football_photo_url} />
             <Field label="Current LinkedIn / headshot URL" name="linkedin_photo_url" defaultValue={active.linkedin_photo_url} />
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="headline">Headline</Label>
-              <Input id="headline" name="headline" defaultValue={active.headline ?? ""} />
-            </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="address_primary">Address</Label>
               <Textarea id="address_primary" name="address_primary" defaultValue={active.address_primary ?? ""} />
@@ -268,7 +269,7 @@ export function AlumniMePanel({
             </p>
             <div className="sm:col-span-2">
               <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Save my record"}
+                {pending ? "Saving…" : "Save Overview"}
               </Button>
             </div>
           </form>
