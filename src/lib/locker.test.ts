@@ -111,9 +111,18 @@ describe("directory pills and search", () => {
       assert.doesNotMatch(text, />Stats</);
     }
     const athletePage = readFileSync(join(process.cwd(), "src/app/(hoya)/athletes/[id]/page.tsx"), "utf8");
+    const alumniPage = readFileSync(join(process.cwd(), "src/app/(coach)/alumni/[id]/page.tsx"), "utf8");
     assert.match(athletePage, /athleteTabLabel\("stats"\)/);
     assert.match(athletePage, /item\.label/);
     assert.match(athletePage, /AthleteOverviewEditor/);
+    assert.match(athletePage, /AthletePhotoPair/);
+    assert.match(athletePage, /athletePhotoSlots/);
+    assert.match(alumniPage, /AthletePhotoPair/);
+    assert.match(alumniPage, /athletePhotoSlots/);
+    assert.match(alumniPage, /Football roster photo|athletePhotoSlots/);
+    assert.doesNotMatch(alumniPage, /\{initials\(person\)\}/);
+    assert.doesNotMatch(athletePage, /slots\.filter/);
+    assert.doesNotMatch(alumniPage, /slots\.filter/);
     const mePanel = readFileSync(join(process.cwd(), "src/components/alumni-me-panel.tsx"), "utf8");
     assert.match(mePanel, /AthleteOverviewFields/);
     assert.match(mePanel, /overviewPatchFromForm/);
@@ -160,6 +169,24 @@ describe("locker session cookie", () => {
       hasAlumSessionCookie((name) => (name === "ga_session" ? "staff" : null)),
       false,
     );
+  });
+});
+
+describe("directory and profile photos", () => {
+  it("renders preferred photos on Directory cards and both profile routes", () => {
+    const queries = readFileSync(join(process.cwd(), "src/lib/queries.ts"), "utf8");
+    const staffDirectory = readFileSync(join(process.cwd(), "src/components/alumni-directory.tsx"), "utf8");
+    const alumDirectory = readFileSync(join(process.cwd(), "src/components/alum-directory.tsx"), "utf8");
+    const hoyaDirectory = readFileSync(join(process.cwd(), "src/components/hoya-directory.tsx"), "utf8");
+    const filters = readFileSync(join(process.cwd(), "src/components/alumni-filters.tsx"), "utf8");
+    assert.match(queries, /a\.football_photo_url/);
+    assert.match(queries, /a\.linkedin_photo_url/);
+    assert.match(staffDirectory, /HoyaAvatar/);
+    assert.match(alumDirectory, /HoyaAvatar/);
+    assert.match(hoyaDirectory, /HoyaAvatar/);
+    assert.match(hoyaDirectory, /DirectoryNameSearch/);
+    assert.match(filters, /filtersOpen/);
+    assert.match(filters, /DirectoryNameSearch/);
   });
 });
 

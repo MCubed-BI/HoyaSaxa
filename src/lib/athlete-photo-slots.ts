@@ -10,6 +10,8 @@ export type AthletePhotoSource = {
   linkedin_photo_url?: string | null;
   footballPhotoUrl?: string | null;
   linkedinPhotoUrl?: string | null;
+  /** Last-resort roster/headshot leftover when the two Coder 4 columns are empty. */
+  photoUrl?: string | null;
 };
 
 function filledUrl(...values: Array<string | null | undefined>) {
@@ -20,6 +22,7 @@ function filledUrl(...values: Array<string | null | undefined>) {
   return null;
 }
 
+/** Always two slots. An empty LinkedIn URL must not hide a football photo. */
 export function athletePhotoSlots(source: AthletePhotoSource): AthletePhotoSlot[] {
   return [
     {
@@ -41,5 +44,6 @@ export function primaryPhotoUrl(source: AthletePhotoSource) {
     source.footballPhotoUrl,
     source.linkedin_photo_url,
     source.linkedinPhotoUrl,
+    source.photoUrl,
   );
 }

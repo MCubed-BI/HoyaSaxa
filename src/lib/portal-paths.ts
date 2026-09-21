@@ -37,6 +37,7 @@ const ALUM_ALLOWED_PREFIXES = [
   "/events",
   "/giving",
   "/athletes",
+  "/alumni",
   "/api/portal",
   "/api/alumni",
   "/api/alum",
@@ -101,7 +102,9 @@ export function loginPathFor(pathname: string) {
     pathname === "/directory" ||
     pathname.startsWith("/directory/") ||
     pathname === "/athletes" ||
-    pathname.startsWith("/athletes/")
+    pathname.startsWith("/athletes/") ||
+    pathname === "/alumni" ||
+    pathname.startsWith("/alumni/")
   ) {
     return "/home/login";
   }

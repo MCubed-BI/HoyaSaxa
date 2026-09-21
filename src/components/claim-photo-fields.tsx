@@ -47,7 +47,7 @@ function PhotoPreview({ url, label }: { url: string; label: string }) {
         <img src={url} alt={label} className="h-full w-full object-cover object-top" />
       ) : (
         <div className="flex h-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
-          {label} — empty
+          {label === "LinkedIn / headshot" ? "Empty — upload or paste a URL" : `${label} — empty`}
         </div>
       )}
     </div>

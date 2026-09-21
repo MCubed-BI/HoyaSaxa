@@ -5,6 +5,7 @@
  * Edit: claimed self or platform admin only.
  */
 import { getDatabaseUrl, getSql } from "@/lib/db";
+import { primaryPhotoUrl } from "@/lib/athlete-photo-slots";
 import { canEditAlumniRecord, type PlatformRole } from "@/lib/platform-roles";
 
 export const ALUMNI_PHOTO_FIELDS = ["football_photo_url", "linkedin_photo_url"] as const;
@@ -56,15 +57,20 @@ export function normalizePhotoUrl(value: unknown): string | null | undefined {
   return trimmed;
 }
 
-/** Prefer the farmed football headshot; fall back to a stored LinkedIn / headshot URL. */
+/** Prefer football, then LinkedIn, then a leftover roster/headshot URL. */
 export function preferredAlumniPhotoUrl(
-  photos: { football_photo_url?: string | null; linkedin_photo_url?: string | null } | null | undefined,
+  photos:
+    | {
+        football_photo_url?: string | null;
+        linkedin_photo_url?: string | null;
+        footballPhotoUrl?: string | null;
+        linkedinPhotoUrl?: string | null;
+        photoUrl?: string | null;
+      }
+    | null
+    | undefined,
 ): string | null {
-  const football = photos?.football_photo_url?.trim();
-  if (football) return football;
-  const linkedin = photos?.linkedin_photo_url?.trim();
-  if (linkedin) return linkedin;
-  return null;
+  return primaryPhotoUrl(photos ?? {});
 }
 
 export function parseAlumniPhotoPatch(input: Record<string, unknown> | AlumniPhotoPatch | null | undefined) {
