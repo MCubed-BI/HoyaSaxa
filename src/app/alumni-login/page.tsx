@@ -38,7 +38,7 @@ export default async function AlumniLoginPage({
       <form action="/api/alumni/login" method="post" className="space-y-4">
         <input type="hidden" name="next" value={safeNextPath(params.next)} />
         <div className="space-y-1.5">
-          <Label htmlFor="identifier">GTown NetID or email</Label>
+          <Label htmlFor="identifier">Net ID</Label>
           <Input id="identifier" name="identifier" type="text" autoComplete="username" required />
         </div>
         <div className="space-y-1.5">
@@ -49,7 +49,7 @@ export default async function AlumniLoginPage({
           <p className="text-sm text-destructive">That GTown NetID, email, or password is not recognized.</p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Use your GTown NetID or the email from Register myself. Portal usernames stay on Alum | Admin.
+            Enter your Net ID and password.
           </p>
         )}
         <Button type="submit" className="w-full">
