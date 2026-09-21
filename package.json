@@ -9,9 +9,19 @@
     "lint": "eslint",
     "test": "tsx --test src/lib/*.test.ts",
     "import": "tsx scripts/import-alumni.ts",
-    "farm-photos": "tsx scripts/farm-guhoyas-photos.ts"
+    "farm-photos": "tsx scripts/farm-guhoyas-photos.ts",
+    "cap:sync": "cap sync",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android",
+    "cap:assets": "tsx scripts/prepare-native-brand-assets.ts && capacitor-assets generate --ios --android --iconBackgroundColor '#041E42' --iconBackgroundColorDark '#041E42' --splashBackgroundColor '#041E42' --splashBackgroundColorDark '#041E42'"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/camera": "^8.2.4",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/splash-screen": "^8.0.2",
     "@neondatabase/serverless": "^1.1.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.3.0",
@@ -30,6 +40,8 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.22",
     "@types/leaflet.heat": "^0.2.5",
@@ -41,6 +53,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "sharp": "^0.34.4",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"
