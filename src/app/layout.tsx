@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
-import { PRODUCT_DESCRIPTION, PRODUCT_DISPLAY_NAME } from "@/lib/product";
+import { BRAND_MARK_SRC, PRODUCT_DESCRIPTION, PRODUCT_DISPLAY_NAME } from "@/lib/product";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,6 +23,10 @@ export const metadata: Metadata = {
   description: PRODUCT_DESCRIPTION,
   appleWebApp: {
     title: PRODUCT_DISPLAY_NAME,
+  },
+  icons: {
+    icon: [{ url: BRAND_MARK_SRC, type: "image/png" }],
+    apple: [{ url: BRAND_MARK_SRC, type: "image/png" }],
   },
 };
 

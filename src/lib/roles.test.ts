@@ -208,6 +208,7 @@ describe("portal paths", () => {
     assert.equal(loginPathFor("/giving"), "/home/login");
     assert.equal(isPublicPath("/home/login"), true);
     assert.equal(isPublicPath("/manifest.webmanifest"), true);
+    assert.equal(isPublicPath("/brand/hoya-bulldog.png"), true);
     assert.equal(isPublicPath("/api/logout"), true);
     assert.equal(isPublicPath("/api/locker/logout"), true);
     assert.equal(loginPathFor("/portal"), "/alumni-login");
