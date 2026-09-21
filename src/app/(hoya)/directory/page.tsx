@@ -39,7 +39,7 @@ export default async function DirectoryPage({
         <PageHeader
           eyebrow="Directory"
           title="Roster"
-          description="Search by name, class, or city. Cards on phone, a sticky table on desktop. Emails stay hidden here — select classmates and use Email selected to compose."
+          description="Search a name or preferred name to open one person. Role pills stay compact. Emails stay hidden here — select classmates and use Email selected to compose."
         />
         <HoyaDirectory
           q={q}
@@ -50,6 +50,7 @@ export default async function DirectoryPage({
           pageSize={result.pageSize}
           usingSample={result.usingSample}
           badgesById={badgesById}
+          focusId={firstParam(params.highlight) || (result.total === 1 ? result.rows[0]?.id : null)}
         />
       </PageMain>
     );

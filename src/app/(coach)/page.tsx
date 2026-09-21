@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { SiteHeader } from "@/components/site-header";
 import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
-import { alumniFilterChips, hasActiveFilters, parseAlumniFilters, parsePage } from "@/lib/filters";
+import { alumniFilterChips, hasActiveFilters, parseAlumniFilters, parseHighlightId, parsePage } from "@/lib/filters";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { searchAlumni } from "@/lib/queries";
 import { canUseBlast } from "@/lib/roles";
@@ -48,7 +48,7 @@ export default async function DirectoryPage({
         <PageHeader
           eyebrow="Staff directory"
           title="Alumni"
-          description="Multi-select filters, then check alumni to build a blast list for text or email. Open a player card for the full contact record."
+          description="Search a name or preferred name to open one person. Filters stay collapsed until you need them. Check a card only when building a blast."
         />
 
         {result ? (
@@ -63,7 +63,7 @@ export default async function DirectoryPage({
                   ))}
                 </FilterChipRow>
               ) : null}
-              <AlumniFiltersForm filters={filters} facets={result.facets} />
+              <AlumniFiltersForm filters={filters} facets={result.facets} mode="directory" view="admin" />
             </div>
             {result.total === 0 && !hasActiveFilters(filters) ? (
               <EmptyState
@@ -80,6 +80,7 @@ export default async function DirectoryPage({
                   pageSize={result.pageSize}
                   filters={filters}
                   badgesById={badgesById}
+                  focusId={parseHighlightId(params) || (result.total === 1 ? result.rows[0]?.id : null)}
                 />
                 {canUseBlast(viewer.role) ? (
                   <BlastBar
