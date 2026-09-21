@@ -58,7 +58,7 @@ export function LoginGate({
         <form action={action} method="post" className="space-y-4">
           {next ? <input type="hidden" name="next" value={next} /> : null}
           <div className="space-y-1.5">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="username">{isAlum ? "GTown NetID or email" : "Username"}</Label>
             <Input id="username" name="username" autoComplete="username" required className="h-10" />
           </div>
           <div className="space-y-1.5">
@@ -73,10 +73,16 @@ export function LoginGate({
             />
           </div>
           {error ? (
-            <p className="text-sm text-destructive">That username or password is not recognized.</p>
+            <p className="text-sm text-destructive">
+              {isAlum
+                ? "That GTown NetID, email, or password is not recognized."
+                : "That username or password is not recognized."}
+            </p>
           ) : (
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Enter the username and password issued to you.
+              {isAlum
+                ? "Use your GTown NetID or the email from Register myself."
+                : "Enter the username and password issued to you."}
             </p>
           )}
           <Button type="submit" className="h-10 w-full">

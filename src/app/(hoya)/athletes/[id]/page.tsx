@@ -12,7 +12,8 @@ import { PageMain, pillClass } from "@/components/page-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isPreviewAlumSession, readAlumSessionFromCookies } from "@/lib/alum-session";
-import { findLikelyDuplicateCandidates } from "@/lib/alumni-claim";
+import { findLikelyDuplicateCandidates, getAccountByAlumniId } from "@/lib/alumni-claim";
+import { NetIdForm } from "@/components/net-id-form";
 import { getAthleteActor } from "@/lib/athlete-access";
 import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
 import { HoyaBadgeRow } from "@/lib/badge-api";
@@ -59,6 +60,7 @@ export default async function AthleteProfilePage({
   const name = displayName(toNameFields(person));
   const photos = athletePhotoSlots(person);
   const actor = await getAthleteActor(person.id);
+  const claimedAccount = person.id.startsWith("locker-") ? null : await getAccountByAlumniId(person.id).catch(() => null);
   const session = await readAlumSessionFromCookies();
   const viewingOwnClaim =
     session && !isPreviewAlumSession(session) && session.alumniId === person.id ? [person.id] : [];
@@ -119,7 +121,22 @@ export default async function AthleteProfilePage({
             </div>
             <HoyaBadgeRow badges={badges} />
             <AthleteEmailField emails={person.emails} showEmpty={false} />
+            {claimedAccount?.netId ? (
+              <p className="text-sm">
+                <span className="text-muted-foreground">GTown NetID · </span>
+                {claimedAccount.netId}
+              </p>
+            ) : null}
             <LinkedInProfileField url={person.linkedinUrl} showEmpty={false} />
+            {actor.canEdit && claimedAccount ? (
+              <div className="pt-2">
+                <NetIdForm
+                  alumniId={person.id}
+                  defaultValue={claimedAccount.netId ?? ""}
+                  submitLabel={claimedAccount.netId ? "Update NetID" : "Save GTown NetID"}
+                />
+              </div>
+            ) : null}
             {canMessageHoyaProfile({
               viewerAlumniId: actor.sessionAlumniId,
               targetAlumniId: person.id,

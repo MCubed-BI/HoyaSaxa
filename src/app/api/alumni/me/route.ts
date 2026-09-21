@@ -9,8 +9,13 @@ export async function GET() {
     const state = await loadAlumniMeState(jar);
     if (!state) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const email = state.account?.email || state.identity.email || state.identity.name || "Alumnus";
+    const netId = state.account?.netId ?? null;
     return NextResponse.json({
-      account: state.account ?? { id: state.identity.accountId ?? state.identity.alumniId ?? "session", email },
+      account: state.account ?? {
+        id: state.identity.accountId ?? state.identity.alumniId ?? "session",
+        email,
+        netId,
+      },
       records: state.records,
       mergeCandidates: state.mergeCandidates,
       verifiedHoya: state.records.length > 0,

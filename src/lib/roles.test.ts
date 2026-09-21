@@ -161,6 +161,8 @@ describe("portal paths", () => {
     assert.equal(isPublicPath("/alumni-login"), true);
     assert.equal(isPublicPath("/register"), true);
     assert.equal(isPublicPath("/api/alumni/login"), true);
+    assert.equal(isPublicPath("/api/alum/net-id"), false);
+    assert.equal(isAlumAllowedPath("/api/alum/net-id"), true);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/update"), false);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/merge"), true);
     assert.equal(isStaffAlumniMutationPath("/api/alumni/dismiss-duplicate"), true);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { alumSessionIdentityForAccount, authenticateAlumni } from "@/lib/alumni-claim";
 import {
   SESSION_COOKIE,
   createSessionToken,
@@ -6,6 +7,7 @@ import {
   sessionCookieOptions,
   verifyCredentials,
 } from "@/lib/auth";
+import { isMissingDatabaseConfig } from "@/lib/db";
 import {
   HOYA_ALUM_SESSION_COOKIE,
   createHoyaAlumSessionToken,
@@ -14,7 +16,12 @@ import {
 } from "@/lib/hoya-alum-session";
 import { isLockerPath } from "@/lib/locker-paths";
 import { isAdminRole, resolveRoleFromEnv } from "@/lib/roles";
-import { clearAlumSessionCookies, clearCoachSessionCookies, setCoachRoleHint } from "@/lib/session";
+import {
+  clearAlumSessionCookies,
+  clearCoachSessionCookies,
+  setAlumSessionCookies,
+  setCoachRoleHint,
+} from "@/lib/session";
 
 function safeNextPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/home";
@@ -42,6 +49,21 @@ export async function POST(request: Request) {
   const verified = verifyLockerCredentials(username, password);
 
   if (!verified) {
+    try {
+      const account = await authenticateAlumni(username, password);
+      const dest = account.netId ? next : "/me";
+      const response = NextResponse.redirect(new URL(dest, request.url), { status: 303 });
+      clearCoachSessionCookies(response, true);
+      setAlumSessionCookies(response, await alumSessionIdentityForAccount(account));
+      return response;
+    } catch (error) {
+      if (isMissingDatabaseConfig(error)) {
+        const url = new URL("/home/login", request.url);
+        url.searchParams.set("error", "1");
+        if (next !== "/home") url.searchParams.set("next", next);
+        return NextResponse.redirect(url, { status: 303 });
+      }
+    }
     const url = new URL("/home/login", request.url);
     url.searchParams.set("error", "1");
     if (next !== "/home") url.searchParams.set("next", next);
