@@ -137,6 +137,28 @@ describe("geocode", () => {
     assert.ok(Math.abs((nyc?.lat ?? 0) - 40.712776) < 0.001);
   });
 
+  it("places Sanford FL on the city centroid (not a Florida state guess)", async () => {
+    process.env.GEOCODE_PROVIDER = "centroids";
+    const resolved = await resolveAlumniLocation({
+      id: "4a8e19f3-ae74-4f74-8152-8a81038e3ae2",
+      first_name: "Lars",
+      last_name: "Siegfried",
+      preferred_name: null,
+      full_name: null,
+      position: null,
+      class_year: null,
+      current_city: "Sanford",
+      current_state: "FL",
+      hometown_city: "Dublin",
+      hometown_state: "OH",
+      address_primary: "3985 aviation loop Sanford, FL 32773",
+    });
+    assert.equal(resolved?.method, "city");
+    assert.equal(resolved?.label, "Sanford, FL");
+    assert.ok(Math.abs((resolved?.lat ?? 0) - 28.811735) < 0.001);
+    assert.ok(Math.abs((resolved?.lng ?? 0) - -81.268022) < 0.001);
+  });
+
   it("returns both current and hometown pins when both resolve", async () => {
     process.env.GEOCODE_PROVIDER = "centroids";
     const resolved = await resolveAlumniLocations({
