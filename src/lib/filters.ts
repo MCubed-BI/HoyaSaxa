@@ -15,9 +15,13 @@ export type AlumniFilters = {
   positions: string[];
   classYears: string[];
   seasonYears: string[];
+  /** Industry / career labels (searchable multi-select). */
+  careers: string[];
   hasEmail: boolean;
   hasPhone: boolean;
   hasLinkedin: boolean;
+  /** Claimed / registered Hoyas only (alumni_claims). */
+  registered: boolean;
 };
 
 export type AlumniFilterAliases = {
@@ -71,6 +75,8 @@ export function canonicalizeAlumniFilters(filters: AlumniFilters): AlumniFilters
     positions: uniqueCanonicalValues(filters.positions, normalizeFilterPosition),
     classYears: uniqueCanonicalValues(filters.classYears, normalizeFilterClassYear),
     seasonYears: [...new Set(filters.seasonYears.map((value) => value.trim()).filter(Boolean))],
+    careers: [...new Set(filters.careers.map((value) => value.trim()).filter(Boolean))],
+    registered: Boolean(filters.registered),
   };
 }
 
@@ -95,9 +101,11 @@ export function parseAlumniFilters(
     positions: asList(searchParams.position ?? searchParams.positions),
     classYears: asList(searchParams.classYear ?? searchParams.class_year ?? searchParams.classYears),
     seasonYears: asList(searchParams.seasonYear ?? searchParams.season_year ?? searchParams.seasonYears),
+    careers: asList(searchParams.career ?? searchParams.careers ?? searchParams.industry ?? searchParams.industries),
     hasEmail: flag(searchParams, "hasEmail", "has_email"),
     hasPhone: flag(searchParams, "hasPhone", "has_phone"),
     hasLinkedin: flag(searchParams, "hasLinkedin", "has_linkedin"),
+    registered: flag(searchParams, "registered", "claimed", "hasRegistered"),
   });
 }
 
@@ -119,9 +127,11 @@ export function hasFacetFilters(filters: AlumniFilters) {
       filters.positions.length ||
       filters.classYears.length ||
       filters.seasonYears.length ||
+      filters.careers.length ||
       filters.hasEmail ||
       filters.hasPhone ||
-      filters.hasLinkedin,
+      filters.hasLinkedin ||
+      filters.registered,
   );
 }
 
@@ -132,9 +142,11 @@ export function facetFilterCount(filters: AlumniFilters) {
     filters.positions.length +
     filters.classYears.length +
     filters.seasonYears.length +
+    filters.careers.length +
     (filters.hasEmail ? 1 : 0) +
     (filters.hasPhone ? 1 : 0) +
-    (filters.hasLinkedin ? 1 : 0)
+    (filters.hasLinkedin ? 1 : 0) +
+    (filters.registered ? 1 : 0)
   );
 }
 
@@ -196,10 +208,20 @@ export function alumniFilterChips(filters: AlumniFilters, action = "/"): FilterC
       href: hrefFor({ ...filters, seasonYears: filters.seasonYears.filter((item) => item !== value) }),
     });
   }
+  for (const value of filters.careers) {
+    chips.push({
+      id: `career-${value}`,
+      label: `Career: ${value}`,
+      href: hrefFor({ ...filters, careers: filters.careers.filter((item) => item !== value) }),
+    });
+  }
   if (filters.hasEmail) chips.push({ id: "email", label: "Has email", href: hrefFor({ ...filters, hasEmail: false }) });
   if (filters.hasPhone) chips.push({ id: "phone", label: "Has phone", href: hrefFor({ ...filters, hasPhone: false }) });
   if (filters.hasLinkedin) {
     chips.push({ id: "linkedin", label: "Has LinkedIn", href: hrefFor({ ...filters, hasLinkedin: false }) });
+  }
+  if (filters.registered) {
+    chips.push({ id: "registered", label: "Registered", href: hrefFor({ ...filters, registered: false }) });
   }
   return chips;
 }
@@ -212,9 +234,11 @@ export function filtersToSearchParams(filters: AlumniFilters, page?: number, ids
   for (const value of filters.positions) params.append("position", value);
   for (const value of filters.classYears) params.append("classYear", value);
   for (const value of filters.seasonYears) params.append("seasonYear", value);
+  for (const value of filters.careers) params.append("career", value);
   if (filters.hasEmail) params.set("hasEmail", "1");
   if (filters.hasPhone) params.set("hasPhone", "1");
   if (filters.hasLinkedin) params.set("hasLinkedin", "1");
+  if (filters.registered) params.set("registered", "1");
   if (ids?.length) {
     for (const id of ids) params.append("ids", id);
   }
@@ -263,6 +287,7 @@ export function buildAlumniWhere(
       OR coalesce(a.preferred_name, '') ILIKE $${i}
       OR coalesce(a.company_name, '') ILIKE $${i}
       OR coalesce(a.job_title, '') ILIKE $${i}
+      OR coalesce(a.industry, '') ILIKE $${i}
       OR coalesce(a.current_city, '') ILIKE $${i}
       OR coalesce(a.hometown_city, '') ILIKE $${i}
       OR coalesce(a.email_primary, '') ILIKE $${i}
@@ -303,6 +328,18 @@ export function buildAlumniWhere(
 
   i = pushAnyMatch(where, params, i, filters.classYears, (index) => `a.class_year = ANY($${index}::text[])`);
 
+  i = pushAnyMatch(
+    where,
+    params,
+    i,
+    filters.careers,
+    (index) => `(
+      a.industry = ANY($${index}::text[])
+      OR a.job_title = ANY($${index}::text[])
+      OR a.company_name = ANY($${index}::text[])
+    )`,
+  );
+
   if (filters.seasonYears.length) {
     const years = filters.seasonYears
       .map((value) => Number.parseInt(value, 10))
@@ -339,6 +376,10 @@ export function buildAlumniWhere(
     where.push(`(a.linkedin_url IS NOT NULL AND btrim(a.linkedin_url) <> '')`);
   }
 
+  if (filters.registered) {
+    where.push(`EXISTS (SELECT 1 FROM alumni_claims c WHERE c.alumni_id = a.id)`);
+  }
+
   if (extra?.ids?.length && !extra.idsOnly) {
     const filterSql = where.length ? `(${where.join(" AND ")})` : "TRUE";
     where.length = 0;
@@ -366,7 +407,8 @@ export function coerceAlumniFilters(input: unknown): AlumniFilters {
     Array.isArray(rec.cities) ||
     Array.isArray(rec.positions) ||
     Array.isArray(rec.classYears) ||
-    Array.isArray(rec.seasonYears)
+    Array.isArray(rec.seasonYears) ||
+    Array.isArray(rec.careers)
   ) {
     return canonicalizeAlumniFilters({
       q: typeof rec.q === "string" ? rec.q : "",
@@ -375,9 +417,11 @@ export function coerceAlumniFilters(input: unknown): AlumniFilters {
       positions: asStringArray(rec.positions),
       classYears: asStringArray(rec.classYears),
       seasonYears: asStringArray(rec.seasonYears),
+      careers: asStringArray(rec.careers),
       hasEmail: Boolean(rec.hasEmail),
       hasPhone: Boolean(rec.hasPhone),
       hasLinkedin: Boolean(rec.hasLinkedin),
+      registered: Boolean(rec.registered),
     });
   }
   return parseAlumniFilters(rec as Record<string, string | string[] | undefined>);
@@ -391,8 +435,10 @@ export function emptyFilters(): AlumniFilters {
     positions: [],
     classYears: [],
     seasonYears: [],
+    careers: [],
     hasEmail: false,
     hasPhone: false,
     hasLinkedin: false,
+    registered: false,
   };
 }

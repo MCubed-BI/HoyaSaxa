@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { DirectoryNameSearch } from "@/components/directory-name-search";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useSelection } from "@/components/selection-provider";
 import type { AlumniGroupMember, AlumniGroupSummary } from "@/lib/alumni-groups";
+import type { DirectoryPersonSuggestion } from "@/lib/directory-search";
 
 type GroupDetail = {
   group: AlumniGroupSummary;
@@ -149,26 +151,38 @@ export function AlumniGroupsManager({ initialGroups }: { initialGroups: AlumniGr
     }
   }
 
-  async function addPicksToSelected() {
-    if (!selectedId || ids.length === 0) return;
+  async function addMembers(memberIds: string[], label?: string) {
+    if (!selectedId || memberIds.length === 0) return;
     setBusy(true);
     setError(null);
     try {
       const response = await fetch(`/api/alumni-groups/${selectedId}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memberIds: ids }),
+        body: JSON.stringify({ memberIds }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not add members");
       await refreshGroups(selectedId);
       await loadDetail(selectedId);
-      setStatus(`Added ${data.added.toLocaleString()} alumni (${data.memberCount.toLocaleString()} total).`);
+      setStatus(
+        label
+          ? `Added ${label} (${data.memberCount.toLocaleString()} total).`
+          : `Added ${data.added.toLocaleString()} alumni (${data.memberCount.toLocaleString()} total).`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add members");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function addPicksToSelected() {
+    await addMembers(ids);
+  }
+
+  async function addPersonFromSearch(hit: DirectoryPersonSuggestion) {
+    await addMembers([hit.id], hit.name);
   }
 
   async function removeMember(alumniId: string) {
@@ -250,6 +264,13 @@ export function AlumniGroupsManager({ initialGroups }: { initialGroups: AlumniGr
             <p className="text-sm text-muted-foreground">Create a group to start adding alumni.</p>
           ) : (
             <>
+              <DirectoryNameSearch
+                view="admin"
+                openProfileOnSelect={false}
+                onSelect={(hit) => void addPersonFromSearch(hit)}
+                label="Add people"
+                placeholder="Search a name to add to this group"
+              />
               <div className="flex flex-wrap items-center gap-2">
                 <Input
                   value={renameValue}
@@ -306,7 +327,7 @@ export function AlumniGroupsManager({ initialGroups }: { initialGroups: AlumniGr
                 ))}
                 {detail && detail.members.length === 0 ? (
                   <li className="px-3 py-4 text-sm text-muted-foreground">
-                    No members yet. Select alumni on the directory, then Add picks.
+                    No members yet. Search a name above to add someone.
                   </li>
                 ) : null}
               </ul>

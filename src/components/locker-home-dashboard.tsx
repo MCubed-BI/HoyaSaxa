@@ -34,7 +34,20 @@ export async function LockerHomeDashboard() {
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-        <UpcomingEventCard event={data.upcomingEvent} />
+        {data.upcomingEvent ? <UpcomingEventCard event={data.upcomingEvent} /> : (
+          <Card>
+            <CardHeader>
+              <p className="app-kicker text-muted-foreground">Upcoming event</p>
+              <CardTitle className="text-navy">Nothing scheduled</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">Events and board posts will show here when published.</p>
+              <Link href="/events" className="mt-3 inline-flex text-sm underline underline-offset-2">
+                Open Events
+              </Link>
+            </CardContent>
+          </Card>
+        )}
         <Card>
           <CardHeader>
             <p className="app-kicker text-muted-foreground">Recent activity</p>

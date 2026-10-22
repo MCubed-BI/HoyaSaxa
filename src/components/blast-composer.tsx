@@ -45,16 +45,14 @@ export function BlastComposer({
   const { ids, clear } = useSelection();
   const alumMode = mode === "alum";
   const filtered = hasActiveFilters(filters);
+  const hasInitialGroup = Boolean(initialGroupId && initialGroups.some((group) => group.id === initialGroupId));
   const [channel, setChannel] = useState<BlastChannel>(alumMode ? "email" : initialChannel);
-  const [includeFilters, setIncludeFilters] = useState(filtered);
+  // When opening with ?group=, don't also pull the full directory via filters.
+  const [includeFilters, setIncludeFilters] = useState(filtered && !hasInitialGroup);
   const [includeIds, setIncludeIds] = useState(ids.length > 0);
   const [groups, setGroups] = useState<AlumniGroupSummary[]>(initialGroups);
-  const [selectedGroupId, setSelectedGroupId] = useState(
-    initialGroupId && initialGroups.some((group) => group.id === initialGroupId) ? initialGroupId : "",
-  );
-  const [includeGroups, setIncludeGroups] = useState(
-    Boolean(initialGroupId && initialGroups.some((group) => group.id === initialGroupId)),
-  );
+  const [selectedGroupId, setSelectedGroupId] = useState(hasInitialGroup ? initialGroupId : "");
+  const [includeGroups, setIncludeGroups] = useState(hasInitialGroup);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -75,8 +73,8 @@ export function BlastComposer({
   }, [alumMode, initialChannel]);
 
   useEffect(() => {
-    if (filtered) setIncludeFilters(true);
-  }, [filtered]);
+    if (filtered && !selectedGroupId) setIncludeFilters(true);
+  }, [filtered, selectedGroupId]);
 
   useEffect(() => {
     if (ids.length > 0) setIncludeIds(true);
@@ -106,6 +104,16 @@ export function BlastComposer({
       setIncludeGroups(false);
     }
   }, [groups, selectedGroupId]);
+
+  function chooseGroup(nextId: string) {
+    setSelectedGroupId(nextId);
+    setIncludeGroups(Boolean(nextId));
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (nextId) url.searchParams.set("group", nextId);
+    else url.searchParams.delete("group");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+  }
 
   const payload = useMemo(() => {
     const groupIds = !alumMode && selectedGroupId ? [selectedGroupId] : [];
@@ -263,31 +271,24 @@ export function BlastComposer({
                   )}
                 </span>
               </label>
-              <div className="space-y-2 rounded-lg border border-border/70 bg-muted/40 p-3">
-                <label className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 size-4 accent-navy"
-                    checked={includeGroups}
-                    onChange={(event) => setIncludeGroups(event.target.checked)}
-                    disabled={!selectedGroupId}
-                  />
-                  <span>
-                    Saved group
-                    <span className="block text-muted-foreground">
-                      Choose a named list, then include it with picks and/or filters.
-                    </span>
-                  </span>
-                </label>
+              <div className="space-y-2 rounded-lg border border-navy/20 bg-muted/40 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-navy">Saved group</p>
+                    <p className="text-xs text-muted-foreground">
+                      Pick a group to blast. Combine with picks or filters if you want.
+                    </p>
+                  </div>
+                  <Button asChild type="button" size="sm" variant="outline">
+                    <Link href="/groups">Manage</Link>
+                  </Button>
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <select
-                    className="h-8 min-w-[12rem] flex-1 rounded-lg border border-input bg-card px-2.5 text-sm outline-none focus-visible:border-ring"
+                    className="h-10 min-w-[14rem] flex-1 rounded-lg border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring"
                     value={selectedGroupId}
-                    onChange={(event) => {
-                      const next = event.target.value;
-                      setSelectedGroupId(next);
-                      setIncludeGroups(Boolean(next));
-                    }}
+                    onChange={(event) => chooseGroup(event.target.value)}
+                    aria-label="Select blast group"
                   >
                     <option value="">Select a group…</option>
                     {groups.map((group) => (
@@ -296,17 +297,25 @@ export function BlastComposer({
                       </option>
                     ))}
                   </select>
-                  <Button asChild type="button" size="sm" variant="outline">
-                    <Link href="/groups">Manage groups</Link>
-                  </Button>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-navy"
+                      checked={includeGroups}
+                      onChange={(event) => setIncludeGroups(event.target.checked)}
+                      disabled={!selectedGroupId}
+                    />
+                    Include group
+                  </label>
                 </div>
                 {selectedGroup ? (
                   <p className="text-xs text-muted-foreground">
                     {selectedGroup.name} · {selectedGroup.memberCount.toLocaleString()} members
+                    {includeGroups ? " · included in this blast" : " · check Include group to send"}
                   </p>
                 ) : groups.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    No saved groups yet. Select alumni on the directory and save them as a group.
+                    No saved groups yet. Create one on Groups, or save directory picks as a group.
                   </p>
                 ) : null}
               </div>

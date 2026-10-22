@@ -7,12 +7,9 @@ import {
   classLabel,
   classifyLockerKind,
   composeAbout,
-  matchesDirectoryPill,
-  matchesLockerSearch,
-  paginateItems,
 } from "@/lib/locker-classify";
 import { parseDirectoryPill } from "@/lib/locker-paths";
-import { emptyLockerQa, isLockerStubId, lockerStubById, lockerStubPeople } from "@/lib/locker-stubs";
+import { emptyLockerQa, isLockerStubId } from "@/lib/locker-stubs";
 import type { DirectoryPill, LockerDirectoryResult, LockerPerson, LockerPersonDetail } from "@/lib/locker-types";
 
 export const LOCKER_PAGE_SIZE = 24;
@@ -126,10 +123,14 @@ function mapRosterRow(row: RosterRow): LockerPerson {
   };
 }
 
-function filteredStubs(q: string, role: DirectoryPill) {
-  return lockerStubPeople().filter(
-    (person) => matchesLockerSearch(person, q) && matchesDirectoryPill(person.kind, role),
-  );
+function emptyDirectoryPage(page: number): LockerDirectoryResult {
+  return {
+    rows: [],
+    total: 0,
+    page,
+    pageSize: LOCKER_PAGE_SIZE,
+    usingSample: false,
+  };
 }
 
 function roleSql(role: DirectoryPill, year: number, index: number) {
@@ -224,49 +225,24 @@ export async function searchLockerDirectory(input: {
   const q = input.q?.trim() ?? "";
   const role = parseDirectoryPill(input.role);
   const page = Math.max(1, input.page ?? 1);
-  const stubs = filteredStubs(q, role);
 
+  // Coaches / staff pills stay empty until a real staff table exists — no sample cards.
   if (role === "coaches" || role === "staff") {
-    return { ...paginateItems(stubs, page, LOCKER_PAGE_SIZE), usingSample: true };
+    return emptyDirectoryPage(page);
   }
 
   if (!getDatabaseUrl()) {
-    return { ...paginateItems(stubs, page, LOCKER_PAGE_SIZE), usingSample: true };
+    return emptyDirectoryPage(page);
   }
 
   try {
-    if (role === "athletes" || role === "alumni") {
-      const roster = await queryRosterPage(q, role, (page - 1) * LOCKER_PAGE_SIZE, LOCKER_PAGE_SIZE);
-      return { ...roster, page, pageSize: LOCKER_PAGE_SIZE, usingSample: false };
-    }
-
-    const start = (page - 1) * LOCKER_PAGE_SIZE;
-    if (start < stubs.length) {
-      const stubSlice = stubs.slice(start, start + LOCKER_PAGE_SIZE);
-      const need = LOCKER_PAGE_SIZE - stubSlice.length;
-      const roster = need > 0 ? await queryRosterPage(q, "all", 0, need) : { rows: [], total: 0 };
-      return {
-        rows: [...stubSlice, ...roster.rows],
-        total: stubs.length + roster.total,
-        page,
-        pageSize: LOCKER_PAGE_SIZE,
-        usingSample: false,
-      };
-    }
-
-    const roster = await queryRosterPage(q, "all", start - stubs.length, LOCKER_PAGE_SIZE);
-    return {
-      rows: roster.rows,
-      total: stubs.length + roster.total,
-      page,
-      pageSize: LOCKER_PAGE_SIZE,
-      usingSample: false,
-    };
+    const roster = await queryRosterPage(q, role === "all" ? "all" : role, (page - 1) * LOCKER_PAGE_SIZE, LOCKER_PAGE_SIZE);
+    return { ...roster, page, pageSize: LOCKER_PAGE_SIZE, usingSample: false };
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {
-      return { ...paginateItems(stubs, page, LOCKER_PAGE_SIZE), usingSample: true };
+      return emptyDirectoryPage(page);
     }
-    return { ...paginateItems(stubs, page, LOCKER_PAGE_SIZE), usingSample: true };
+    return emptyDirectoryPage(page);
   }
 }
 
@@ -355,11 +331,11 @@ async function siblingLinkedinProfileUrl(person: LockerPerson) {
 }
 
 export async function getLockerPersonById(id: string): Promise<LockerPersonDetail | null> {
-  if (isLockerStubId(id)) return lockerStubById(id);
+  if (isLockerStubId(id)) return null;
   try {
     return await queryRosterById(id);
   } catch (error) {
-    if (isMissingDatabaseConfig(error)) return lockerStubById(id);
+    if (isMissingDatabaseConfig(error)) return null;
     throw error;
   }
 }

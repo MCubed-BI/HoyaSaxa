@@ -79,3 +79,15 @@ test("coerceAlumniFilters drops spreadsheet junk", () => {
   assert.deepEqual(filters.positions, []);
   assert.deepEqual(filters.classYears, ["2015"]);
 });
+
+test("parseAlumniFilters reads registered and career", () => {
+  const filters = parseAlumniFilters({
+    registered: "1",
+    career: ["Finance", "Consulting"],
+  });
+  assert.equal(filters.registered, true);
+  assert.deepEqual(filters.careers, ["Finance", "Consulting"]);
+  const chips = alumniFilterChips(filters);
+  assert.ok(chips.some((chip) => chip.label === "Registered"));
+  assert.ok(chips.some((chip) => chip.label === "Career: Finance"));
+});

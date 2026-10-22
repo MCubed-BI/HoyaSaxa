@@ -82,11 +82,16 @@ async function loadRawFacetRows() {
         ORDER BY 1`,
     sql`SELECT DISTINCT class_year AS value FROM alumni WHERE class_year IS NOT NULL AND btrim(class_year) <> '' ORDER BY 1 DESC`,
     sql`SELECT DISTINCT year::text AS value FROM alumni_roster_years ORDER BY 1 DESC`,
+    sql`SELECT DISTINCT industry AS value FROM alumni WHERE industry IS NOT NULL AND btrim(industry) <> ''
+        UNION
+        SELECT DISTINCT job_title AS value FROM alumni WHERE job_title IS NOT NULL AND btrim(job_title) <> ''
+        ORDER BY 1
+        LIMIT 500`,
   ]);
 }
 
 async function loadFacetIndex(): Promise<AlumniFacetIndex> {
-  const [states, cities, positions, classYears, seasonYears] = await loadRawFacetRows();
+  const [states, cities, positions, classYears, seasonYears, careers] = await loadRawFacetRows();
   const groupedStates = groupFilterOptions(asRawList(states as Record<string, unknown>[], "value"), normalizeFilterState);
   const groupedCities = groupFilterOptions(asRawList(cities as Record<string, unknown>[], "value"), normalizeFilterCity);
   const groupedPositions = groupFilterOptions(
@@ -101,6 +106,9 @@ async function loadFacetIndex(): Promise<AlumniFacetIndex> {
   const seasons = [...new Set(asRawList(seasonYears as Record<string, unknown>[], "value"))].sort((a, b) =>
     b.localeCompare(a, undefined, { numeric: true }),
   );
+  const careerOptions = [...new Set(asRawList(careers as Record<string, unknown>[], "value"))].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" }),
+  );
 
   return {
     facets: {
@@ -109,6 +117,7 @@ async function loadFacetIndex(): Promise<AlumniFacetIndex> {
       positions: groupedPositions.options,
       classYears: groupedClassYears.options,
       seasonYears: seasons,
+      careers: careerOptions,
     },
     aliases: {
       states: groupedStates.aliases,
@@ -120,6 +129,10 @@ async function loadFacetIndex(): Promise<AlumniFacetIndex> {
 }
 
 async function filtersForQuery(filters: AlumniFilters): Promise<AlumniFilters> {
+  if (filters.registered) {
+    const { ensureAlumniAuthTables } = await import("@/lib/alumni-claim");
+    await ensureAlumniAuthTables();
+  }
   const index = await loadFacetIndex();
   return expandAlumniFilters(filters, index.aliases);
 }
@@ -136,6 +149,10 @@ export async function getAlumniFacets(): Promise<AlumniFacets> {
 
 export async function searchAlumni(filters: AlumniFilters, page: number): Promise<DirectoryResult> {
   await ensureAlumniPhotoColumns();
+  if (filters.registered) {
+    const { ensureAlumniAuthTables } = await import("@/lib/alumni-claim");
+    await ensureAlumniAuthTables();
+  }
   const index = await loadFacetIndex();
   const { whereSql, params } = buildAlumniWhere(expandAlumniFilters(filters, index.aliases));
   const offset = (page - 1) * PAGE_SIZE;

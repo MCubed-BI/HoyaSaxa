@@ -5,7 +5,6 @@ import {
   isStrongSingleMatch,
   suggestFromAlumniRows,
   suggestFromLockerPeople,
-  suggestFromLockerStubs,
   type DirectorySearchView,
 } from "@/lib/directory-search";
 import { searchLockerDirectory } from "@/lib/locker-directory";
@@ -36,9 +35,7 @@ export async function GET(request: Request) {
   try {
     if (view === "alum") {
       const result = await searchLockerDirectory({ q, page: 1 });
-      const people = result.usingSample
-        ? suggestFromLockerStubs(q, limit)
-        : suggestFromLockerPeople(result.rows, q, limit);
+      const people = suggestFromLockerPeople(result.rows, q, Number.isFinite(limit) ? limit : 8);
       return NextResponse.json({ q, people, single: isStrongSingleMatch(people) });
     }
 
@@ -47,8 +44,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ q, people, single: isStrongSingleMatch(people) });
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {
-      const people = view === "alum" ? suggestFromLockerStubs(q, limit) : [];
-      return NextResponse.json({ q, people, single: isStrongSingleMatch(people), usingSample: true });
+      return NextResponse.json({ q, people: [], single: false });
     }
     const message = error instanceof Error ? error.message : "Could not search the directory.";
     return NextResponse.json({ error: message }, { status: 500 });

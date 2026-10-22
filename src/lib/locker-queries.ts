@@ -5,9 +5,6 @@ import { join } from "path";
 import { getDatabaseUrl, getSql } from "@/lib/db";
 import { classYearLabel, positionLabel } from "@/lib/format";
 import {
-  DEMO_FEED,
-  DEMO_NEWSFLASH,
-  DEMO_UPCOMING_EVENT,
   contentKey,
   dedupeActivityItems,
   dedupeFeedPosts,
@@ -33,16 +30,16 @@ function readFallback(): FallbackStore {
     if (existsSync(fallbackPath)) {
       const parsed = JSON.parse(readFileSync(fallbackPath, "utf8")) as FallbackStore;
       if (Array.isArray(parsed.newsflash) && Array.isArray(parsed.feed)) {
-        return parsed;
+        return {
+          newsflash: parsed.newsflash.filter((post) => !String(post.id).startsWith("demo-")),
+          feed: parsed.feed.filter((post) => !String(post.id).startsWith("demo-")),
+        };
       }
     }
   } catch {
-    // Recreate demo content if the temp file is unreadable.
+    // Start empty if the temp file is unreadable.
   }
-  return {
-    newsflash: DEMO_NEWSFLASH.map((post) => ({ ...post })),
-    feed: DEMO_FEED.map((post) => ({ ...post })),
-  };
+  return { newsflash: [], feed: [] };
 }
 
 function writeFallback(store: FallbackStore) {
@@ -54,7 +51,7 @@ export type LockerHomeData = {
   fallbackReason: string | null;
   newsflash: NewsflashPost[];
   feed: FeedPost[];
-  upcomingEvent: UpcomingEvent;
+  upcomingEvent: UpcomingEvent | null;
   activity: ActivityItem[];
 };
 
@@ -357,15 +354,13 @@ function composeLockerLists(newsflash: NewsflashPost[], feedRows: FeedPost[]) {
 }
 
 function fallbackHome(reason: string): LockerHomeData {
-  const newsflash = DEMO_NEWSFLASH;
-  const { feed, activity } = composeLockerLists(newsflash, DEMO_FEED);
   return {
     usingFallback: true,
     fallbackReason: reason,
-    newsflash,
-    feed,
-    upcomingEvent: upcomingFromNewsflash(newsflash) ?? DEMO_UPCOMING_EVENT,
-    activity,
+    newsflash: [],
+    feed: [],
+    upcomingEvent: null,
+    activity: [],
   };
 }
 
@@ -378,7 +373,7 @@ function memoryHome(reason: string): LockerHomeData {
     fallbackReason: reason,
     newsflash,
     feed,
-    upcomingEvent: upcomingFromNewsflash(newsflash) ?? DEMO_UPCOMING_EVENT,
+    upcomingEvent: upcomingFromNewsflash(newsflash),
     activity,
   };
 }
@@ -398,7 +393,7 @@ export async function loadLockerHome(): Promise<LockerHomeData> {
       listDirectoryActivity(),
     ]);
     const { feed, activity: contentActivity } = composeLockerLists(newsflash, feedRows);
-    const upcomingEvent = eventsEvent ?? upcomingFromNewsflash(newsflash) ?? DEMO_UPCOMING_EVENT;
+    const upcomingEvent = eventsEvent ?? upcomingFromNewsflash(newsflash);
     const activity = dedupeActivityItems(
       [...contentActivity, ...directory].sort((a, b) => Date.parse(b.when) - Date.parse(a.when)),
     ).slice(0, 6);

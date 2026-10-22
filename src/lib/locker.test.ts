@@ -12,7 +12,6 @@ import {
   paginateItems,
   toNameFields,
 } from "./locker-classify";
-import { DEMO_UPCOMING_EVENT } from "./locker-data";
 import { athleteHref, directoryHref, isLockerPublicPath, parseAthleteTab, parseDirectoryPill } from "./locker-paths";
 import { ATHLETE_TABS, athleteTabLabel, YEARS_ACTIVE_LABEL } from "./locker-types";
 import { ALUM_SESSION_COOKIE_ALIASES, HOYA_ALUM_SESSION_COOKIE, hasAlumSessionCookie } from "./locker-session";
@@ -217,10 +216,9 @@ describe("home quick actions and upcoming event copy", () => {
     assert.doesNotMatch(home, stubCopy);
   });
 
-  it("treats the demo upcoming event as a live Events page", () => {
-    assert.equal(DEMO_UPCOMING_EVENT.href, "/events");
-    assert.doesNotMatch(DEMO_UPCOMING_EVENT.body, stubCopy);
+  it("does not serve demo smoke content from locker queries", () => {
     const queries = readFileSync(join(process.cwd(), "src/lib/locker-queries.ts"), "utf8");
+    assert.doesNotMatch(queries, /DEMO_NEWSFLASH|DEMO_FEED|DEMO_UPCOMING_EVENT/);
     assert.match(queries, /href:\s*"\/events"/);
     assert.doesNotMatch(queries, /From the Events lane/);
     assert.doesNotMatch(queries, /href:\s*"\/portal\/events"/);
