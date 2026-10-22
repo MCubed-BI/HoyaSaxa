@@ -1,4 +1,3 @@
-import { getCoachCredentials } from "@/lib/auth";
 import { getSql } from "@/lib/db";
 
 export async function ensureEventTables() {
@@ -52,67 +51,7 @@ export async function ensureEventTables() {
   `);
 }
 
+/** Kept for call-site compatibility. Never inserts demo/smoke events. */
 export async function seedDemoEventsIfEmpty() {
-  const sql = getSql();
-  const existing = (await sql.query(`SELECT count(*)::int AS count FROM events`)) as { count: number }[];
-  if ((existing[0]?.count ?? 0) > 0) return;
-
-  const createdBy = getCoachCredentials().username;
-  await sql.query(
-    `
-      INSERT INTO events (title, category, starts_at, location, thumbnail_url, description, created_by, created_by_role)
-      VALUES
-        (
-          'Homecoming Tailgate',
-          'Social',
-          now() + interval '18 days',
-          'Cooper Field, Georgetown',
-          NULL,
-          NULL,
-          $1,
-          'coach'
-        ),
-        (
-          'Board and coach reception',
-          'Meeting',
-          now() + interval '32 days',
-          'Leavey Center',
-          NULL,
-          NULL,
-          $1,
-          'coach'
-        ),
-        (
-          'Alumni reunion weekend',
-          'Reunion',
-          now() + interval '55 days',
-          'McDonough Arena',
-          NULL,
-          NULL,
-          $1,
-          'coach'
-        ),
-        (
-          'Spring game',
-          'Game',
-          now() - interval '21 days',
-          'Multi-Sport Field',
-          NULL,
-          NULL,
-          $1,
-          'coach'
-        ),
-        (
-          'Alumni fundraiser',
-          'Fundraiser',
-          now() - interval '64 days',
-          'Downtown DC',
-          NULL,
-          NULL,
-          $1,
-          'coach'
-        )
-    `,
-    [createdBy],
-  );
+  await ensureEventTables();
 }

@@ -223,4 +223,14 @@ describe("home quick actions and upcoming event copy", () => {
     assert.doesNotMatch(queries, /From the Events lane/);
     assert.doesNotMatch(queries, /href:\s*"\/portal\/events"/);
   });
+
+  it("does not seed demo locker or event rows into an empty database", () => {
+    const lockerSchema = readFileSync(join(process.cwd(), "src/lib/locker-schema.ts"), "utf8");
+    const eventSchema = readFileSync(join(process.cwd(), "src/lib/event-schema.ts"), "utf8");
+    assert.doesNotMatch(lockerSchema, /SEED_NEWSFLASH|SEED_FEED|Homecoming weekend at Cooper Field|Fall camp notes/);
+    assert.doesNotMatch(lockerSchema, /INSERT INTO newsflash_posts/);
+    assert.doesNotMatch(lockerSchema, /INSERT INTO locker_feed_posts/);
+    assert.doesNotMatch(eventSchema, /Homecoming Tailgate/);
+    assert.match(eventSchema, /Never inserts demo\/smoke events/);
+  });
 });
