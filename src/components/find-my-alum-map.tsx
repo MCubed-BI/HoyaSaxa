@@ -17,6 +17,18 @@ const MARKER_COLORS: Record<AlumniMapPoint["locationSource"], { color: string; f
   address: { color: "#041e42", fill: "#041e42" },
 };
 
+/** Pin-only jitter so shared city centroids stay clickable (heat uses raw coords). */
+function pinJitter(id: string): { lat: number; lng: number } {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const a = ((h >>> 0) % 1000) / 1000;
+  const b = (((h >>> 8) % 1000) / 1000);
+  return { lat: (a - 0.5) * 0.04, lng: (b - 0.5) * 0.04 };
+}
+
 function inConus(point: AlumniMapPoint) {
   return point.lat >= 24 && point.lat <= 50 && point.lng >= -125 && point.lng <= -66;
 }
@@ -37,7 +49,39 @@ function FitBounds({ points }: { points: AlumniMapPoint[] }) {
   return null;
 }
 
-function HeatLayer({ points, enabled }: { points: AlumniMapPoint[]; enabled: boolean }) {
+/**
+ * Heat samples: prefer city/nominatim accuracy, one contribution per alum on All
+ * (current > hometown > address) so dual pins don't double-count density.
+ */
+function heatSamples(points: AlumniMapPoint[], locationFilter: LocationFilter): Array<[number, number, number]> {
+  const ranked = (source: AlumniMapPoint["locationSource"]) =>
+    source === "current" ? 0 : source === "hometown" ? 1 : 2;
+
+  let candidates = points.filter((point) => point.geocodeMethod === "city" || point.geocodeMethod === "nominatim");
+
+  if (locationFilter === "all") {
+    const best = new Map<string, AlumniMapPoint>();
+    for (const point of candidates) {
+      const prev = best.get(point.alumniId);
+      if (!prev || ranked(point.locationSource) < ranked(prev.locationSource)) {
+        best.set(point.alumniId, point);
+      }
+    }
+    candidates = [...best.values()];
+  }
+
+  return candidates.map((point) => [point.lat, point.lng, point.geocodeMethod === "nominatim" ? 0.8 : 0.7]);
+}
+
+function HeatLayer({
+  points,
+  enabled,
+  locationFilter,
+}: {
+  points: AlumniMapPoint[];
+  enabled: boolean;
+  locationFilter: LocationFilter;
+}) {
   const map = useMap();
 
   useEffect(() => {
@@ -50,12 +94,13 @@ function HeatLayer({ points, enabled }: { points: AlumniMapPoint[]; enabled: boo
       // leaflet.heat attaches to L
       await import("leaflet.heat");
       if (cancelled) return;
-      const heatPoints = points.map((p) => [p.lat, p.lng, 0.65] as [number, number, number]);
+      const heatPoints = heatSamples(points, locationFilter);
+      if (!heatPoints.length) return;
       layer = L.heatLayer(heatPoints, {
-        radius: 28,
-        blur: 22,
+        radius: 18,
+        blur: 14,
         maxZoom: 12,
-        minOpacity: 0.35,
+        minOpacity: 0.2,
         gradient: {
           0.2: "#041e42",
           0.45: "#0a3d7a",
@@ -71,7 +116,7 @@ function HeatLayer({ points, enabled }: { points: AlumniMapPoint[]; enabled: boo
       cancelled = true;
       if (layer) map.removeLayer(layer);
     };
-  }, [enabled, map, points]);
+  }, [enabled, locationFilter, map, points]);
 
   return null;
 }
@@ -98,6 +143,11 @@ export function FindMyAlumMap({
     if (locationFilter === "all") return points;
     return points.filter((point) => point.locationSource === locationFilter);
   }, [locationFilter, points]);
+
+  const heatCount = useMemo(
+    () => heatSamples(visiblePoints, locationFilter).length,
+    [locationFilter, visiblePoints],
+  );
 
   if (points.length === 0) {
     return (
@@ -147,6 +197,7 @@ export function FindMyAlumMap({
         ))}
         <span className="text-sm text-muted-foreground">
           {visiblePoints.length.toLocaleString()} pin{visiblePoints.length === 1 ? "" : "s"}
+          {showHeat ? ` · ${heatCount.toLocaleString()} in heat` : ""}
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
@@ -158,6 +209,7 @@ export function FindMyAlumMap({
           <span className="inline-block size-2.5 rounded-full bg-[#9ca3af]" aria-hidden />
           Hometown
         </span>
+        <span>Heat uses city-level locations only (state guesses excluded).</span>
       </div>
       {visiblePoints.length === 0 ? (
         <div className="flex h-[min(70vh,720px)] items-center justify-center rounded-xl border bg-card text-sm text-muted-foreground shadow-[var(--shadow-card)]">
@@ -171,15 +223,16 @@ export function FindMyAlumMap({
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <FitBounds points={visiblePoints} />
-            <HeatLayer points={visiblePoints} enabled={showHeat} />
+            <HeatLayer points={visiblePoints} enabled={showHeat} locationFilter={locationFilter} />
             {showMarkers
               ? visiblePoints.map((point) => {
                   const colors = MARKER_COLORS[point.locationSource];
                   const profileId = point.alumniId || point.id;
+                  const jitter = pinJitter(point.id);
                   return (
                     <CircleMarker
                       key={point.id}
-                      center={[point.lat, point.lng]}
+                      center={[point.lat + jitter.lat, point.lng + jitter.lng]}
                       radius={6}
                       pathOptions={{
                         color: colors.color,
@@ -207,6 +260,7 @@ export function FindMyAlumMap({
                             {[point.position, point.classYear].filter(Boolean).join(" · ") || "Roster"}
                             {" · "}
                             {sourceLabel(point.locationSource)}
+                            {point.geocodeMethod === "state" ? " · state estimate" : ""}
                           </p>
                         </div>
                       </Popup>

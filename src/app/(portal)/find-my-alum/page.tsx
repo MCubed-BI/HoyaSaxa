@@ -38,7 +38,7 @@ export default async function FindMyAlumPage({
       <PageHeader
         eyebrow="Directory"
         title="Find My Alum"
-        description="Current towns in navy, hometowns in gray. Filter All / Hometown / Current. Address is used only when neither place maps. Pins jitter slightly so people in the same city stay clickable."
+        description="Current towns in navy, hometowns in gray. Filter All / Hometown / Current. Heat density uses city-level locations only (one per alum on All) so state estimates don’t inflate the map. Pins still show every place and jitter slightly so shared cities stay clickable."
       >
         {mapped ? (
           <p className="text-sm text-muted-foreground">

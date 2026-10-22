@@ -42,8 +42,8 @@ function hashJitter(seed: string): [number, number] {
   }
   const a = ((h >>> 0) % 1000) / 1000;
   const b = (((h >>> 10) % 1000) / 1000);
-  // ~±0.35° so unknown cities in a state fan out a bit
-  return [(a - 0.5) * 0.7, (b - 0.5) * 0.5];
+  // ~±0.12° — keep state-fallback pins separable without spraying across the state
+  return [(a - 0.5) * 0.24, (b - 0.5) * 0.2];
 }
 
 export function parseAddressCityState(address: string): { city: string | null; state: string | null } {
