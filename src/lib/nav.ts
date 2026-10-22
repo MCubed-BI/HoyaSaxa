@@ -15,6 +15,7 @@ export type NavKey =
   | "profile"
   | "reports"
   | "blast"
+  | "groups"
   | "sync"
   | "message"
   | "fundraising"
@@ -65,6 +66,7 @@ export function toolNavItems(role?: Role): NavItem[] {
     items.push({ href: "/reports", label: "Reports", key: "reports" });
   }
   if (canUseBlast(role)) {
+    items.push({ href: "/groups", label: "Groups", key: "groups" });
     items.push({ href: "/blast", label: "Blast", key: "blast" });
   }
   if (canUseAlumEmailBlast(role)) {

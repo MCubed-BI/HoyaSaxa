@@ -22,8 +22,10 @@ export async function POST(request: Request) {
       channel?: string;
       filters?: unknown;
       ids?: string[];
+      groupIds?: string[];
       includeFilters?: boolean;
       includeIds?: boolean;
+      includeGroups?: boolean;
     };
     if (actor.kind === "alum") {
       const rejection = alumEmailBlastRejection({ ...body, channel: "email" }, { preview: true });
@@ -32,11 +34,14 @@ export async function POST(request: Request) {
       }
     }
     const filters = coerceAlumniFilters(body.filters);
+    const groupIds = actor.kind === "alum" ? [] : normalizeBlastIds(body.groupIds);
     const rows = await getBlastRecipients({
       filters,
       ids: normalizeBlastIds(body.ids),
+      groupIds,
       includeFilters: actor.kind === "alum" ? false : Boolean(body.includeFilters),
       includeIds: actor.kind === "alum" ? true : Boolean(body.includeIds),
+      includeGroups: actor.kind === "alum" ? false : Boolean(body.includeGroups) && groupIds.length > 0,
     });
 
     const phoneRecipients = rows.filter((row) => toE164(row.phone ?? ""));

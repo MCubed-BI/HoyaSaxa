@@ -139,6 +139,14 @@ describe("roles", () => {
       true,
     );
     assert.equal(
+      navItemsForRole("owner").some((item) => item.href === "/groups" && item.label === "Groups"),
+      true,
+    );
+    assert.equal(
+      navItemsForRole("alum").some((item) => item.href === "/groups"),
+      false,
+    );
+    assert.equal(
       navItemsForRole("owner").some((item) => item.href === "/admin" && item.label === "Admin"),
       true,
     );

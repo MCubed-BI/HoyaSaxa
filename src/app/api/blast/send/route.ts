@@ -33,8 +33,10 @@ export async function POST(request: Request) {
       subject?: string;
       filters?: unknown;
       ids?: string[];
+      groupIds?: string[];
       includeFilters?: boolean;
       includeIds?: boolean;
+      includeGroups?: boolean;
     };
     if (actor.kind === "alum") {
       const rejection = alumEmailBlastRejection(body);
@@ -59,12 +61,15 @@ export async function POST(request: Request) {
     }
 
     const ids = normalizeBlastIds(body.ids);
+    const groupIds = actor.kind === "alum" ? [] : normalizeBlastIds(body.groupIds);
     const filters = coerceAlumniFilters(body.filters);
     const rows = await getBlastRecipients({
       filters,
       ids,
+      groupIds,
       includeFilters: actor.kind === "alum" ? false : Boolean(body.includeFilters),
       includeIds: actor.kind === "alum" ? true : Boolean(body.includeIds),
+      includeGroups: actor.kind === "alum" ? false : Boolean(body.includeGroups) && groupIds.length > 0,
     });
 
     await ensureBlastTables();
@@ -75,9 +80,10 @@ export async function POST(request: Request) {
           message,
           filters,
           ids,
+          groupIds,
           recipientLimit: actor.kind === "alum" ? ALUM_EMAIL_SEND_LIMIT : EMAIL_SEND_LIMIT,
         })
-      : sendTextBlast({ rows, message, filters, ids });
+      : sendTextBlast({ rows, message, filters, ids, groupIds });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Blast failed";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -89,11 +95,13 @@ async function sendTextBlast({
   message,
   filters,
   ids,
+  groupIds,
 }: {
   rows: Awaited<ReturnType<typeof getBlastRecipients>>;
   message: string;
   filters: unknown;
   ids: string[];
+  groupIds: string[];
 }) {
   const unique = new Map<string, (typeof rows)[number]>();
   for (const row of rows) {
@@ -123,7 +131,7 @@ async function sendTextBlast({
       twilioConfigured() ? "sending" : "fallback",
       twilioConfigured() ? "twilio" : "fallback",
       recipients.length,
-      JSON.stringify({ filters, ids }),
+      JSON.stringify({ filters, ids, groupIds }),
     ],
   )) as Array<{ id: string }>;
   const blastId = created[0]!.id;
@@ -187,6 +195,7 @@ async function sendEmailBlast({
   message,
   filters,
   ids,
+  groupIds,
   recipientLimit,
 }: {
   rows: Awaited<ReturnType<typeof getBlastRecipients>>;
@@ -194,6 +203,7 @@ async function sendEmailBlast({
   message: string;
   filters: unknown;
   ids: string[];
+  groupIds: string[];
   recipientLimit: number;
 }) {
   const unique = new Map<string, (typeof rows)[number]>();
@@ -226,7 +236,7 @@ async function sendEmailBlast({
       provider ? "sending" : "fallback",
       provider ?? "fallback",
       recipients.length,
-      JSON.stringify({ filters, ids }),
+      JSON.stringify({ filters, ids, groupIds }),
     ],
   )) as Array<{ id: string }>;
   const blastId = created[0]!.id;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import type { AlumniMapPoint } from "@/lib/types";
 
 type ViewMode = "heat" | "markers" | "both";
+type LocationFilter = "all" | "hometown" | "current";
+
+const MARKER_COLORS: Record<AlumniMapPoint["locationSource"], { color: string; fill: string }> = {
+  current: { color: "#2563eb", fill: "#3b82f6" },
+  hometown: { color: "#6b7280", fill: "#9ca3af" },
+  address: { color: "#041e42", fill: "#041e42" },
+};
 
 function inConus(point: AlumniMapPoint) {
   return point.lat >= 24 && point.lat <= 50 && point.lng >= -125 && point.lng <= -66;
@@ -69,6 +76,12 @@ function HeatLayer({ points, enabled }: { points: AlumniMapPoint[]; enabled: boo
   return null;
 }
 
+function sourceLabel(source: AlumniMapPoint["locationSource"]) {
+  if (source === "current") return "Current";
+  if (source === "hometown") return "Hometown";
+  return "Address";
+}
+
 export function FindMyAlumMap({
   points,
   profileBase = "/directory",
@@ -77,8 +90,14 @@ export function FindMyAlumMap({
   profileBase?: "/alumni" | "/directory";
 }) {
   const [mode, setMode] = useState<ViewMode>("both");
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>("all");
   const showHeat = mode === "heat" || mode === "both";
   const showMarkers = mode === "markers" || mode === "both";
+
+  const visiblePoints = useMemo(() => {
+    if (locationFilter === "all") return points;
+    return points.filter((point) => point.locationSource === locationFilter);
+  }, [locationFilter, points]);
 
   if (points.length === 0) {
     return (
@@ -91,6 +110,24 @@ export function FindMyAlumMap({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
+        {(
+          [
+            ["all", "All"],
+            ["hometown", "Hometown"],
+            ["current", "Current"],
+          ] as const
+        ).map(([value, label]) => (
+          <Button
+            key={value}
+            type="button"
+            size="sm"
+            variant={locationFilter === value ? "default" : "outline"}
+            onClick={() => setLocationFilter(value)}
+          >
+            {label}
+          </Button>
+        ))}
+        <span className="mx-1 hidden h-5 w-px bg-border sm:inline-block" aria-hidden />
         {(
           [
             ["both", "Heat + pins"],
@@ -108,51 +145,78 @@ export function FindMyAlumMap({
             {label}
           </Button>
         ))}
-        <span className="text-sm text-muted-foreground">{points.length} mapped</span>
+        <span className="text-sm text-muted-foreground">
+          {visiblePoints.length.toLocaleString()} pin{visiblePoints.length === 1 ? "" : "s"}
+        </span>
       </div>
-      <div className="h-[min(70vh,720px)] overflow-hidden rounded-xl border shadow-[var(--shadow-card)]">
-        <MapContainer className="h-full w-full" center={[39.5, -98.35]} zoom={4} scrollWheelZoom>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <FitBounds points={points} />
-          <HeatLayer points={points} enabled={showHeat} />
-          {showMarkers
-            ? points.map((point) => (
-                <CircleMarker
-                  key={point.id}
-                  center={[point.lat, point.lng]}
-                  radius={6}
-                  pathOptions={{ color: "#041e42", fillColor: "#041e42", fillOpacity: 0.72, weight: 1 }}
-                >
-                  <Popup>
-                    <div className="space-y-1 text-sm">
-                      {profileBase === "/alumni" ? (
-                        <Link href={`/alumni/${point.id}`} className="font-medium text-navy hover:underline">
-                          {point.name}
-                        </Link>
-                      ) : (
-                        <Link
-                          href={`/directory?q=${encodeURIComponent(point.name)}`}
-                          className="font-medium text-navy hover:underline"
-                        >
-                          {point.name}
-                        </Link>
-                      )}
-                      <p className="text-muted-foreground">{point.locationLabel}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {[point.position, point.classYear].filter(Boolean).join(" · ") || "Roster"}
-                        {" · "}
-                        {point.locationSource}
-                      </p>
-                    </div>
-                  </Popup>
-                </CircleMarker>
-              ))
-            : null}
-        </MapContainer>
+      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block size-2.5 rounded-full bg-[#3b82f6]" aria-hidden />
+          Current
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block size-2.5 rounded-full bg-[#9ca3af]" aria-hidden />
+          Hometown
+        </span>
       </div>
+      {visiblePoints.length === 0 ? (
+        <div className="flex h-[min(70vh,720px)] items-center justify-center rounded-xl border bg-card text-sm text-muted-foreground shadow-[var(--shadow-card)]">
+          No {locationFilter} locations in this filter set.
+        </div>
+      ) : (
+        <div className="h-[min(70vh,720px)] overflow-hidden rounded-xl border shadow-[var(--shadow-card)]">
+          <MapContainer className="h-full w-full" center={[39.5, -98.35]} zoom={4} scrollWheelZoom>
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <FitBounds points={visiblePoints} />
+            <HeatLayer points={visiblePoints} enabled={showHeat} />
+            {showMarkers
+              ? visiblePoints.map((point) => {
+                  const colors = MARKER_COLORS[point.locationSource];
+                  const profileId = point.alumniId || point.id;
+                  return (
+                    <CircleMarker
+                      key={point.id}
+                      center={[point.lat, point.lng]}
+                      radius={6}
+                      pathOptions={{
+                        color: colors.color,
+                        fillColor: colors.fill,
+                        fillOpacity: 0.78,
+                        weight: 1,
+                      }}
+                    >
+                      <Popup>
+                        <div className="space-y-1 text-sm">
+                          {profileBase === "/alumni" ? (
+                            <Link href={`/alumni/${profileId}`} className="font-medium text-navy hover:underline">
+                              {point.name}
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/directory?q=${encodeURIComponent(point.name)}`}
+                              className="font-medium text-navy hover:underline"
+                            >
+                              {point.name}
+                            </Link>
+                          )}
+                          <p className="text-muted-foreground">{point.locationLabel}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {[point.position, point.classYear].filter(Boolean).join(" · ") || "Roster"}
+                            {" · "}
+                            {sourceLabel(point.locationSource)}
+                          </p>
+                        </div>
+                      </Popup>
+                    </CircleMarker>
+                  );
+                })
+              : null}
+          </MapContainer>
+        </div>
+      )}
     </div>
   );
 }

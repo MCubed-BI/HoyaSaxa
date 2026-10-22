@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useSelection } from "@/components/selection-provider";
+import type { AlumniGroupSummary } from "@/lib/alumni-groups";
 import { hasActiveFilters, type AlumniFilters } from "@/lib/filters";
 import { displayPhone } from "@/lib/phone";
 
@@ -31,10 +33,14 @@ export function BlastComposer({
   filters,
   initialChannel = "sms",
   mode = "staff",
+  initialGroups = [],
+  initialGroupId = "",
 }: {
   filters: AlumniFilters;
   initialChannel?: BlastChannel;
   mode?: BlastComposerMode;
+  initialGroups?: AlumniGroupSummary[];
+  initialGroupId?: string;
 }) {
   const { ids, clear } = useSelection();
   const alumMode = mode === "alum";
@@ -42,6 +48,13 @@ export function BlastComposer({
   const [channel, setChannel] = useState<BlastChannel>(alumMode ? "email" : initialChannel);
   const [includeFilters, setIncludeFilters] = useState(filtered);
   const [includeIds, setIncludeIds] = useState(ids.length > 0);
+  const [groups, setGroups] = useState<AlumniGroupSummary[]>(initialGroups);
+  const [selectedGroupId, setSelectedGroupId] = useState(
+    initialGroupId && initialGroups.some((group) => group.id === initialGroupId) ? initialGroupId : "",
+  );
+  const [includeGroups, setIncludeGroups] = useState(
+    Boolean(initialGroupId && initialGroups.some((group) => group.id === initialGroupId)),
+  );
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -69,16 +82,43 @@ export function BlastComposer({
     if (ids.length > 0) setIncludeIds(true);
   }, [ids.length]);
 
-  const payload = useMemo(
-    () => ({
+  useEffect(() => {
+    if (alumMode) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/alumni-groups");
+        if (!response.ok) return;
+        const data = (await response.json()) as { groups?: AlumniGroupSummary[] };
+        if (!cancelled && Array.isArray(data.groups)) setGroups(data.groups);
+      } catch {
+        // Keep server-provided list if refresh fails.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [alumMode]);
+
+  useEffect(() => {
+    if (selectedGroupId && !groups.some((group) => group.id === selectedGroupId)) {
+      setSelectedGroupId("");
+      setIncludeGroups(false);
+    }
+  }, [groups, selectedGroupId]);
+
+  const payload = useMemo(() => {
+    const groupIds = !alumMode && selectedGroupId ? [selectedGroupId] : [];
+    return {
       filters: alumMode ? { ...filters, q: "" } : filters,
       ids,
+      groupIds,
       includeFilters: alumMode ? false : includeFilters,
       includeIds: alumMode ? true : includeIds,
+      includeGroups: alumMode ? false : includeGroups && groupIds.length > 0,
       channel: alumMode ? "email" : channel,
-    }),
-    [alumMode, channel, filters, ids, includeFilters, includeIds],
-  );
+    };
+  }, [alumMode, channel, filters, ids, includeFilters, includeGroups, includeIds, selectedGroupId]);
 
   async function loadPreview() {
     setBusy("preview");
@@ -107,6 +147,7 @@ export function BlastComposer({
   const readyCount = channel === "sms" ? (preview?.withPhone ?? 0) : (preview?.withEmail ?? 0);
   const list = channel === "sms" ? (preview?.phoneRecipients ?? []) : (preview?.emailRecipients ?? []);
   const providerReady = channel === "sms" ? Boolean(preview?.twilio) : Boolean(preview?.emailProvider);
+  const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? null;
 
   async function copy(kind: "phones" | "emails" | "message") {
     if (kind === "message") {
@@ -203,24 +244,73 @@ export function BlastComposer({
               Data Sync stay with staff.
             </p>
           ) : (
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="mt-0.5 size-4 accent-navy"
-              checked={includeFilters}
-              onChange={(event) => setIncludeFilters(event.target.checked)}
-            />
-            <span>
-              Current filter group
-              {!filtered ? (
-                <span className="block text-muted-foreground">
-                  No filters applied. Checking this includes the full directory.
+            <>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 accent-navy"
+                  checked={includeFilters}
+                  onChange={(event) => setIncludeFilters(event.target.checked)}
+                />
+                <span>
+                  Current filter group
+                  {!filtered ? (
+                    <span className="block text-muted-foreground">
+                      No filters applied. Checking this includes the full directory.
+                    </span>
+                  ) : (
+                    <span className="block text-muted-foreground">Uses the multi-select filters from the URL.</span>
+                  )}
                 </span>
-              ) : (
-                <span className="block text-muted-foreground">Uses the multi-select filters from the URL.</span>
-              )}
-            </span>
-          </label>
+              </label>
+              <div className="space-y-2 rounded-lg border border-border/70 bg-muted/40 p-3">
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 size-4 accent-navy"
+                    checked={includeGroups}
+                    onChange={(event) => setIncludeGroups(event.target.checked)}
+                    disabled={!selectedGroupId}
+                  />
+                  <span>
+                    Saved group
+                    <span className="block text-muted-foreground">
+                      Choose a named list, then include it with picks and/or filters.
+                    </span>
+                  </span>
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="h-8 min-w-[12rem] flex-1 rounded-lg border border-input bg-card px-2.5 text-sm outline-none focus-visible:border-ring"
+                    value={selectedGroupId}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setSelectedGroupId(next);
+                      setIncludeGroups(Boolean(next));
+                    }}
+                  >
+                    <option value="">Select a group…</option>
+                    {groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name} ({group.memberCount})
+                      </option>
+                    ))}
+                  </select>
+                  <Button asChild type="button" size="sm" variant="outline">
+                    <Link href="/groups">Manage groups</Link>
+                  </Button>
+                </div>
+                {selectedGroup ? (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedGroup.name} · {selectedGroup.memberCount.toLocaleString()} members
+                  </p>
+                ) : groups.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No saved groups yet. Select alumni on the directory and save them as a group.
+                  </p>
+                ) : null}
+              </div>
+            </>
           )}
 
           <div className="grid gap-3 sm:grid-cols-3">
