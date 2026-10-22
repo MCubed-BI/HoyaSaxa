@@ -867,6 +867,56 @@ export async function mergeAlumniPair(input: {
   await query(`UPDATE text_blast_recipients SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]);
   await query(`UPDATE email_blast_recipients SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]);
   await query(
+    `
+    UPDATE alumni_group_members AS source
+    SET alumni_id = $1
+    WHERE alumni_id = $2
+      AND NOT EXISTS (
+        SELECT 1 FROM alumni_group_members keeper
+        WHERE keeper.group_id = source.group_id AND keeper.alumni_id = $1
+      )
+    `,
+    [keeperId, sourceId],
+  );
+  await query(`DELETE FROM alumni_group_members WHERE alumni_id = $1`, [sourceId]);
+  await query(
+    `
+    UPDATE alum_badges AS source
+    SET alumni_id = $1
+    WHERE alumni_id = $2
+      AND NOT EXISTS (
+        SELECT 1 FROM alum_badges keeper
+        WHERE keeper.alumni_id = $1 AND keeper.badge_type = source.badge_type
+      )
+    `,
+    [keeperId, sourceId],
+  );
+  await query(`DELETE FROM alum_badges WHERE alumni_id = $1`, [sourceId]);
+  await query(
+    `
+    DELETE FROM event_checkins AS source
+    WHERE source.alumni_id = $2
+      AND EXISTS (
+        SELECT 1 FROM event_checkins AS keeper
+        WHERE keeper.event_id = source.event_id
+          AND (
+            keeper.alumni_id = $1
+            OR keeper.attendee_key = 'alum:' || $1::text
+          )
+      )
+    `,
+    [keeperId, sourceId],
+  );
+  await query(
+    `
+    UPDATE event_checkins
+    SET alumni_id = $1,
+        attendee_key = 'alum:' || $1::text
+    WHERE alumni_id = $2
+    `,
+    [keeperId, sourceId],
+  );
+  await query(
     `INSERT INTO alumni_record_merges (account_id, keeper_alumni_id, merged_alumni_id) VALUES ($1, $2, $3)`,
     [accountId, keeperId, sourceId],
   );

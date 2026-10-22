@@ -35,8 +35,8 @@ test("Create Event is allowed for admin, board, and alum via Coder 5 helpers", (
   assert.equal(canCreateEvents({ role: "alum", username: "Pat Hoya" }), true);
   assert.equal(canCreateEvents({ role: "alum", platformRole: "alum" }), true);
   assert.equal(canCreateEvents(null), false);
-  assert.equal(canOverrideEventCheckIn("coach"), true);
-  assert.equal(canOverrideEventCheckIn("board"), true);
+  assert.equal(canOverrideEventCheckIn("coach"), false);
+  assert.equal(canOverrideEventCheckIn("board"), false);
   assert.equal(canOverrideEventCheckIn("alum"), false);
 });
 

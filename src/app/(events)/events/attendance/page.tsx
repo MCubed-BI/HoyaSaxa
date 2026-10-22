@@ -56,7 +56,20 @@ export default async function EventAttendanceLeaderboardPage() {
                   >
                     <div className="min-w-0 space-y-1">
                       <p className="font-medium">
-                        {row.displayName}
+                        {row.alumId ? (
+                          <Link
+                            href={
+                              locker && (locker.platformRole === "admin" || locker.role === "coach")
+                                ? `/alumni/${row.alumId}`
+                                : `/athletes/${row.alumId}`
+                            }
+                            className="text-navy hover:underline"
+                          >
+                            {row.displayName}
+                          </Link>
+                        ) : (
+                          row.displayName
+                        )}
                         {mine ? " · you" : ""}
                       </p>
                       {badge ? <HoyaBadgeRow badges={[badge]} /> : null}

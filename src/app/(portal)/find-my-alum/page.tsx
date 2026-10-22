@@ -1,3 +1,4 @@
+import { AdminAlumniMergeCard } from "@/components/admin-alumni-merge";
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { FindMyAlumMapLoader } from "@/components/find-my-alum-map-loader";
 import { AppHeader } from "@/components/app-header";
@@ -49,6 +50,7 @@ export default async function FindMyAlumPage({
         ) : null}
       </PageHeader>
       {facets ? <AlumniFiltersForm filters={filters} facets={facets} action="/find-my-alum" /> : null}
+      {viewer.platformRole === "admin" ? <AdminAlumniMergeCard /> : null}
       {errorMessage ? (
         <StatusCard title="Find My Alum unavailable" body={errorMessage} />
       ) : mapped ? (

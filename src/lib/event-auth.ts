@@ -129,9 +129,9 @@ export function canCreateEvents(role: EventCreateGate) {
   return canPostEvents(platformRoleForEventActor({ role }));
 }
 
-/** Staff can check someone else in and restamp an existing row. Alum cannot. */
-export function canOverrideEventCheckIn(role: EventRole | null | undefined) {
-  return role === "coach" || role === "board";
+/** Check-in is self-only. Staff cannot check in someone else or restamp a row. */
+export function canOverrideEventCheckIn(_role: EventRole | null | undefined) {
+  return false;
 }
 
 export function getEventActorFromToken(token: string | undefined | null): EventActor | null {
