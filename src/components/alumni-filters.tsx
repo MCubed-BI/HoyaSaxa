@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDownIcon } from "lucide-react";
 import { DirectoryNameSearch } from "@/components/directory-name-search";
 import { Button } from "@/components/ui/button";
 import { MultiSelect } from "@/components/multi-select";
+import type { AlumniGroupSummary } from "@/lib/alumni-groups";
 import {
   canonicalizeAlumniFilters,
   facetFilterCount,
@@ -24,6 +26,8 @@ export function AlumniFiltersForm({
   submitLabel = "Find",
   mode = "group",
   view = "admin",
+  groups,
+  selectedGroupId = "",
 }: {
   filters: AlumniFilters;
   facets: AlumniFacets;
@@ -31,13 +35,18 @@ export function AlumniFiltersForm({
   submitLabel?: string;
   mode?: "directory" | "group";
   view?: DirectorySearchView;
+  /** When set (Blast), show a Saved group control in this card. */
+  groups?: AlumniGroupSummary[];
+  selectedGroupId?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [local, setLocal] = useState(() => canonicalizeAlumniFilters(filters));
+  const [groupId, setGroupId] = useState(selectedGroupId);
   const [filtersOpen, setFiltersOpen] = useState(() => hasFacetFilters(filters));
   const filtersKey = JSON.stringify(filters);
   const facetCount = facetFilterCount(local);
+  const showGroups = Array.isArray(groups);
 
   useEffect(() => {
     const next = canonicalizeAlumniFilters(filters);
@@ -47,6 +56,10 @@ export function AlumniFiltersForm({
     // multi-selects survive search typing and parent re-renders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersKey]);
+
+  useEffect(() => {
+    setGroupId(selectedGroupId);
+  }, [selectedGroupId]);
 
   return (
     <form
@@ -60,9 +73,14 @@ export function AlumniFiltersForm({
         });
         const qs = filtersToSearchParams(next);
         const current = new URLSearchParams(window.location.search);
-        for (const key of ["channel", "group"] as const) {
-          const value = current.get(key);
-          if (value) qs.set(key, value);
+        const channel = current.get("channel");
+        if (channel) qs.set("channel", channel);
+        if (showGroups) {
+          if (groupId) qs.set("group", groupId);
+          else qs.delete("group");
+        } else {
+          const existing = current.get("group");
+          if (existing) qs.set("group", existing);
         }
         const query = qs.toString();
         startTransition(() => {
@@ -81,13 +99,54 @@ export function AlumniFiltersForm({
           <Button type="submit" disabled={pending} className="h-11 px-4">
             {pending ? "Finding…" : submitLabel}
           </Button>
-          {hasActiveFilters(filters) || hasActiveFilters(local) ? (
-            <Button type="button" variant="outline" className="h-11" onClick={() => router.push(action)}>
+          {hasActiveFilters(filters) || hasActiveFilters(local) || (showGroups && groupId) ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11"
+              onClick={() => {
+                setGroupId("");
+                router.push(action);
+              }}
+            >
               Clear
             </Button>
           ) : null}
         </div>
       </div>
+
+      {showGroups ? (
+        <div className="space-y-1.5 rounded-lg border border-navy/15 bg-muted/30 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label htmlFor="blast-saved-group" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Saved group
+            </label>
+            <Link href="/groups" className="text-xs font-medium text-navy underline-offset-2 hover:underline">
+              Manage groups
+            </Link>
+          </div>
+          <select
+            id="blast-saved-group"
+            className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring"
+            value={groupId}
+            onChange={(event) => setGroupId(event.target.value)}
+          >
+            <option value="">No group — use filters / picks only</option>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name} ({group.memberCount})
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            {groupId
+              ? "Click Update group to apply this list to the blast below."
+              : groups.length === 0
+                ? "No groups yet. Create one on Groups, then return here."
+                : "Choose a group, or leave empty and rely on filters / directory picks."}
+          </p>
+        </div>
+      ) : null}
 
       <div className="border-t pt-3">
         <button
