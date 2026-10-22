@@ -16,6 +16,8 @@ import { getBlastRecipients } from "@/lib/queries";
 import { SMS_SEND_LIMIT, sendTwilioMessage, twilioConfigured } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
+/** Sequential Twilio sends for up to SMS_SEND_LIMIT recipients. */
+export const maxDuration = 60;
 
 function isEmail(value: string | null) {
   return Boolean(value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()));
