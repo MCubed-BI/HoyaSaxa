@@ -17,6 +17,7 @@ export type NavKey =
   | "blast"
   | "groups"
   | "sync"
+  | "data-cleanup"
   | "message"
   | "fundraising"
   | "find-my-alum"
@@ -74,6 +75,7 @@ export function toolNavItems(role?: Role): NavItem[] {
   }
   if (canUseOwnerTools(role)) {
     items.push({ href: "/sync", label: "Data Sync", key: "sync" });
+    items.push({ href: "/data-cleanup", label: "Data Cleanup", key: "data-cleanup" });
     items.push({ href: "/admin", label: "Admin", key: "admin" });
   }
 
@@ -131,6 +133,7 @@ export function signOutFromForNav(current?: NavKey, role?: Role) {
   if (current === "admin") return "/admin";
   if (current === "reports") return "/reports";
   if (current === "sync") return "/sync";
+  if (current === "data-cleanup") return "/data-cleanup";
   if (current === "find-my-alum") return "/find-my-alum";
   if (current === "me") return "/me";
   return "/home";

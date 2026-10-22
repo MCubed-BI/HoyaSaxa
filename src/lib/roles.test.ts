@@ -217,6 +217,7 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/api/badges"), true);
     assert.equal(isAlumAllowedPath("/admin"), true);
     assert.equal(isAlumAllowedPath("/api/admin"), true);
+    assert.equal(isAlumAllowedPath("/data-cleanup"), true);
     assert.equal(loginPathFor("/board"), "/home/login");
     assert.equal(isAlumAllowedPath("/events"), true);
     assert.equal(isAlumAllowedPath("/events/check-in"), true);

@@ -10,7 +10,9 @@ import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { alumniFilterChips, hasActiveFilters, parseAlumniFilters, parseHighlightId, parsePage } from "@/lib/filters";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { searchAlumni } from "@/lib/queries";
+import Link from "next/link";
 import { AdminAlumniMergeCard } from "@/components/admin-alumni-merge";
+import { Button } from "@/components/ui/button";
 import { displayName } from "@/lib/format";
 import { canUseBlast } from "@/lib/roles";
 import { requireRole } from "@/lib/viewer";
@@ -51,6 +53,13 @@ export default async function DirectoryPage({
           eyebrow="Staff directory"
           title="Alumni"
           description="Search a name or preferred name to open one person. Filters stay collapsed until you need them. Check a card only when building a blast."
+          actions={
+            viewer.platformRole === "admin" ? (
+              <Button asChild>
+                <Link href="/data-cleanup">Data Cleanup</Link>
+              </Button>
+            ) : null
+          }
         />
 
         {result ? (
