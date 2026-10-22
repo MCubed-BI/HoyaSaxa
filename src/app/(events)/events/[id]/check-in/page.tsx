@@ -15,7 +15,6 @@ import {
   listAttendanceLeaders,
   listEventAttendance,
 } from "@/lib/event-attendance";
-import { canOverrideEventCheckIn } from "@/lib/event-auth";
 import { getEventActor } from "@/lib/event-actor";
 import { formatEventWhen } from "@/lib/event-datetime";
 import { isMissingDatabaseConfig } from "@/lib/db";
@@ -59,7 +58,8 @@ export default async function EventCheckInPage({
     const myRank = leaders.find((row) => row.personKey === person.personKey);
     const when = formatEventWhen(event.startsAt);
     const status = Array.isArray(query.status) ? query.status[0] : query.status;
-    const staff = canOverrideEventCheckIn(actor.role);
+    const profileBase =
+      locker && (locker.platformRole === "admin" || locker.role === "coach") ? "/alumni" : "/athletes";
 
     return (
       <EventsChrome locker={locker}>
@@ -67,7 +67,7 @@ export default async function EventCheckInPage({
           <PageHeader
             eyebrow="Check in"
             title={event.title}
-            description={`${when.label}${event.location ? ` · ${event.location}` : ""}. One durable record per person unless staff override.`}
+            description={`${when.label}${event.location ? ` · ${event.location}` : ""}. Check in for yourself only — one durable record per person.`}
             actions={
               <div className="flex flex-wrap gap-2">
                 <Button asChild variant="outline">
@@ -82,15 +82,14 @@ export default async function EventCheckInPage({
 
           {status === "checked" ? <Notice tone="success">You are checked in.</Notice> : null}
           {status === "already" ? <Notice>Already checked in for this event.</Notice> : null}
-          {status === "updated" ? <Notice tone="success">Staff updated this check-in.</Notice> : null}
-          {status === "forbidden" ? <Notice tone="danger">Staff override is required to change an existing check-in.</Notice> : null}
-          {status === "guest" ? <Notice tone="danger">Add a person id or name to check someone else in.</Notice> : null}
+          {status === "forbidden" ? (
+            <Notice tone="danger">You can only check yourself in, and only once per event.</Notice>
+          ) : null}
 
           <EventCheckInForm
             eventId={event.id}
             actorName={actor.username}
             alreadyCheckedIn={Boolean(mine)}
-            canOverride={staff}
             lifetimeCount={lifetime}
             rank={myRank?.rank ?? null}
             percentile={myRank?.percentile ?? null}
@@ -106,7 +105,13 @@ export default async function EventCheckInPage({
               <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
                 {attendees.map((row) => (
                   <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3">
-                    <span className="font-medium">{row.displayName}</span>
+                    {row.alumId ? (
+                      <Link href={`${profileBase}/${row.alumId}`} className="font-medium text-navy hover:underline">
+                        {row.displayName}
+                      </Link>
+                    ) : (
+                      <span className="font-medium">{row.displayName}</span>
+                    )}
                     <span className="text-sm text-muted-foreground">
                       {new Date(row.checkedInAt).toLocaleString("en-US", { timeZone: "America/New_York" })}
                     </span>

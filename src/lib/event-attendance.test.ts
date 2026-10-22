@@ -59,8 +59,8 @@ describe("event check-in rules", () => {
     assert.equal(resolveCheckInAction({ existing: true, override: false, canOverride: false }), "noop");
     assert.equal(resolveCheckInAction({ existing: true, override: true, canOverride: false }), "forbidden-override");
     assert.equal(resolveCheckInAction({ existing: true, override: true, canOverride: true }), "override");
-    assert.equal(canOverrideEventCheckIn("coach"), true);
-    assert.equal(canOverrideEventCheckIn("board"), true);
+    assert.equal(canOverrideEventCheckIn("coach"), false);
+    assert.equal(canOverrideEventCheckIn("board"), false);
     assert.equal(canOverrideEventCheckIn("alum"), false);
     assert.equal(canCreateEvents("alum"), true);
   });

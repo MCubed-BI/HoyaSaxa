@@ -10,6 +10,8 @@ import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
 import { alumniFilterChips, hasActiveFilters, parseAlumniFilters, parseHighlightId, parsePage } from "@/lib/filters";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { searchAlumni } from "@/lib/queries";
+import { AdminAlumniMergeCard } from "@/components/admin-alumni-merge";
+import { displayName } from "@/lib/format";
 import { canUseBlast } from "@/lib/roles";
 import { requireRole } from "@/lib/viewer";
 
@@ -87,6 +89,8 @@ export default async function DirectoryPage({
                     filters={filters}
                     pageIds={result.rows.map((row) => row.id)}
                     totalMatching={result.total}
+                    allowMerge={viewer.platformRole === "admin"}
+                    pageLabels={Object.fromEntries(result.rows.map((row) => [row.id, displayName(row)]))}
                   />
                 ) : null}
               </>
@@ -95,6 +99,11 @@ export default async function DirectoryPage({
         ) : (
           <ErrorState title="Directory unavailable" body={errorMessage ?? "Unknown error"} />
         )}
+        {viewer.platformRole === "admin" ? (
+          <div className="mt-6">
+            <AdminAlumniMergeCard />
+          </div>
+        ) : null}
       </PageMain>
     </PageShell>
   );

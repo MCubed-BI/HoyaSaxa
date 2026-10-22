@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AdminMergeFromSelection } from "@/components/admin-alumni-merge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSelection } from "@/components/selection-provider";
@@ -12,10 +13,14 @@ export function BlastBar({
   filters,
   pageIds,
   totalMatching,
+  allowMerge = false,
+  pageLabels = {},
 }: {
   filters: AlumniFilters;
   pageIds: string[];
   totalMatching: number;
+  allowMerge?: boolean;
+  pageLabels?: Record<string, string>;
 }) {
   const { count, addMany, clear, ids } = useSelection();
   const [status, setStatus] = useState<string | null>(null);
@@ -210,6 +215,7 @@ export function BlastBar({
           </div>
         </div>
         {groupControls}
+        {allowMerge ? <AdminMergeFromSelection labels={pageLabels} /> : null}
       </div>
     </div>
   );
