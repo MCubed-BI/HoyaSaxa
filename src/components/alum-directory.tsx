@@ -66,13 +66,23 @@ export function AlumDirectory({
                 <HoyaAvatar person={person} />
               </Link>
               <div className="min-w-0 space-y-1">
-                <Link href={profileHref ?? athleteHref(person.id)} className="truncate font-medium text-navy hover:underline">
-                  {displayName(person)}
+                <Link
+                  href={profileHref ?? athleteHref(person.id)}
+                  className="flex flex-wrap items-center gap-2 truncate font-medium text-navy hover:underline"
+                >
+                  <span className="truncate">{displayName(person)}</span>
+                  {person.person_kind === "supporter" ? (
+                    <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Support
+                    </span>
+                  ) : null}
                 </Link>
                 <p className="text-sm text-muted-foreground">
-                  {[positionLabel(person.position), classYearLabel(person.class_year) || person.seasons]
-                    .filter(Boolean)
-                    .join(" · ") || "Roster details pending"}
+                  {person.person_kind === "supporter"
+                    ? "Georgetown supporter"
+                    : [positionLabel(person.position), classYearLabel(person.class_year) || person.seasons]
+                        .filter(Boolean)
+                        .join(" · ") || "Roster details pending"}
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
                   {jobLabel(person.company_name, person.job_title) || residenceLabel(person) || "Location unknown"}

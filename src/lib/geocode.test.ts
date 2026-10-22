@@ -159,6 +159,31 @@ describe("geocode", () => {
     assert.ok(Math.abs((resolved?.lng ?? 0) - -81.268022) < 0.001);
   });
 
+  it("places Hampton Tanner hometown Fernandina Beach just north of Jacksonville", async () => {
+    process.env.GEOCODE_PROVIDER = "centroids";
+    const resolved = await resolveAlumniLocations({
+      id: "6f7e18a2-89be-447c-a16c-d2d5477abd88",
+      first_name: "Hampton",
+      last_name: "Tanner",
+      preferred_name: "Mr. Hampton McDaniel Tanner",
+      full_name: null,
+      position: "OL",
+      class_year: "2025",
+      current_city: "Washington",
+      current_state: "DC",
+      hometown_city: "Fernandina Beach",
+      hometown_state: "FL",
+      address_primary: null,
+    });
+    const hometown = resolved.find((row) => row.source === "hometown");
+    assert.equal(hometown?.method, "city");
+    assert.equal(hometown?.label, "Fernandina Beach, FL");
+    // ~30.67N — Amelia Island, immediately north of Jacksonville (~30.33N)
+    assert.ok(Math.abs((hometown?.lat ?? 0) - 30.669682) < 0.001);
+    assert.ok(Math.abs((hometown?.lng ?? 0) - -81.462587) < 0.001);
+    assert.ok((hometown?.lat ?? 0) > 30.3, "should sit near the Jacksonville metro, not central Florida");
+  });
+
   it("returns both current and hometown pins when both resolve", async () => {
     process.env.GEOCODE_PROVIDER = "centroids";
     const resolved = await resolveAlumniLocations({

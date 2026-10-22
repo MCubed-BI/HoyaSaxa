@@ -91,3 +91,14 @@ test("parseAlumniFilters reads registered and career", () => {
   assert.ok(chips.some((chip) => chip.label === "Registered"));
   assert.ok(chips.some((chip) => chip.label === "Career: Finance"));
 });
+
+test("parseAlumniFilters reads Alum / Support person kinds", () => {
+  const filters = parseAlumniFilters({
+    personKind: ["supporter", "player"],
+  });
+  assert.deepEqual(filters.personKinds, ["supporter", "alum"]);
+  assert.equal(hasFacetFilters(filters), true);
+  const chips = alumniFilterChips(filters);
+  assert.ok(chips.some((chip) => chip.label === "Support"));
+  assert.ok(chips.some((chip) => chip.label === "Alum"));
+});

@@ -52,6 +52,7 @@ const ALUM_ALLOWED_PREFIXES = [
   "/api/admin",
   "/admin",
   "/data-cleanup",
+  "/people",
   "/api/logout",
 ];
 

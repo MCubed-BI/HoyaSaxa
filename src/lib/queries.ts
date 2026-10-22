@@ -16,6 +16,7 @@ import {
   normalizeFilterState,
 } from "@/lib/filter-normalize";
 import type { AlumniLocationRow } from "@/lib/geocode";
+import { ensurePersonColumns } from "@/lib/people-schema";
 import type {
   AlumniDetail,
   AlumniEmail,
@@ -50,8 +51,15 @@ const LIST_COLUMNS = `
   a.phone_primary,
   a.address_primary,
   a.football_photo_url,
-  a.linkedin_photo_url
+  a.linkedin_photo_url,
+  coalesce(a.person_kind, 'alum') AS person_kind,
+  coalesce(a.admin_verified, true) AS admin_verified
 `;
+
+async function ensureDirectoryColumns() {
+  await ensureAlumniPhotoColumns();
+  await ensurePersonColumns();
+}
 
 function asRawList(rows: Record<string, unknown>[], key: string) {
   return rows
@@ -129,6 +137,7 @@ async function loadFacetIndex(): Promise<AlumniFacetIndex> {
 }
 
 async function filtersForQuery(filters: AlumniFilters): Promise<AlumniFilters> {
+  await ensurePersonColumns();
   if (filters.registered) {
     const { ensureAlumniAuthTables } = await import("@/lib/alumni-claim");
     await ensureAlumniAuthTables();
@@ -148,7 +157,7 @@ export async function getAlumniFacets(): Promise<AlumniFacets> {
 }
 
 export async function searchAlumni(filters: AlumniFilters, page: number): Promise<DirectoryResult> {
-  await ensureAlumniPhotoColumns();
+  await ensureDirectoryColumns();
   if (filters.registered) {
     const { ensureAlumniAuthTables } = await import("@/lib/alumni-claim");
     await ensureAlumniAuthTables();
@@ -183,7 +192,7 @@ export async function searchAlumni(filters: AlumniFilters, page: number): Promis
 export async function searchAlumniByName(q: string, limit = 8): Promise<AlumniListItem[]> {
   const needle = q.trim();
   if (needle.length < 1) return [];
-  await ensureAlumniPhotoColumns();
+  await ensureDirectoryColumns();
   const cap = Math.max(1, Math.min(limit, 12));
   return query<AlumniListItem[]>(
     `
@@ -212,6 +221,7 @@ export async function searchAlumniByName(q: string, limit = 8): Promise<AlumniLi
 }
 
 export async function getAlumniLocationRows(filters: AlumniFilters): Promise<AlumniLocationRow[]> {
+  await ensureDirectoryColumns();
   const { whereSql, params } = buildAlumniWhere(await filtersForQuery(filters));
   return query<AlumniLocationRow[]>(
     `
@@ -237,13 +247,14 @@ export async function getAlumniLocationRows(filters: AlumniFilters): Promise<Alu
 }
 
 export async function getAlumniCount(filters: AlumniFilters) {
+  await ensureDirectoryColumns();
   const { whereSql, params } = buildAlumniWhere(await filtersForQuery(filters));
   const rows = await query<Array<{ total: number }>>(`SELECT COUNT(*)::int AS total FROM alumni a ${whereSql}`, params);
   return rows[0]?.total ?? 0;
 }
 
 export async function getAlumniById(id: string): Promise<AlumniDetail | null> {
-  await ensureAlumniPhotoColumns();
+  await ensureDirectoryColumns();
   const people = await query<Array<AlumniDetail>>(
     `SELECT ${LIST_COLUMNS}, a.source_flags, a.created_at, a.updated_at
      FROM alumni a
