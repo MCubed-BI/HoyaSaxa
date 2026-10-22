@@ -16,7 +16,9 @@ export function DirectoryNameSearch({
   defaultValue = "",
   view,
   openProfileOnSelect = true,
+  onSelect,
   placeholder = "Search name or preferred name",
+  label = "Find a person",
 }: {
   name?: string;
   value?: string;
@@ -24,7 +26,9 @@ export function DirectoryNameSearch({
   defaultValue?: string;
   view: DirectorySearchView;
   openProfileOnSelect?: boolean;
+  onSelect?: (hit: DirectoryPersonSuggestion) => void;
   placeholder?: string;
+  label?: string;
 }) {
   const router = useRouter();
   const listId = useId();
@@ -90,6 +94,12 @@ export function DirectoryNameSearch({
 
   function choose(hit: DirectoryPersonSuggestion) {
     setOpen(false);
+    if (onSelect) {
+      onSelect(hit);
+      setQuery("");
+      setHits([]);
+      return;
+    }
     if (openProfileOnSelect) {
       router.push(hit.href);
       return;
@@ -99,7 +109,7 @@ export function DirectoryNameSearch({
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (!open || hits.length === 0) {
-      if (event.key === "Enter" && openProfileOnSelect && hits.length === 1) {
+      if (event.key === "Enter" && (openProfileOnSelect || onSelect) && hits.length === 1) {
         event.preventDefault();
         choose(hits[0]!);
       }
@@ -114,7 +124,7 @@ export function DirectoryNameSearch({
     } else if (event.key === "Escape") {
       event.preventDefault();
       setOpen(false);
-    } else if (event.key === "Enter" && openProfileOnSelect) {
+    } else if (event.key === "Enter" && (openProfileOnSelect || onSelect)) {
       event.preventDefault();
       choose(hits[active] ?? hits[0]!);
     }
@@ -123,7 +133,7 @@ export function DirectoryNameSearch({
   return (
     <div ref={rootRef} className="relative min-w-0 flex-1">
       <label htmlFor={name} className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Find a person
+        {label}
       </label>
       <div className="relative">
         <AppIcon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />

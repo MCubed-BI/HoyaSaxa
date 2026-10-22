@@ -385,7 +385,9 @@ export async function registerAlumniAccount(input: {
       account.id,
       alumniId,
     ]);
-    await grantVerifiedHoyaForAlumSession(alumniId);
+    // Registration always writes the Verified Hoya badge onto the claimed roster row.
+    const { grantVerifiedHoya } = await import("@/lib/badges");
+    await grantVerifiedHoya(alumniId);
     if (input.linkedinUrl) {
       await updateOwnAlumniRecord(alumniId, { linkedin_url: input.linkedinUrl });
     }

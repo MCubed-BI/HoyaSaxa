@@ -12,7 +12,7 @@ type ViewMode = "heat" | "markers" | "both";
 type LocationFilter = "all" | "hometown" | "current";
 
 const MARKER_COLORS: Record<AlumniMapPoint["locationSource"], { color: string; fill: string }> = {
-  current: { color: "#2563eb", fill: "#3b82f6" },
+  current: { color: "#041e42", fill: "#041e42" },
   hometown: { color: "#6b7280", fill: "#9ca3af" },
   address: { color: "#041e42", fill: "#041e42" },
 };
@@ -151,7 +151,7 @@ export function FindMyAlumMap({
       </div>
       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block size-2.5 rounded-full bg-[#3b82f6]" aria-hidden />
+          <span className="inline-block size-2.5 rounded-full bg-[#041e42]" aria-hidden />
           Current
         </span>
         <span className="inline-flex items-center gap-1.5">

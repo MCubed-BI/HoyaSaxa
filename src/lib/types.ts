@@ -60,6 +60,7 @@ export type AlumniFacets = {
   positions: string[];
   classYears: string[];
   seasonYears: string[];
+  careers: string[];
 };
 
 export type DirectoryResult = {

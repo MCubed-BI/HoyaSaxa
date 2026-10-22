@@ -59,8 +59,11 @@ export function AlumniFiltersForm({
           q: local.q.trim(),
         });
         const qs = filtersToSearchParams(next);
-        const channel = new URLSearchParams(window.location.search).get("channel");
-        if (channel) qs.set("channel", channel);
+        const current = new URLSearchParams(window.location.search);
+        for (const key of ["channel", "group"] as const) {
+          const value = current.get(key);
+          if (value) qs.set(key, value);
+        }
         const query = qs.toString();
         startTransition(() => {
           router.push(query ? `${action}?${query}` : action);
@@ -100,7 +103,9 @@ export function AlumniFiltersForm({
                 {facetCount}
               </span>
             ) : (
-              <span className="text-xs font-normal text-muted-foreground">State, city, position, class, season</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                State, city, position, class, career, registered
+              </span>
             )}
           </span>
           <ChevronDownIcon className={`size-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
@@ -154,9 +159,27 @@ export function AlumniFiltersForm({
                 searchable
                 dropdown
               />
+              <MultiSelect
+                label="Career"
+                placeholder="All careers / industries"
+                options={facets.careers}
+                value={local.careers}
+                onChange={(careers) => setLocal((current) => ({ ...current, careers }))}
+                searchable
+                dropdown
+              />
             </div>
 
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={local.registered}
+                  onChange={(event) => setLocal((current) => ({ ...current, registered: event.target.checked }))}
+                  className="size-4 rounded border-input accent-navy"
+                />
+                Registered
+              </label>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
