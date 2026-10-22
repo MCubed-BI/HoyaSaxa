@@ -391,7 +391,7 @@ export function BlastComposer({
               {channel === "sms"
                 ? preview.twilio
                   ? "Twilio is configured. Send will deliver texts from the app."
-                  : "Twilio env is not set. Send prepares the blast and opens Messages / copy."
+                  : "Twilio is not fully configured (need Account SID + Auth Token or API Key, plus From number). Send prepares Messages / copy instead."
                 : preview.emailProvider === "gmail"
                   ? "Gmail SMTP is configured (GMAIL_USER). Staff and alum send both use sendProviderEmail from that mailbox."
                   : preview.emailProvider

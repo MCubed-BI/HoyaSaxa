@@ -263,11 +263,15 @@ Filters are multi-select: state, city, position, class/grad year, season year, p
 
 ```
 TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
 TWILIO_FROM_NUMBER=
+# Auth option A
+TWILIO_AUTH_TOKEN=
+# Auth option B (API keys — what production uses)
+TWILIO_API_KEY_SID=
+TWILIO_API_KEY_SECRET=
 ```
 
-Without these, Prepare still copies numbers or opens Messages (`sms:`).
+Need Account SID + From, plus either Auth Token **or** API Key SID/Secret. Without credentials, Prepare still copies numbers or opens Messages (`sms:`).
 
 ### Email (Gmail SMTP)
 
