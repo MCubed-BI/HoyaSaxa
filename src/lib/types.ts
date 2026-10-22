@@ -92,7 +92,10 @@ export type ContactExportRow = {
 };
 
 export type AlumniMapPoint = {
+  /** Unique marker key (may be `${alumniId}-current` when both places map). */
   id: string;
+  /** Alumni record id for profile links. */
+  alumniId: string;
   name: string;
   lat: number;
   lng: number;

@@ -131,29 +131,50 @@ async function resolvePlace(city: string | null, state: string | null): Promise<
   return resolved;
 }
 
-export async function resolveAlumniLocation(row: AlumniLocationRow): Promise<ResolvedLocation | null> {
-  const attempts: Array<{ city: string | null; state: string | null; source: ResolvedLocation["source"] }> = [
-    { city: row.current_city, state: row.current_state, source: "current" },
-    { city: row.hometown_city, state: row.hometown_state, source: "hometown" },
-  ];
+async function resolveAttempt(
+  city: string | null,
+  state: string | null,
+  source: ResolvedLocation["source"],
+): Promise<ResolvedLocation | null> {
+  if (!city?.trim() && !state?.trim()) return null;
+  const resolved = await resolvePlace(city, state);
+  if (!resolved) return null;
+  return {
+    ...resolved,
+    label: formatLabel(city, state),
+    source,
+  };
+}
 
+/** Best single pin: current → hometown → parsed address (legacy callers / tests). */
+export async function resolveAlumniLocation(row: AlumniLocationRow): Promise<ResolvedLocation | null> {
+  const current = await resolveAttempt(row.current_city, row.current_state, "current");
+  if (current) return current;
+  const hometown = await resolveAttempt(row.hometown_city, row.hometown_state, "hometown");
+  if (hometown) return hometown;
   if (row.address_primary?.trim()) {
     const parsed = parseAddressCityState(row.address_primary);
-    attempts.push({ city: parsed.city, state: parsed.state, source: "address" });
+    return resolveAttempt(parsed.city, parsed.state, "address");
   }
-
-  for (const attempt of attempts) {
-    if (!attempt.city?.trim() && !attempt.state?.trim()) continue;
-    const resolved = await resolvePlace(attempt.city, attempt.state);
-    if (!resolved) continue;
-    return {
-      ...resolved,
-      label: formatLabel(attempt.city, attempt.state),
-      source: attempt.source,
-    };
-  }
-
   return null;
+}
+
+/**
+ * All mappable places for an alum: current and hometown when both resolve.
+ * Address is only used when neither current nor hometown maps.
+ */
+export async function resolveAlumniLocations(row: AlumniLocationRow): Promise<ResolvedLocation[]> {
+  const out: ResolvedLocation[] = [];
+  const current = await resolveAttempt(row.current_city, row.current_state, "current");
+  if (current) out.push(current);
+  const hometown = await resolveAttempt(row.hometown_city, row.hometown_state, "hometown");
+  if (hometown) out.push(hometown);
+  if (out.length === 0 && row.address_primary?.trim()) {
+    const parsed = parseAddressCityState(row.address_primary);
+    const address = await resolveAttempt(parsed.city, parsed.state, "address");
+    if (address) out.push(address);
+  }
+  return out;
 }
 
 export function resetGeocodeCache() {

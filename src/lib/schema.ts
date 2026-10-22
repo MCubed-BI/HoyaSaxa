@@ -315,3 +315,28 @@ export const eventRsvps = pgTable("event_rsvps", {
   attendeeKey: text("attendee_key").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Staff-managed blast / outreach lists (additive; ensured at runtime). */
+export const alumniGroups = pgTable("alumni_groups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const alumniGroupMembers = pgTable(
+  "alumni_group_members",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => alumniGroups.id, { onDelete: "cascade" }),
+    alumniId: uuid("alumni_id")
+      .notNull()
+      .references(() => alumni.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("alumni_group_members_group_alumni").on(table.groupId, table.alumniId)],
+);

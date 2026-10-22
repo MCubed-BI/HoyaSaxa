@@ -4,6 +4,7 @@ import {
   parseAddressCityState,
   resetGeocodeCache,
   resolveAlumniLocation,
+  resolveAlumniLocations,
 } from "./geocode";
 import { displayJitter } from "./map-points";
 import { cityStateKey, normalizeState } from "./us-centroids";
@@ -114,6 +115,51 @@ describe("geocode", () => {
     });
     assert.equal(resolved?.method, "state");
     assert.ok(resolved && Math.abs(resolved.lat - 39.063946) < 0.4);
+  });
+
+  it("returns both current and hometown pins when both resolve", async () => {
+    process.env.GEOCODE_PROVIDER = "centroids";
+    const resolved = await resolveAlumniLocations({
+      id: "55555555-5555-4555-8555-555555555555",
+      first_name: "Pat",
+      last_name: "Hoya",
+      preferred_name: null,
+      full_name: null,
+      position: "QB",
+      class_year: "2015",
+      current_city: "Washington",
+      current_state: "DC",
+      hometown_city: "Dallas",
+      hometown_state: "TX",
+      address_primary: "1 Main, Boston, MA 02108",
+    });
+    assert.equal(resolved.length, 2);
+    assert.deepEqual(
+      resolved.map((row) => row.source),
+      ["current", "hometown"],
+    );
+    assert.equal(resolved[0]?.label, "Washington, DC");
+    assert.equal(resolved[1]?.label, "Dallas, TX");
+  });
+
+  it("falls back to address only when current and hometown are missing", async () => {
+    process.env.GEOCODE_PROVIDER = "centroids";
+    const resolved = await resolveAlumniLocations({
+      id: "66666666-6666-4666-8666-666666666666",
+      first_name: "Lee",
+      last_name: "Hoya",
+      preferred_name: null,
+      full_name: null,
+      position: null,
+      class_year: null,
+      current_city: null,
+      current_state: null,
+      hometown_city: null,
+      hometown_state: null,
+      address_primary: "2000 Pennsylvania Ave, Washington, DC 20006",
+    });
+    assert.equal(resolved.length, 1);
+    assert.equal(resolved[0]?.source, "address");
   });
 });
 

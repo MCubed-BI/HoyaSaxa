@@ -1,6 +1,6 @@
 import { displayName } from "@/lib/format";
 import type { AlumniFilters } from "@/lib/filters";
-import { resolveAlumniLocation } from "@/lib/geocode";
+import { resolveAlumniLocations } from "@/lib/geocode";
 import { getAlumniLocationRows } from "@/lib/queries";
 import type { AlumniMapPoint } from "@/lib/types";
 
@@ -24,29 +24,37 @@ export async function getAlumniMapPoints(filters: AlumniFilters): Promise<{
 }> {
   const rows = await getAlumniLocationRows(filters);
   const points: AlumniMapPoint[] = [];
+  let mappedAlumni = 0;
 
   // Geocode sequentially so Nominatim rate limiting stays honest when enabled.
   for (const row of rows) {
-    const resolved = await resolveAlumniLocation(row);
-    if (!resolved || resolved.method === "none") continue;
-    const jitter = displayJitter(row.id);
-    points.push({
-      id: row.id,
-      name: displayName(row),
-      lat: resolved.lat + jitter.lat,
-      lng: resolved.lng + jitter.lng,
-      locationLabel: resolved.label,
-      locationSource: resolved.source === "unknown" ? "address" : resolved.source,
-      geocodeMethod: resolved.method,
-      classYear: row.class_year,
-      position: row.position,
-    });
+    const resolvedList = await resolveAlumniLocations(row);
+    if (resolvedList.length === 0) continue;
+    mappedAlumni += 1;
+    for (const resolved of resolvedList) {
+      if (resolved.method === "none") continue;
+      const source = resolved.source === "unknown" ? "address" : resolved.source;
+      const markerKey = `${row.id}-${source}`;
+      const jitter = displayJitter(markerKey);
+      points.push({
+        id: markerKey,
+        alumniId: row.id,
+        name: displayName(row),
+        lat: resolved.lat + jitter.lat,
+        lng: resolved.lng + jitter.lng,
+        locationLabel: resolved.label,
+        locationSource: source,
+        geocodeMethod: resolved.method,
+        classYear: row.class_year,
+        position: row.position,
+      });
+    }
   }
 
   return {
     points,
     totalAlumni: rows.length,
-    mappedCount: points.length,
-    skippedCount: rows.length - points.length,
+    mappedCount: mappedAlumni,
+    skippedCount: rows.length - mappedAlumni,
   };
 }

@@ -325,23 +325,37 @@ export async function getContactExportRows(filters: AlumniFilters, limit?: numbe
 export type RecipientQuery = {
   filters: AlumniFilters;
   ids?: string[];
+  groupIds?: string[];
   includeFilters?: boolean;
   includeIds?: boolean;
+  includeGroups?: boolean;
 };
 
 async function recipientWhere(input: RecipientQuery) {
   const ids = [...new Set((input.ids ?? []).filter(Boolean))];
+  const groupIds = [...new Set((input.groupIds ?? []).filter(Boolean))];
   const includeIds = Boolean(input.includeIds && ids.length);
   const includeFilters = Boolean(input.includeFilters);
-  if (!includeFilters && !includeIds) {
+  const includeGroups = Boolean(input.includeGroups && groupIds.length);
+
+  let groupMemberIds: string[] = [];
+  if (includeGroups) {
+    const { getAlumniIdsForGroups } = await import("@/lib/alumni-groups");
+    groupMemberIds = await getAlumniIdsForGroups(groupIds);
+  }
+
+  const combinedIds = [...new Set([...(includeIds ? ids : []), ...groupMemberIds])];
+  const useIds = combinedIds.length > 0;
+
+  if (!includeFilters && !useIds) {
     return { whereSql: "WHERE FALSE", params: [] as unknown[] };
   }
-  if (includeIds && !includeFilters) {
-    return buildAlumniWhere(emptyFilters(), 1, { ids, idsOnly: true });
+  if (useIds && !includeFilters) {
+    return buildAlumniWhere(emptyFilters(), 1, { ids: combinedIds, idsOnly: true });
   }
   const filters = await filtersForQuery(input.filters);
-  if (includeIds && includeFilters) {
-    return buildAlumniWhere(filters, 1, { ids });
+  if (useIds && includeFilters) {
+    return buildAlumniWhere(filters, 1, { ids: combinedIds });
   }
   return buildAlumniWhere(filters);
 }

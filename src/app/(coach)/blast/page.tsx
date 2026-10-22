@@ -3,6 +3,7 @@ import { BlastComposer, type BlastChannel } from "@/components/blast-composer";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { StatusCard } from "@/components/status-card";
+import { listAlumniGroups } from "@/lib/alumni-groups";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { parseAlumniFilters } from "@/lib/filters";
 import { getAlumniFacets } from "@/lib/queries";
@@ -15,6 +16,11 @@ function parseChannel(value: string | string[] | undefined): BlastChannel {
   return raw === "email" ? "email" : "sms";
 }
 
+function parseGroupId(value: string | string[] | undefined) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw?.trim() || "";
+}
+
 export default async function BlastPage({
   searchParams,
 }: {
@@ -24,9 +30,10 @@ export default async function BlastPage({
   const params = await searchParams;
   const filters = parseAlumniFilters(params);
   const channel = parseChannel(params.channel);
+  const initialGroupId = parseGroupId(params.group);
 
   try {
-    const facets = await getAlumniFacets();
+    const [facets, groups] = await Promise.all([getAlumniFacets(), listAlumniGroups()]);
     return (
       <PageShell>
         <SiteHeader current="blast" />
@@ -34,10 +41,15 @@ export default async function BlastPage({
           <PageHeader
             eyebrow="Outreach"
             title="Blast"
-            description="One group — filters and/or checked alumni — then compose a text or an email in the app and send. Twilio and Gmail SMTP deliver when configured; otherwise the app prepares Messages, mailto, or copy."
+            description="Build recipients from filters, directory picks, and/or a saved group — then compose a text or email. Twilio and Gmail SMTP deliver when configured; otherwise the app prepares Messages, mailto, or copy."
           />
           <AlumniFiltersForm filters={filters} facets={facets} action="/blast" submitLabel="Update group" />
-          <BlastComposer filters={filters} initialChannel={channel} />
+          <BlastComposer
+            filters={filters}
+            initialChannel={channel}
+            initialGroups={groups}
+            initialGroupId={initialGroupId}
+          />
         </PageMain>
       </PageShell>
     );
