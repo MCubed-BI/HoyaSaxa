@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Georgetown Football Alum Network</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #041e42;
+        color: #f4f1ea;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      main {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.25rem;
+        padding: 2rem;
+        text-align: center;
+      }
+      img {
+        width: min(42vw, 180px);
+        height: auto;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.35rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      p {
+        margin: 0;
+        max-width: 28rem;
+        line-height: 1.45;
+        color: #d6c7a1;
+      }
+      a {
+        color: #d6c7a1;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="brand/hoya-bulldog.png" alt="Jack the Bulldog" />
+      <h1>Georgetown Football Alum Network</h1>
+      <p>
+        Opening the live network. If you stay on this page, check your connection
+        or open
+        <a href="https://georgetown-alum.vercel.app">georgetown-alum.vercel.app</a>.
+      </p>
+    </main>
+    <script>
+      // Safety net only. Production builds set capacitor.config server.url, so
+      // the native WebView loads the live site instead of this file.
+      const live = "https://georgetown-alum.vercel.app";
+      window.setTimeout(function () {
+        if (window.location.protocol === "https:" && window.location.hostname.indexOf("vercel.app") !== -1) {
+          return;
+        }
+        window.location.replace(live);
+      }, 400);
+    </script>
+  </body>
+</html>

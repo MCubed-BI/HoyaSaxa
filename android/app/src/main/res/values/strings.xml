@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Georgetown Football Alum Network</string>
+    <string name="title_activity_main">Georgetown Football Alum Network</string>
+    <string name="package_name">com.nipseytech.georgetownfootballalum</string>
+    <string name="custom_url_scheme">com.nipseytech.georgetownfootballalum</string>
+</resources>

@@ -281,3 +281,67 @@ Staff `/blast` and alum `/portal/blast` both call `sendProviderEmail`. When `GMA
 ## Deploy
 
 Deploy to Vercel. Set `DATABASE_URL`, `COACH_USERNAME`, and `COACH_PASSWORD`. Optionally set `HOYA_ADMIN_USERNAMES` (replaces the Admin seed when set), `HOYA_OWNER_USERNAMES`, `HOYA_COACH_USERNAMES`, `HOYA_BOARD_USERNAMES`, `HOYA_ALUM_USERNAMES`, and `ALUMNI_SESSION_SECRET`. Add Admins via env or `staff_roles` — [docs/admin-roles.md](docs/admin-roles.md). Add Twilio and/or `GMAIL_USER` + `GMAIL_APP_PASSWORD` when you are ready to send from the app. Auth stays on for every environment — unauthenticated visitors never see alumni data.
+
+## Capacitor native shell (Day 1)
+
+The iOS / Android apps are a Capacitor WebView that loads the **live website**. The Next.js app on Vercel remains the source of truth. This is not a static export and does not change `next build` or the Vercel deploy.
+
+| | |
+| --- | --- |
+| Live URL | [https://georgetown-alum.vercel.app](https://georgetown-alum.vercel.app) |
+| App display name | Georgetown Football Alum Network |
+| Bundle / application id | `com.nipseytech.georgetownfootballalum` |
+| Config | `capacitor.config.ts` (`webDir` is `native/www`, never `.next` or `public`) |
+| Brand | Splash + icons from `public/brand/hoya-bulldog.png` (Jack the Bulldog) |
+
+Override the WebView URL at **sync time** (not at Next.js runtime):
+
+```bash
+CAP_SERVER_URL=https://georgetown-alum.vercel.app npm run cap:sync
+```
+
+Use an `http://` LAN URL only for device live-reload. `capacitor.config.ts` turns on Android cleartext only when the URL is `http://`.
+
+### Scripts
+
+```bash
+npm install
+npm run cap:sync            # copy native/www + plugins into ios/ and android/
+npm run cap:open:ios        # Xcode (macOS)
+npm run cap:open:android    # Android Studio
+npm run cap:assets          # regenerate icons/splash from the bulldog mark
+```
+
+`ios/` and `android/` are scaffolded in this repo. Capacitor 8 iOS uses Swift Package Manager (`ios/App/CapApp-SPM/Package.swift`), not CocoaPods. A full iOS archive still needs a Mac + Xcode. Linux CI does not build or sign the native apps. Signing is Mike’s Apple Developer and Google Play accounts — do not commit keystores, `.p12`, or provisioning profiles.
+
+### WebView-safe notes
+
+**Cookies / sessions**
+
+- The WebView’s document origin is the live host (`georgetown-alum.vercel.app`). `ga_session` and `hoya_alum_session` stay first-party.
+- Those cookies are httpOnly, Secure in production, SameSite=Lax. They work for top-level navigations in WKWebView and Android WebView.
+- Leave CapacitorCookies and CapacitorHttp **disabled**. Overrides can break httpOnly cookies and same-origin `fetch`.
+- Do not iframe the site from `capacitor://localhost`. That makes cookies third-party and login fails.
+- After sign-in, force-quit and reopen the app. The session should still be there. If login loops, confirm `CAP_SERVER_URL` is the production host (a preview URL is a different cookie host).
+
+**Deep links (stub)**
+
+- Custom scheme `hoyasaxa://` is registered on iOS (`CFBundleURLTypes`) and Android (`VIEW` / `BROWSABLE` intent).
+- Universal Links / App Links are **not** configured yet (needs Apple Associated Domains + `/.well-known/apple-app-site-association` and Digital Asset Links on Vercel).
+- Day 2: handle `App.addListener('appUrlOpen')` from `@capacitor/app` and map `hoyasaxa://directory` → `https://georgetown-alum.vercel.app/directory`. Until then, a cold open still lands on the live site home.
+
+**Camera / photos (stub)**
+
+- Claim photos stay on the website (`POST /api/alum/photos`, `/me` and register).
+- iOS usage strings and Android `CAMERA` / `READ_MEDIA_IMAGES` are stubbed for that flow.
+- `@capacitor/camera` is installed but **not** wired into the Next.js claim UI. The WebView `<input type="file" accept="image/*">` picker is the Day 1 path. If a device blocks it, Day 2 can call `Camera.getPhoto()` without changing Vercel.
+
+### TestFlight / Play next steps (Mike)
+
+1. Confirm App Store Connect and Play Console have application id `com.nipseytech.georgetownfootballalum`. Changing this later means a new listing.
+2. **iOS (Mac):** Xcode, Apple team, unique Bundle ID, signing certificates. `npm run cap:sync` then `npm run cap:open:ios` → select Team → let SPM resolve packages → Product → Archive → Distribute to TestFlight.
+3. **Android:** Android Studio, upload keystore (keep it off git). `npm run cap:open:android` → Generate Signed Bundle → Play Console internal testing track.
+4. Smoke on a device: open app → live site loads → Admin and Alum login persist across relaunch → claim photo file picker → a `hoyasaxa://` tap opens the app.
+5. Store review: this is a logged-in alumni network (directory, messages, events), not a marketing page wrap. Demo credentials must be in the review notes.
+
+Website deploy is unchanged: Vercel still runs `npm run build` (`next build`). Native folders are ignored by Next lint/tsc.
