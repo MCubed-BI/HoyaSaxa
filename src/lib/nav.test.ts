@@ -35,7 +35,15 @@ describe("unified application chrome", () => {
 
   it("keeps operational tools in the same nav, gated by role", () => {
     const ownerTools = toolNavItems("owner").map((item) => item.label);
-    assert.deepEqual(ownerTools, ["Find My Alum", "Reports", "Groups", "Blast", "Data Sync", "Admin"]);
+    assert.deepEqual(ownerTools, [
+      "Find My Alum",
+      "Reports",
+      "Groups",
+      "Blast",
+      "Data Sync",
+      "Data Cleanup",
+      "Admin",
+    ]);
     assert.deepEqual(
       toolNavItems("alum").map((item) => item.label),
       ["Find My Alum", "Email classmates"],

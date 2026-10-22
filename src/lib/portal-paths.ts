@@ -51,6 +51,7 @@ const ALUM_ALLOWED_PREFIXES = [
   "/api/badges",
   "/api/admin",
   "/admin",
+  "/data-cleanup",
   "/api/logout",
 ];
 

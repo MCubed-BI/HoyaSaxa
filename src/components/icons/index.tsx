@@ -61,6 +61,7 @@ const NAV_ICONS: Partial<Record<NavKey, AppIconName>> = {
   reports: "reports",
   blast: "blast",
   sync: "refresh",
+  "data-cleanup": "refresh",
   alum: "alum",
   feed: "feed",
   profile: "profile",
