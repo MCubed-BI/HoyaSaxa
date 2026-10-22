@@ -114,7 +114,27 @@ describe("geocode", () => {
       address_primary: null,
     });
     assert.equal(resolved?.method, "state");
-    assert.ok(resolved && Math.abs(resolved.lat - 39.063946) < 0.4);
+    assert.ok(resolved && Math.abs(resolved.lat - 39.063946) < 0.15);
+  });
+
+  it("resolves common city aliases to city centroids", async () => {
+    process.env.GEOCODE_PROVIDER = "centroids";
+    const nyc = await resolveAlumniLocation({
+      id: "77777777-7777-4777-8777-777777777777",
+      first_name: "Pat",
+      last_name: "Hoya",
+      preferred_name: null,
+      full_name: null,
+      position: null,
+      class_year: null,
+      current_city: "New York City",
+      current_state: "NY",
+      hometown_city: null,
+      hometown_state: null,
+      address_primary: null,
+    });
+    assert.equal(nyc?.method, "city");
+    assert.ok(Math.abs((nyc?.lat ?? 0) - 40.712776) < 0.001);
   });
 
   it("returns both current and hometown pins when both resolve", async () => {

@@ -4,7 +4,10 @@ import { resolveAlumniLocations } from "@/lib/geocode";
 import { getAlumniLocationRows } from "@/lib/queries";
 import type { AlumniMapPoint } from "@/lib/types";
 
-/** Tiny deterministic offset so alumni sharing a city centroid remain clickable. */
+/**
+ * Tiny deterministic offset so alumni sharing a city centroid remain clickable.
+ * Applied only when rendering pins — heat uses true geocode coordinates.
+ */
 export function displayJitter(id: string): { lat: number; lng: number } {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) {
@@ -35,13 +38,13 @@ export async function getAlumniMapPoints(filters: AlumniFilters): Promise<{
       if (resolved.method === "none") continue;
       const source = resolved.source === "unknown" ? "address" : resolved.source;
       const markerKey = `${row.id}-${source}`;
-      const jitter = displayJitter(markerKey);
       points.push({
         id: markerKey,
         alumniId: row.id,
         name: displayName(row),
-        lat: resolved.lat + jitter.lat,
-        lng: resolved.lng + jitter.lng,
+        // Exact geocode coords — pin UI adds displayJitter client-side.
+        lat: resolved.lat,
+        lng: resolved.lng,
         locationLabel: resolved.label,
         locationSource: source,
         geocodeMethod: resolved.method,

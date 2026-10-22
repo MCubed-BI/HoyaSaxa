@@ -248,7 +248,6 @@ export const US_CITY_CENTROIDS: Record<string, [number, number]> = {
   "wellesley|MA": [42.296797, -71.292387],
   "brookline|MA": [42.331764, -71.121163],
   "portland|ME": [43.659099, -70.256819],
-  "pittsburgh|OH": [40.440624, -79.995888],
   "ann arbor|MI": [42.280826, -83.743038],
   "grand rapids|MI": [42.96336, -85.668083],
   "omaha|NE": [41.256538, -95.934502],
@@ -326,6 +325,20 @@ export function normalizeState(value: string | null | undefined): string | null 
   return named ?? null;
 }
 
+const CITY_ALIASES: Record<string, string> = {
+  nyc: "new york",
+  "new york city": "new york",
+  "new york ny": "new york",
+  "washington dc": "washington",
+  "washington d c": "washington",
+  "ft lauderdale": "fort lauderdale",
+  "ft worth": "fort worth",
+  "saint louis": "st louis",
+  "st. louis": "st louis",
+  "saint paul": "st paul",
+  "st. paul": "st paul",
+};
+
 export function normalizeCity(value: string | null | undefined): string | null {
   if (!value) return null;
   const cleaned = value
@@ -333,7 +346,8 @@ export function normalizeCity(value: string | null | undefined): string | null {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
-  return cleaned || null;
+  if (!cleaned) return null;
+  return CITY_ALIASES[cleaned] ?? cleaned;
 }
 
 export function cityStateKey(city: string | null | undefined, state: string | null | undefined): string | null {
