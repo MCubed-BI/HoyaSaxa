@@ -21,6 +21,9 @@ export type AlumniListItem = {
   address_primary: string | null;
   football_photo_url?: string | null;
   linkedin_photo_url?: string | null;
+  /** alum (player) or supporter — defaults to alum for roster imports. */
+  person_kind?: "alum" | "supporter" | null;
+  admin_verified?: boolean | null;
 };
 
 export type AlumniEmail = {

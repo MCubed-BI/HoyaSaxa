@@ -41,6 +41,7 @@ describe("unified application chrome", () => {
       "Groups",
       "Blast",
       "Data Sync",
+      "People",
       "Data Cleanup",
       "Admin",
     ]);

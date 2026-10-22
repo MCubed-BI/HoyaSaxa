@@ -7,6 +7,7 @@ import {
   uniqueCanonicalValues,
   type FilterAliasMap,
 } from "@/lib/filter-normalize";
+import { parsePersonKinds, PERSON_KIND_LABELS, type PersonKind } from "@/lib/person-kind";
 
 export type AlumniFilters = {
   q: string;
@@ -17,6 +18,8 @@ export type AlumniFilters = {
   seasonYears: string[];
   /** Industry / career labels (searchable multi-select). */
   careers: string[];
+  /** Alum (player) and/or Support — empty means both. */
+  personKinds: PersonKind[];
   hasEmail: boolean;
   hasPhone: boolean;
   hasLinkedin: boolean;
@@ -76,6 +79,7 @@ export function canonicalizeAlumniFilters(filters: AlumniFilters): AlumniFilters
     classYears: uniqueCanonicalValues(filters.classYears, normalizeFilterClassYear),
     seasonYears: [...new Set(filters.seasonYears.map((value) => value.trim()).filter(Boolean))],
     careers: [...new Set(filters.careers.map((value) => value.trim()).filter(Boolean))],
+    personKinds: parsePersonKinds(filters.personKinds ?? []),
     registered: Boolean(filters.registered),
   };
 }
@@ -102,6 +106,15 @@ export function parseAlumniFilters(
     classYears: asList(searchParams.classYear ?? searchParams.class_year ?? searchParams.classYears),
     seasonYears: asList(searchParams.seasonYear ?? searchParams.season_year ?? searchParams.seasonYears),
     careers: asList(searchParams.career ?? searchParams.careers ?? searchParams.industry ?? searchParams.industries),
+    personKinds: parsePersonKinds(
+      asList(
+        searchParams.personKind ??
+          searchParams.personKinds ??
+          searchParams.kind ??
+          searchParams.affiliation ??
+          searchParams.role,
+      ),
+    ),
     hasEmail: flag(searchParams, "hasEmail", "has_email"),
     hasPhone: flag(searchParams, "hasPhone", "has_phone"),
     hasLinkedin: flag(searchParams, "hasLinkedin", "has_linkedin"),
@@ -128,6 +141,7 @@ export function hasFacetFilters(filters: AlumniFilters) {
       filters.classYears.length ||
       filters.seasonYears.length ||
       filters.careers.length ||
+      filters.personKinds.length ||
       filters.hasEmail ||
       filters.hasPhone ||
       filters.hasLinkedin ||
@@ -143,6 +157,7 @@ export function facetFilterCount(filters: AlumniFilters) {
     filters.classYears.length +
     filters.seasonYears.length +
     filters.careers.length +
+    filters.personKinds.length +
     (filters.hasEmail ? 1 : 0) +
     (filters.hasPhone ? 1 : 0) +
     (filters.hasLinkedin ? 1 : 0) +
@@ -223,6 +238,13 @@ export function alumniFilterChips(filters: AlumniFilters, action = "/"): FilterC
   if (filters.registered) {
     chips.push({ id: "registered", label: "Registered", href: hrefFor({ ...filters, registered: false }) });
   }
+  for (const value of filters.personKinds) {
+    chips.push({
+      id: `kind-${value}`,
+      label: PERSON_KIND_LABELS[value],
+      href: hrefFor({ ...filters, personKinds: filters.personKinds.filter((item) => item !== value) }),
+    });
+  }
   return chips;
 }
 
@@ -235,6 +257,7 @@ export function filtersToSearchParams(filters: AlumniFilters, page?: number, ids
   for (const value of filters.classYears) params.append("classYear", value);
   for (const value of filters.seasonYears) params.append("seasonYear", value);
   for (const value of filters.careers) params.append("career", value);
+  for (const value of filters.personKinds) params.append("personKind", value);
   if (filters.hasEmail) params.set("hasEmail", "1");
   if (filters.hasPhone) params.set("hasPhone", "1");
   if (filters.hasLinkedin) params.set("hasLinkedin", "1");
@@ -380,6 +403,16 @@ export function buildAlumniWhere(
     where.push(`EXISTS (SELECT 1 FROM alumni_claims c WHERE c.alumni_id = a.id)`);
   }
 
+  if (filters.personKinds.length === 1) {
+    where.push(`coalesce(a.person_kind, 'alum') = $${i}`);
+    params.push(filters.personKinds[0]);
+    i += 1;
+  } else if (filters.personKinds.length > 1) {
+    where.push(`coalesce(a.person_kind, 'alum') = ANY($${i}::text[])`);
+    params.push(filters.personKinds);
+    i += 1;
+  }
+
   if (extra?.ids?.length && !extra.idsOnly) {
     const filterSql = where.length ? `(${where.join(" AND ")})` : "TRUE";
     where.length = 0;
@@ -418,6 +451,7 @@ export function coerceAlumniFilters(input: unknown): AlumniFilters {
       classYears: asStringArray(rec.classYears),
       seasonYears: asStringArray(rec.seasonYears),
       careers: asStringArray(rec.careers),
+      personKinds: parsePersonKinds(asStringArray(rec.personKinds ?? rec.personKind)),
       hasEmail: Boolean(rec.hasEmail),
       hasPhone: Boolean(rec.hasPhone),
       hasLinkedin: Boolean(rec.hasLinkedin),
@@ -436,6 +470,7 @@ export function emptyFilters(): AlumniFilters {
     classYears: [],
     seasonYears: [],
     careers: [],
+    personKinds: [],
     hasEmail: false,
     hasPhone: false,
     hasLinkedin: false,
