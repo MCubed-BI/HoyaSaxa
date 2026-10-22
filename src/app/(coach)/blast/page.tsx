@@ -43,7 +43,14 @@ export default async function BlastPage({
             title="Blast"
             description="Build recipients from filters, directory picks, and/or a saved group — then compose a text or email. Twilio and Gmail SMTP deliver when configured; otherwise the app prepares Messages, mailto, or copy."
           />
-          <AlumniFiltersForm filters={filters} facets={facets} action="/blast" submitLabel="Update group" />
+          <AlumniFiltersForm
+            filters={filters}
+            facets={facets}
+            action="/blast"
+            submitLabel="Update group"
+            groups={groups}
+            selectedGroupId={initialGroupId}
+          />
           <BlastComposer
             filters={filters}
             initialChannel={channel}
