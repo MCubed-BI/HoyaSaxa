@@ -34,7 +34,7 @@ export default async function AdminPeoplePage() {
         <PageHeader
           eyebrow="Admin"
           title="People"
-          description="Add and verify Players (Alum) or Georgetown Supporters. Use the Alum / Support filter on Directory, Find My Alum, Blast, and Reports."
+          description="Add and verify Players (Alum) or Georgetown Supporters. Create Supporter usernames for the Supporter login tab. Use the Alum / Support filter on every search."
         />
         {errorMessage ? (
           <StatusCard title="People unavailable" body={errorMessage} />

@@ -1,7 +1,18 @@
+import { ensureAlumniAuthTables } from "@/lib/alumni-claim";
 import { getSql } from "@/lib/db";
 import { ensurePersonColumns } from "@/lib/people-schema";
 import { normalizePersonKind, type PersonKind } from "@/lib/person-kind";
 import { normalizeState } from "@/lib/us-centroids";
+
+function withLoginDefaults<T extends { login_username?: string | null; has_login?: boolean }>(
+  row: T,
+): T & { login_username: string | null; has_login: boolean } {
+  return {
+    ...row,
+    login_username: row.login_username?.trim() ? row.login_username.trim().toLowerCase() : null,
+    has_login: Boolean(row.has_login),
+  };
+}
 
 export type AdminPersonRow = {
   id: string;
@@ -23,6 +34,9 @@ export type AdminPersonRow = {
   position: string | null;
   created_at: string;
   updated_at: string;
+  /** Login username (net_id) when an account is linked. */
+  login_username: string | null;
+  has_login: boolean;
 };
 
 export type CreatePersonInput = {
@@ -110,7 +124,7 @@ export async function createPerson(input: CreatePersonInput): Promise<AdminPerso
       JSON.stringify({ admin_created: true, person_kind: personKind }),
     ],
   );
-  return rows[0] as AdminPersonRow;
+  return withLoginDefaults(rows[0] as AdminPersonRow);
 }
 
 export async function listPeopleForAdmin(options?: {
@@ -118,29 +132,34 @@ export async function listPeopleForAdmin(options?: {
   limit?: number;
 }): Promise<AdminPersonRow[]> {
   await ensurePersonColumns();
+  await ensureAlumniAuthTables();
   const sql = getSql();
   const limit = Math.max(1, Math.min(options?.limit ?? 100, 300));
-  const where = options?.unverifiedOnly ? "WHERE admin_verified = false" : "";
+  const where = options?.unverifiedOnly ? "WHERE a.admin_verified = false" : "";
   const rows = await sql.query(
     `
     SELECT
-      id, first_name, last_name, preferred_name, full_name,
-      person_kind, admin_verified, admin_verified_at::text, admin_verified_by,
-      email_primary, phone_primary,
-      current_city, current_state, hometown_city, hometown_state,
-      class_year, position,
-      created_at::text, updated_at::text
-    FROM alumni
+      a.id, a.first_name, a.last_name, a.preferred_name, a.full_name,
+      a.person_kind, a.admin_verified, a.admin_verified_at::text, a.admin_verified_by,
+      a.email_primary, a.phone_primary,
+      a.current_city, a.current_state, a.hometown_city, a.hometown_state,
+      a.class_year, a.position,
+      a.created_at::text, a.updated_at::text,
+      acc.net_id AS login_username,
+      (acc.id IS NOT NULL) AS has_login
+    FROM alumni a
+    LEFT JOIN alumni_claims c ON c.alumni_id = a.id
+    LEFT JOIN alumni_accounts acc ON acc.id = c.account_id
     ${where}
     ORDER BY
-      admin_verified ASC,
-      updated_at DESC,
-      lower(last_name),
-      lower(coalesce(first_name, ''))
+      a.admin_verified ASC,
+      a.updated_at DESC,
+      lower(a.last_name),
+      lower(coalesce(a.first_name, ''))
     LIMIT ${limit}
     `,
   );
-  return rows as AdminPersonRow[];
+  return (rows as AdminPersonRow[]).map((row) => withLoginDefaults(row));
 }
 
 export async function setPersonVerified(
@@ -169,7 +188,8 @@ export async function setPersonVerified(
     `,
     [id, verified, verified ? trimOrNull(verifiedBy) ?? "Admin" : null],
   );
-  return (rows[0] as AdminPersonRow) ?? null;
+  const row = rows[0] as AdminPersonRow | undefined;
+  return row ? withLoginDefaults(row) : null;
 }
 
 export async function setPersonKind(id: string, kind: PersonKind): Promise<AdminPersonRow | null> {
@@ -191,7 +211,8 @@ export async function setPersonKind(id: string, kind: PersonKind): Promise<Admin
     `,
     [id, personKind],
   );
-  return (rows[0] as AdminPersonRow) ?? null;
+  const row = rows[0] as AdminPersonRow | undefined;
+  return row ? withLoginDefaults(row) : null;
 }
 
 export async function countUnverifiedPeople() {

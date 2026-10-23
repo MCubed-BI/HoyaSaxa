@@ -17,7 +17,9 @@ function safeNextPath(value: string | undefined) {
 }
 
 function parseGate(value: string | undefined): LoginGateMode {
-  return value === "alum" ? "alum" : "admin";
+  if (value === "alum") return "alum";
+  if (value === "supporter") return "supporter";
+  return "admin";
 }
 
 export default async function LoginPage({

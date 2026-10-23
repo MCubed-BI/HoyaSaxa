@@ -48,6 +48,15 @@ export function normalizeNetId(value: string): string {
   return trimmed;
 }
 
+/** Same charset as NetID; friendlier copy for admin-issued supporter usernames. */
+export function normalizeSupporterUsername(value: string) {
+  try {
+    return normalizeNetId(value);
+  } catch {
+    throw new Error("Username should be letters and numbers only (2–20 characters).");
+  }
+}
+
 export function isValidNetId(value: string) {
   try {
     normalizeNetId(value);

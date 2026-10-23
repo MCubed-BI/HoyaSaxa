@@ -93,6 +93,8 @@ export function AlumniFiltersForm({
         <DirectoryNameSearch
           value={local.q}
           onChange={(q) => setLocal((current) => ({ ...current, q }))}
+          personKinds={local.personKinds}
+          onPersonKindsChange={(personKinds) => setLocal((current) => ({ ...current, personKinds }))}
           view={view}
           openProfileOnSelect={mode === "directory"}
         />

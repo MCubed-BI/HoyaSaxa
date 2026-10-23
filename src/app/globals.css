@@ -380,7 +380,7 @@
 
   .login-gate__tabs {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 0.25rem;
     margin-bottom: 1.25rem;
     padding: 0.25rem;

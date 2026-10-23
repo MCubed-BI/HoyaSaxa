@@ -30,11 +30,42 @@ function safeNextPath(value: string | null) {
   return "/home";
 }
 
+function parseGate(value: FormDataEntryValue | null) {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (raw === "supporter") return "supporter" as const;
+  if (raw === "admin") return "admin" as const;
+  return "alum" as const;
+}
+
+function loginErrorRedirect(request: Request, next: string, gate: "alum" | "supporter" | "admin") {
+  const url = new URL("/home/login", request.url);
+  url.searchParams.set("error", "1");
+  url.searchParams.set("gate", gate);
+  if (next !== "/home") url.searchParams.set("next", next);
+  return NextResponse.redirect(url, { status: 303 });
+}
+
 export async function POST(request: Request) {
   const form = await request.formData();
   const username = String(form.get("username") ?? "");
   const password = String(form.get("password") ?? "");
+  const gate = parseGate(form.get("gate"));
   const next = safeNextPath(typeof form.get("next") === "string" ? String(form.get("next")) : null);
+
+  if (gate === "admin") {
+    if (verifyCredentials(username, password)) {
+      const role = resolveRoleFromEnv(username.trim(), getCoachCredentials().username);
+      if (isAdminRole(role)) {
+        const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
+        clearAlumSessionCookies(response, true);
+        response.cookies.set(SESSION_COOKIE, createSessionToken(username.trim()), sessionCookieOptions());
+        setCoachRoleHint(response);
+        return response;
+      }
+    }
+    return loginErrorRedirect(request, next, gate);
+  }
+
   if (verifyCredentials(username, password)) {
     const role = resolveRoleFromEnv(username.trim(), getCoachCredentials().username);
     if (isAdminRole(role)) {
@@ -46,36 +77,33 @@ export async function POST(request: Request) {
     }
   }
 
-  const verified = verifyLockerCredentials(username, password);
-
-  if (!verified) {
-    try {
-      const account = await authenticateAlumni(username, password);
-      const dest = account.netId ? next : "/me";
-      const response = NextResponse.redirect(new URL(dest, request.url), { status: 303 });
+  if (gate === "alum") {
+    const verified = verifyLockerCredentials(username, password);
+    if (verified) {
+      const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
       clearCoachSessionCookies(response, true);
-      setAlumSessionCookies(response, await alumSessionIdentityForAccount(account));
+      response.cookies.set(
+        HOYA_ALUM_SESSION_COOKIE,
+        createHoyaAlumSessionToken(verified.role, verified.label),
+        hoyaAlumSessionCookieOptions(),
+      );
       return response;
-    } catch (error) {
-      if (isMissingDatabaseConfig(error)) {
-        const url = new URL("/home/login", request.url);
-        url.searchParams.set("error", "1");
-        if (next !== "/home") url.searchParams.set("next", next);
-        return NextResponse.redirect(url, { status: 303 });
-      }
     }
-    const url = new URL("/home/login", request.url);
-    url.searchParams.set("error", "1");
-    if (next !== "/home") url.searchParams.set("next", next);
-    return NextResponse.redirect(url, { status: 303 });
   }
 
-  const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
-  clearCoachSessionCookies(response, true);
-  response.cookies.set(
-    HOYA_ALUM_SESSION_COOKIE,
-    createHoyaAlumSessionToken(verified.role, verified.label),
-    hoyaAlumSessionCookieOptions(),
-  );
-  return response;
+  try {
+    const account = await authenticateAlumni(username, password, {
+      expectPersonKind: gate === "supporter" ? "supporter" : "alum",
+    });
+    const dest = account.netId ? next : "/me";
+    const response = NextResponse.redirect(new URL(dest, request.url), { status: 303 });
+    clearCoachSessionCookies(response, true);
+    setAlumSessionCookies(response, await alumSessionIdentityForAccount(account));
+    return response;
+  } catch (error) {
+    if (isMissingDatabaseConfig(error)) {
+      return loginErrorRedirect(request, next, gate);
+    }
+  }
+  return loginErrorRedirect(request, next, gate);
 }

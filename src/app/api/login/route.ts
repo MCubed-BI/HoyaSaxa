@@ -28,6 +28,7 @@ export async function POST(request: Request) {
   if (!verifyCredentials(username, password)) {
     const url = new URL("/login", request.url);
     url.searchParams.set("error", "1");
+    url.searchParams.set("gate", "admin");
     if (requestedNext && requestedNext !== "/") url.searchParams.set("next", requestedNext);
     return NextResponse.redirect(url, { status: 303 });
   }

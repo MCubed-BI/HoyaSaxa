@@ -63,7 +63,7 @@ export default async function AlumniLoginPage({
         </Link>
         {" · "}
         <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
-          Alum | Admin
+          Alum | Supporter | Admin
         </Link>
       </p>
     </AuthShell>

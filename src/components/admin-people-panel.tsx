@@ -35,6 +35,12 @@ export function AdminPeoplePanel({
   const [currentState, setCurrentState] = useState("");
   const [personKind, setPersonKind] = useState<PersonKind>("supporter");
   const [verifiedOnCreate, setVerifiedOnCreate] = useState(true);
+  const [createUsername, setCreateUsername] = useState("");
+  const [createPassword, setCreatePassword] = useState("");
+
+  const [loginForId, setLoginForId] = useState<string | null>(null);
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
   const visible = useMemo(
     () => (filter === "pending" ? people.filter((row) => !row.admin_verified) : people),
@@ -51,6 +57,16 @@ export function AdminPeoplePanel({
     if (!response.ok) throw new Error(data.error || "Could not refresh people.");
     setPeople(data.people ?? []);
     setPending(data.pending ?? 0);
+  }
+
+  async function saveLogin(personId: string, username: string, password: string, emailHint?: string) {
+    const response = await fetch(`/api/admin/people/${personId}/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username, password, email: emailHint || undefined }),
+    });
+    const data = (await response.json()) as { error?: string };
+    if (!response.ok) throw new Error(data.error || "Could not save login.");
   }
 
   async function onCreate(event: React.FormEvent) {
@@ -75,16 +91,22 @@ export function AdminPeoplePanel({
       });
       const data = (await response.json()) as { person?: AdminPersonRow; error?: string };
       if (!response.ok) throw new Error(data.error || "Could not add person.");
+      const created = data.person!;
+      if (personKind === "supporter" && createUsername.trim() && createPassword) {
+        await saveLogin(created.id, createUsername, createPassword, email);
+      }
       setFirstName("");
       setLastName("");
       setEmail("");
       setPhone("");
       setCurrentCity("");
       setCurrentState("");
+      setCreateUsername("");
+      setCreatePassword("");
       setMessage(
-        `Added ${displayName(data.person!)} as ${personKindLabel(data.person!.person_kind)}${
-          data.person!.admin_verified ? " (verified)" : " — pending verification"
-        }.`,
+        `Added ${displayName(created)} as ${personKindLabel(created.person_kind)}${
+          created.admin_verified ? " (verified)" : " — pending verification"
+        }${personKind === "supporter" && createUsername.trim() ? " with login" : ""}.`,
       );
       await refresh();
     } catch (err) {
@@ -121,14 +143,40 @@ export function AdminPeoplePanel({
     }
   }
 
+  async function onSaveLogin(row: AdminPersonRow) {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await saveLogin(row.id, loginUsername, loginPassword, row.email_primary ?? undefined);
+      setMessage(`Saved login for ${displayName(row)} (${loginUsername.trim().toLowerCase()}).`);
+      setLoginForId(null);
+      setLoginUsername("");
+      setLoginPassword("");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save login.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openLoginForm(row: AdminPersonRow) {
+    setLoginForId(row.id);
+    setLoginUsername(row.login_username ?? "");
+    setLoginPassword("");
+    setError(null);
+    setMessage(null);
+  }
+
   return (
     <div className="space-y-6">
       <form onSubmit={onCreate} className="space-y-4 rounded-xl border bg-card p-5 shadow-[var(--shadow-card)]">
         <div>
           <h3 className="font-heading text-base text-navy">Add person</h3>
           <p className="text-sm text-muted-foreground">
-            Create a Player (Alum) or Georgetown Supporter. Supporters are not tagged as Alum in filters and
-            directory badges.
+            Create a Player (Alum) or Georgetown Supporter. Supporters can get a username and password for the
+            Supporter login tab.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -209,6 +257,33 @@ export function AdminPeoplePanel({
             {busy ? "Saving…" : "Add person"}
           </Button>
         </div>
+        {personKind === "supporter" ? (
+          <div className="grid gap-3 rounded-lg border border-dashed border-input bg-muted/30 p-4 sm:grid-cols-2">
+            <p className="sm:col-span-2 text-sm text-muted-foreground">
+              Optional Supporter login (letters and numbers, password at least 8 characters). They sign in on the
+              Supporter tab.
+            </p>
+            <label className="space-y-1 text-sm">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Username</span>
+              <input
+                className="h-10 w-full rounded-lg border border-input bg-background px-3"
+                value={createUsername}
+                onChange={(event) => setCreateUsername(event.target.value)}
+                autoComplete="off"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Password</span>
+              <input
+                type="password"
+                className="h-10 w-full rounded-lg border border-input bg-background px-3"
+                value={createPassword}
+                onChange={(event) => setCreatePassword(event.target.value)}
+                autoComplete="new-password"
+              />
+            </label>
+          </div>
+        ) : null}
       </form>
 
       <div className="space-y-3">
@@ -255,6 +330,11 @@ export function AdminPeoplePanel({
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {[row.email_primary, row.phone_primary].filter(Boolean).join(" · ") || "No contact yet"}
+                      {row.person_kind === "supporter"
+                        ? row.has_login
+                          ? ` · Login: ${row.login_username}`
+                          : " · No login yet"
+                        : null}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -270,6 +350,16 @@ export function AdminPeoplePanel({
                       <option value="alum">{PERSON_KIND_ADMIN_LABELS.alum}</option>
                       <option value="supporter">{PERSON_KIND_ADMIN_LABELS.supporter}</option>
                     </select>
+                    {row.person_kind === "supporter" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => openLoginForm(row)}
+                      >
+                        {row.has_login ? "Reset login" : "Set login"}
+                      </Button>
+                    ) : null}
                     {row.admin_verified ? (
                       <Button
                         type="button"
@@ -290,6 +380,54 @@ export function AdminPeoplePanel({
                     )}
                   </div>
                 </div>
+                {loginForId === row.id ? (
+                  <div className="mt-3 grid gap-3 rounded-lg border bg-muted/20 p-3 sm:grid-cols-[1fr_1fr_auto_auto]">
+                    <label className="space-y-1 text-sm">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Username
+                      </span>
+                      <input
+                        className="h-9 w-full rounded-lg border border-input bg-background px-3"
+                        value={loginUsername}
+                        onChange={(event) => setLoginUsername(event.target.value)}
+                        autoComplete="off"
+                      />
+                    </label>
+                    <label className="space-y-1 text-sm">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Password
+                      </span>
+                      <input
+                        type="password"
+                        className="h-9 w-full rounded-lg border border-input bg-background px-3"
+                        value={loginPassword}
+                        onChange={(event) => setLoginPassword(event.target.value)}
+                        autoComplete="new-password"
+                      />
+                    </label>
+                    <Button
+                      type="button"
+                      className="mt-5"
+                      disabled={busy || !loginUsername.trim() || loginPassword.length < 8}
+                      onClick={() => onSaveLogin(row)}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-5"
+                      disabled={busy}
+                      onClick={() => {
+                        setLoginForId(null);
+                        setLoginUsername("");
+                        setLoginPassword("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

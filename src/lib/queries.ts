@@ -189,20 +189,36 @@ export async function searchAlumni(filters: AlumniFilters, page: number): Promis
   };
 }
 
-export async function searchAlumniByName(q: string, limit = 8): Promise<AlumniListItem[]> {
+export async function searchAlumniByName(
+  q: string,
+  limit = 8,
+  personKinds: Array<"alum" | "supporter"> = [],
+): Promise<AlumniListItem[]> {
   const needle = q.trim();
   if (needle.length < 1) return [];
   await ensureDirectoryColumns();
   const cap = Math.max(1, Math.min(limit, 12));
+  const params: unknown[] = [`%${needle}%`, needle];
+  let kindSql = "";
+  if (personKinds.length === 1) {
+    params.push(personKinds[0]);
+    kindSql = `AND coalesce(a.person_kind, 'alum') = $3`;
+  } else if (personKinds.length > 1) {
+    params.push(personKinds);
+    kindSql = `AND coalesce(a.person_kind, 'alum') = ANY($3::text[])`;
+  }
   return query<AlumniListItem[]>(
     `
     SELECT ${LIST_COLUMNS}
     FROM alumni a
     WHERE
-      coalesce(a.full_name, '') ILIKE $1
-      OR coalesce(a.first_name, '') ILIKE $1
-      OR coalesce(a.last_name, '') ILIKE $1
-      OR coalesce(a.preferred_name, '') ILIKE $1
+      (
+        coalesce(a.full_name, '') ILIKE $1
+        OR coalesce(a.first_name, '') ILIKE $1
+        OR coalesce(a.last_name, '') ILIKE $1
+        OR coalesce(a.preferred_name, '') ILIKE $1
+      )
+      ${kindSql}
     ORDER BY
       CASE
         WHEN lower(coalesce(a.last_name, '')) = lower($2) THEN 0
@@ -216,7 +232,7 @@ export async function searchAlumniByName(q: string, limit = 8): Promise<AlumniLi
       lower(coalesce(a.first_name, ''))
     LIMIT ${cap}
     `,
-    [`%${needle}%`, needle],
+    params,
   );
 }
 
