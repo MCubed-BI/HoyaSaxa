@@ -1,4 +1,12 @@
 import {
+  lookupCachedPlaceGeocode,
+  persistPlaceGeocode,
+  photonCityLookup,
+  nominatimCityLookup,
+  placeKeyParts,
+  type PlaceGeocodeHit,
+} from "@/lib/place-geocode";
+import {
   US_CITY_CENTROIDS,
   US_STATE_CENTROIDS,
   cityStateKey,
@@ -11,7 +19,7 @@ export type LatLng = { lat: number; lng: number };
 export type ResolvedLocation = LatLng & {
   label: string;
   source: "current" | "hometown" | "address" | "unknown";
-  method: "city" | "state" | "nominatim" | "none";
+  method: "city" | "state" | "nominatim" | "geocoded" | "none";
 };
 
 export type AlumniLocationRow = {
@@ -33,7 +41,7 @@ export type AlumniLocationRow = {
 type CacheEntry = LatLng & { method: ResolvedLocation["method"] };
 
 const memoryCache = new Map<string, CacheEntry | null>();
-let lastNominatimAt = 0;
+let lastNetworkGeocodeAt = 0;
 
 function hashJitter(seed: string): [number, number] {
   let h = 2166136261;
@@ -42,7 +50,7 @@ function hashJitter(seed: string): [number, number] {
     h = Math.imul(h, 16777619);
   }
   const a = ((h >>> 0) % 1000) / 1000;
-  const b = (((h >>> 10) % 1000) / 1000);
+  const b = ((h >>> 10) % 1000) / 1000;
   // ~±0.12° — keep state-fallback pins separable without spraying across the state
   return [(a - 0.5) * 0.24, (b - 0.5) * 0.2];
 }
@@ -67,69 +75,122 @@ function formatLabel(city: string | null, state: string | null) {
 }
 
 function geocodeProvider() {
-  const raw = (process.env.GEOCODE_PROVIDER ?? "centroids").trim().toLowerCase();
-  if (raw === "nominatim" || raw === "hybrid") return raw;
-  return "centroids";
+  const raw = (process.env.GEOCODE_PROVIDER ?? "hybrid").trim().toLowerCase();
+  if (raw === "nominatim" || raw === "centroids" || raw === "hybrid") return raw;
+  return "hybrid";
 }
 
-function lookupCentroid(city: string | null, state: string | null): CacheEntry | null {
-  const stateKey = normalizeState(state);
+function lookupCentroidOnly(city: string | null, state: string | null): CacheEntry | null {
   const key = cityStateKey(city, state);
   if (key && US_CITY_CENTROIDS[key]) {
     const [lat, lng] = US_CITY_CENTROIDS[key]!;
     return { lat, lng, method: "city" };
   }
-  if (stateKey && US_STATE_CENTROIDS[stateKey]) {
-    const [lat, lng] = US_STATE_CENTROIDS[stateKey]!;
-    const [dLat, dLng] = hashJitter(`${normalizeCity(city) ?? ""}|${stateKey}`);
-    return { lat: lat + dLat, lng: lng + dLng, method: "state" };
-  }
   return null;
 }
 
-async function nominatimLookup(city: string | null, state: string | null): Promise<CacheEntry | null> {
-  const query = [city, normalizeState(state) ?? state, "USA"].filter(Boolean).join(", ");
-  if (!query) return null;
-  const wait = Math.max(0, 1100 - (Date.now() - lastNominatimAt));
-  if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
-  lastNominatimAt = Date.now();
-
-  const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.searchParams.set("q", query);
-  url.searchParams.set("format", "jsonv2");
-  url.searchParams.set("limit", "1");
-  url.searchParams.set("countrycodes", "us");
-
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": process.env.GEOCODE_USER_AGENT?.trim() || "GeorgetownAlumMap/1.0",
-      Accept: "application/json",
-    },
-  });
-  if (!response.ok) return null;
-  const rows = (await response.json()) as Array<{ lat?: string; lon?: string }>;
-  const lat = Number(rows[0]?.lat);
-  const lng = Number(rows[0]?.lon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat, lng, method: "nominatim" };
+function lookupStateFallback(city: string | null, state: string | null): CacheEntry | null {
+  const stateKey = normalizeState(state);
+  if (!stateKey || !US_STATE_CENTROIDS[stateKey]) return null;
+  const [lat, lng] = US_STATE_CENTROIDS[stateKey]!;
+  const [dLat, dLng] = hashJitter(`${normalizeCity(city) ?? ""}|${stateKey}`);
+  return { lat: lat + dLat, lng: lng + dLng, method: "state" };
 }
 
+function hitToCacheEntry(hit: PlaceGeocodeHit): CacheEntry {
+  return {
+    lat: hit.lat,
+    lng: hit.lng,
+    method: hit.method === "geocoded" ? "geocoded" : "city",
+  };
+}
+
+async function throttleNetwork() {
+  const wait = Math.max(0, 350 - (Date.now() - lastNetworkGeocodeAt));
+  if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+  lastNetworkGeocodeAt = Date.now();
+}
+
+/**
+ * City+state: DB cache → hard-coded centroid → Photon/Nominatim (persisted).
+ * State-only / failed city: loose state jitter (accuracy not required).
+ */
 async function resolvePlace(city: string | null, state: string | null): Promise<CacheEntry | null> {
   const cacheKey = `${normalizeCity(city) ?? ""}|${normalizeState(state) ?? state ?? ""}`;
   if (memoryCache.has(cacheKey)) return memoryCache.get(cacheKey) ?? null;
 
+  const parts = placeKeyParts(city, state);
   const provider = geocodeProvider();
-  let resolved = provider === "nominatim" ? null : lookupCentroid(city, state);
-  if ((!resolved || resolved.method === "state") && (provider === "nominatim" || provider === "hybrid")) {
+
+  // City + state → must be city-accurate when possible.
+  if (parts) {
     try {
-      resolved = (await nominatimLookup(city, state)) ?? resolved;
+      const cached = await lookupCachedPlaceGeocode(parts.rawCity, parts.stateKey);
+      if (cached) {
+        const entry = hitToCacheEntry(cached);
+        memoryCache.set(cacheKey, entry);
+        return entry;
+      }
     } catch {
-      // Centroids stay the fallback when Nominatim is unavailable.
+      // DB optional in unit tests without DATABASE_URL.
+    }
+
+    const centroid = lookupCentroidOnly(parts.rawCity, parts.stateKey);
+    if (centroid) {
+      memoryCache.set(cacheKey, centroid);
+      try {
+        await persistPlaceGeocode({
+          city: parts.rawCity,
+          state: parts.stateKey,
+          lat: centroid.lat,
+          lng: centroid.lng,
+          method: "city",
+          provider: "centroid",
+        });
+      } catch {
+        // ignore persist failures
+      }
+      return centroid;
+    }
+
+    if (provider === "hybrid" || provider === "nominatim") {
+      try {
+        await throttleNetwork();
+        let hit =
+          provider === "nominatim"
+            ? await nominatimCityLookup(parts.rawCity, parts.stateKey)
+            : await photonCityLookup(parts.rawCity, parts.stateKey);
+        if (!hit && provider === "hybrid") {
+          await throttleNetwork();
+          hit = await nominatimCityLookup(parts.rawCity, parts.stateKey);
+        }
+        if (hit) {
+          const entry = hitToCacheEntry(hit);
+          memoryCache.set(cacheKey, entry);
+          try {
+            await persistPlaceGeocode({
+              city: parts.rawCity,
+              state: parts.stateKey,
+              lat: hit.lat,
+              lng: hit.lng,
+              method: "geocoded",
+              provider: hit.provider,
+            });
+          } catch {
+            // ignore
+          }
+          return entry;
+        }
+      } catch {
+        // fall through to state
+      }
     }
   }
 
-  memoryCache.set(cacheKey, resolved);
-  return resolved;
+  // State-only or unresolved city — user said placement can be anywhere.
+  const stateHit = lookupStateFallback(city, state);
+  memoryCache.set(cacheKey, stateHit);
+  return stateHit;
 }
 
 async function resolveAttempt(
@@ -180,5 +241,5 @@ export async function resolveAlumniLocations(row: AlumniLocationRow): Promise<Re
 
 export function resetGeocodeCache() {
   memoryCache.clear();
-  lastNominatimAt = 0;
+  lastNetworkGeocodeAt = 0;
 }

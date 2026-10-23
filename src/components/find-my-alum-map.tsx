@@ -65,7 +65,12 @@ function heatSamples(points: AlumniMapPoint[], locationFilter: LocationFilter): 
   const ranked = (source: AlumniMapPoint["locationSource"]) =>
     source === "current" ? 0 : source === "hometown" ? 1 : 2;
 
-  let candidates = points.filter((point) => point.geocodeMethod === "city" || point.geocodeMethod === "nominatim");
+  let candidates = points.filter(
+    (point) =>
+      point.geocodeMethod === "city" ||
+      point.geocodeMethod === "nominatim" ||
+      point.geocodeMethod === "geocoded",
+  );
 
   if (locationFilter === "all") {
     const best = new Map<string, AlumniMapPoint>();
@@ -78,7 +83,11 @@ function heatSamples(points: AlumniMapPoint[], locationFilter: LocationFilter): 
     candidates = [...best.values()];
   }
 
-  return candidates.map((point) => [point.lat, point.lng, point.geocodeMethod === "nominatim" ? 0.8 : 0.7]);
+  return candidates.map((point) => [
+    point.lat,
+    point.lng,
+    point.geocodeMethod === "nominatim" || point.geocodeMethod === "geocoded" ? 0.8 : 0.7,
+  ]);
 }
 
 function HeatLayer({
