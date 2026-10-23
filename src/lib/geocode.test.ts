@@ -137,6 +137,43 @@ describe("geocode", () => {
     assert.ok(Math.abs((nyc?.lat ?? 0) - 40.712776) < 0.001);
   });
 
+  it("maps roster typos and Ft. abbreviations to city centroids", async () => {
+    process.env.GEOCODE_PROVIDER = "centroids";
+    const ft = await resolveAlumniLocation({
+      id: "88888888-8888-4888-8888-888888888888",
+      first_name: "Pat",
+      last_name: "Hoya",
+      preferred_name: null,
+      full_name: null,
+      position: null,
+      class_year: null,
+      current_city: "Ft. Lauderdale",
+      current_state: "FL",
+      hometown_city: null,
+      hometown_state: null,
+      address_primary: null,
+    });
+    assert.equal(ft?.method, "city");
+    assert.ok(Math.abs((ft?.lat ?? 0) - 26.122438) < 0.001);
+
+    const typo = await resolveAlumniLocation({
+      id: "99999999-9999-4999-8999-999999999999",
+      first_name: "Pat",
+      last_name: "Hoya",
+      preferred_name: null,
+      full_name: null,
+      position: null,
+      class_year: null,
+      current_city: "Nashvile",
+      current_state: "TN",
+      hometown_city: null,
+      hometown_state: null,
+      address_primary: null,
+    });
+    assert.equal(typo?.method, "city");
+    assert.ok(Math.abs((typo?.lat ?? 0) - 36.162663) < 0.001);
+  });
+
   it("places Sanford FL on the city centroid (not a Florida state guess)", async () => {
     process.env.GEOCODE_PROVIDER = "centroids";
     const resolved = await resolveAlumniLocation({

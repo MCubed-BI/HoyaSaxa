@@ -43,12 +43,39 @@ function normalizeCity(value) {
     "new york ny": "new york",
     "washington dc": "washington",
     "washington d c": "washington",
+    wdc: "washington",
     "ft lauderdale": "fort lauderdale",
     "ft worth": "fort worth",
     "saint louis": "st louis",
     "st louis": "st louis",
     "saint paul": "st paul",
     "st paul": "st paul",
+    nashvile: "nashville",
+    phonenix: "phoenix",
+    phiadelphia: "philadelphia",
+    sugarland: "sugar land",
+    "pembrooke pines": "pembroke pines",
+    "rockville center": "rockville centre",
+    "wappinger falls": "wappingers falls",
+    creekskill: "cresskill",
+    maumer: "maumee",
+    sjcapistrano: "san juan capistrano",
+    "s j capistrano": "san juan capistrano",
+    "cleve heights": "cleveland heights",
+    corapolis: "coraopolis",
+    willigrove: "willow grove",
+    wrenthem: "wrentham",
+    ventor: "ventnor",
+    stoors: "storrs",
+    "mt clemons": "mount clemens",
+    accoceek: "accokeek",
+    "capital heights": "capitol heights",
+    brookyln: "brooklyn",
+    cincinnnati: "cincinnati",
+    ogdensburgh: "ogdensburg",
+    ohskosh: "oshkosh",
+    wilkensburg: "wilkinsburg",
+    naragansett: "narragansett",
   };
   return aliases[cleaned] ?? cleaned;
 }
@@ -212,7 +239,13 @@ async function tryProvider(name, city, stateKey) {
 }
 
 async function resolveWithRetry(city, stateKey) {
-  const order = PREFER === "photon" ? ["photon", "nominatim"] : ["nominatim", "photon"];
+  // Default: nominatim-only. Photon TLS often fails from this host and adds multi-second hangs.
+  const order =
+    PREFER === "photon"
+      ? ["photon", "nominatim"]
+      : PREFER === "both"
+        ? ["nominatim", "photon"]
+        : ["nominatim"];
   let lastErr = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     for (const name of order) {
@@ -220,16 +253,20 @@ async function resolveWithRetry(city, stateKey) {
         await sleep(name === "nominatim" ? DELAY_MS : Math.min(DELAY_MS, 400));
         const hit = await tryProvider(name, city, stateKey);
         if (hit) return hit;
+        // null hit = not found; don't burn retries on garbage place names
+        if (name === order[order.length - 1]) return null;
       } catch (err) {
         lastErr = err;
         const retryable =
           err?.retryable ||
           /fetch failed|ECONNRESET|ETIMEDOUT|socket|SSL|HTTP 429|HTTP 5/i.test(String(err?.message || err));
-        // Photon TLS failures are common here — skip to nominatim without burning attempts.
         if (name === "photon" && /SSL|ECONNRESET|fetch failed|socket/i.test(String(err?.message || err))) {
           continue;
         }
-        if (!retryable) throw err;
+        if (!retryable || attempt === MAX_ATTEMPTS) {
+          if (name === order[order.length - 1] && attempt === MAX_ATTEMPTS) throw err;
+          continue;
+        }
       }
     }
     if (attempt < MAX_ATTEMPTS) await sleep(1500 * attempt);
