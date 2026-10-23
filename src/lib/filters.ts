@@ -25,6 +25,8 @@ export type AlumniFilters = {
   hasLinkedin: boolean;
   /** Claimed / registered Hoyas only (alumni_claims). */
   registered: boolean;
+  /** Admin-unverified people only. */
+  unverified: boolean;
 };
 
 export type AlumniFilterAliases = {
@@ -81,6 +83,7 @@ export function canonicalizeAlumniFilters(filters: AlumniFilters): AlumniFilters
     careers: [...new Set(filters.careers.map((value) => value.trim()).filter(Boolean))],
     personKinds: parsePersonKinds(filters.personKinds ?? []),
     registered: Boolean(filters.registered),
+    unverified: Boolean(filters.unverified),
   };
 }
 
@@ -119,6 +122,7 @@ export function parseAlumniFilters(
     hasPhone: flag(searchParams, "hasPhone", "has_phone"),
     hasLinkedin: flag(searchParams, "hasLinkedin", "has_linkedin"),
     registered: flag(searchParams, "registered", "claimed", "hasRegistered"),
+    unverified: flag(searchParams, "unverified", "pendingVerify", "needsVerify"),
   });
 }
 
@@ -145,7 +149,8 @@ export function hasFacetFilters(filters: AlumniFilters) {
       filters.hasEmail ||
       filters.hasPhone ||
       filters.hasLinkedin ||
-      filters.registered,
+      filters.registered ||
+      filters.unverified,
   );
 }
 
@@ -161,7 +166,8 @@ export function facetFilterCount(filters: AlumniFilters) {
     (filters.hasEmail ? 1 : 0) +
     (filters.hasPhone ? 1 : 0) +
     (filters.hasLinkedin ? 1 : 0) +
-    (filters.registered ? 1 : 0)
+    (filters.registered ? 1 : 0) +
+    (filters.unverified ? 1 : 0)
   );
 }
 
@@ -238,6 +244,9 @@ export function alumniFilterChips(filters: AlumniFilters, action = "/"): FilterC
   if (filters.registered) {
     chips.push({ id: "registered", label: "Registered", href: hrefFor({ ...filters, registered: false }) });
   }
+  if (filters.unverified) {
+    chips.push({ id: "unverified", label: "Unverified", href: hrefFor({ ...filters, unverified: false }) });
+  }
   for (const value of filters.personKinds) {
     chips.push({
       id: `kind-${value}`,
@@ -262,6 +271,7 @@ export function filtersToSearchParams(filters: AlumniFilters, page?: number, ids
   if (filters.hasPhone) params.set("hasPhone", "1");
   if (filters.hasLinkedin) params.set("hasLinkedin", "1");
   if (filters.registered) params.set("registered", "1");
+  if (filters.unverified) params.set("unverified", "1");
   if (ids?.length) {
     for (const id of ids) params.append("ids", id);
   }
@@ -403,6 +413,10 @@ export function buildAlumniWhere(
     where.push(`EXISTS (SELECT 1 FROM alumni_claims c WHERE c.alumni_id = a.id)`);
   }
 
+  if (filters.unverified) {
+    where.push(`coalesce(a.admin_verified, true) = false`);
+  }
+
   if (filters.personKinds.length === 1) {
     where.push(`coalesce(a.person_kind, 'alum') = $${i}`);
     params.push(filters.personKinds[0]);
@@ -456,6 +470,7 @@ export function coerceAlumniFilters(input: unknown): AlumniFilters {
       hasPhone: Boolean(rec.hasPhone),
       hasLinkedin: Boolean(rec.hasLinkedin),
       registered: Boolean(rec.registered),
+      unverified: Boolean(rec.unverified),
     });
   }
   return parseAlumniFilters(rec as Record<string, string | string[] | undefined>);
@@ -475,5 +490,6 @@ export function emptyFilters(): AlumniFilters {
     hasPhone: false,
     hasLinkedin: false,
     registered: false,
+    unverified: false,
   };
 }

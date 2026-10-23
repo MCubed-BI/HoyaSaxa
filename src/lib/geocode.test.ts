@@ -159,6 +159,27 @@ describe("geocode", () => {
     assert.ok(Math.abs((resolved?.lng ?? 0) - -81.268022) < 0.001);
   });
 
+  it("places Mike Kasten hometown Freehold NJ on the city centroid", async () => {
+    process.env.GEOCODE_PROVIDER = "centroids";
+    const resolved = await resolveAlumniLocation({
+      id: "c8fc1d9c-d5a7-445d-8e59-b2bddd53d136",
+      first_name: "Michael",
+      last_name: "Kasten",
+      preferred_name: null,
+      full_name: null,
+      position: null,
+      class_year: null,
+      current_city: null,
+      current_state: null,
+      hometown_city: "Freehold",
+      hometown_state: "NJ",
+      address_primary: null,
+    });
+    assert.equal(resolved?.method, "city");
+    assert.equal(resolved?.label, "Freehold, NJ");
+    assert.ok(Math.abs((resolved?.lat ?? 0) - 40.260106) < 0.001);
+  });
+
   it("places Hampton Tanner hometown Fernandina Beach just north of Jacksonville", async () => {
     process.env.GEOCODE_PROVIDER = "centroids";
     const resolved = await resolveAlumniLocations({

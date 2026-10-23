@@ -102,3 +102,9 @@ test("parseAlumniFilters reads Alum / Support person kinds", () => {
   assert.ok(chips.some((chip) => chip.label === "Support"));
   assert.ok(chips.some((chip) => chip.label === "Alum"));
 });
+
+test("parseAlumniFilters reads unverified", () => {
+  const filters = parseAlumniFilters({ unverified: "1" });
+  assert.equal(filters.unverified, true);
+  assert.ok(alumniFilterChips(filters).some((chip) => chip.label === "Unverified"));
+});

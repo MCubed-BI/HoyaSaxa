@@ -121,7 +121,7 @@ export function AlumniDirectory({
                       <p className="flex flex-wrap items-center gap-2 truncate font-medium text-navy hover:underline">
                         <span className="truncate">{displayName(person)}</span>
                         {person.person_kind === "supporter" ? (
-                          <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          <span className="shrink-0 rounded-md bg-[var(--gold)] px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--gold-foreground)]">
                             Support
                           </span>
                         ) : null}

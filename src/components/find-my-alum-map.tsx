@@ -6,6 +6,7 @@ import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaf
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
+import { SUPPORT_GOLD, SUPPORT_GOLD_DARK } from "@/lib/supporter-style";
 import type { AlumniMapPoint } from "@/lib/types";
 
 type ViewMode = "heat" | "markers" | "both";
@@ -16,6 +17,13 @@ const MARKER_COLORS: Record<AlumniMapPoint["locationSource"], { color: string; f
   hometown: { color: "#6b7280", fill: "#9ca3af" },
   address: { color: "#041e42", fill: "#041e42" },
 };
+
+function markerColors(point: AlumniMapPoint) {
+  if (point.personKind === "supporter") {
+    return { color: SUPPORT_GOLD_DARK, fill: SUPPORT_GOLD };
+  }
+  return MARKER_COLORS[point.locationSource];
+}
 
 /** Pin-only jitter so shared city centroids stay clickable (heat uses raw coords). */
 function pinJitter(id: string): { lat: number; lng: number } {
@@ -209,6 +217,10 @@ export function FindMyAlumMap({
           <span className="inline-block size-2.5 rounded-full bg-[#9ca3af]" aria-hidden />
           Hometown
         </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block size-2.5 rounded-full bg-[var(--gold)]" aria-hidden />
+          Support
+        </span>
         <span>Heat uses city-level locations only (state guesses excluded).</span>
       </div>
       {visiblePoints.length === 0 ? (
@@ -226,19 +238,20 @@ export function FindMyAlumMap({
             <HeatLayer points={visiblePoints} enabled={showHeat} locationFilter={locationFilter} />
             {showMarkers
               ? visiblePoints.map((point) => {
-                  const colors = MARKER_COLORS[point.locationSource];
+                  const colors = markerColors(point);
                   const profileId = point.alumniId || point.id;
                   const jitter = pinJitter(point.id);
+                  const isSupport = point.personKind === "supporter";
                   return (
                     <CircleMarker
                       key={point.id}
                       center={[point.lat + jitter.lat, point.lng + jitter.lng]}
-                      radius={6}
+                      radius={isSupport ? 7 : 6}
                       pathOptions={{
                         color: colors.color,
                         fillColor: colors.fill,
-                        fillOpacity: 0.78,
-                        weight: 1,
+                        fillOpacity: isSupport ? 0.92 : 0.78,
+                        weight: isSupport ? 2 : 1,
                       }}
                     >
                       <Popup>
@@ -257,7 +270,9 @@ export function FindMyAlumMap({
                           )}
                           <p className="text-muted-foreground">{point.locationLabel}</p>
                           <p className="text-xs text-muted-foreground">
-                            {[point.position, point.classYear].filter(Boolean).join(" · ") || "Roster"}
+                            {isSupport
+                              ? "Georgetown supporter"
+                              : [point.position, point.classYear].filter(Boolean).join(" · ") || "Roster"}
                             {" · "}
                             {sourceLabel(point.locationSource)}
                             {point.geocodeMethod === "state" ? " · state estimate" : ""}

@@ -27,6 +27,7 @@ export type AlumniLocationRow = {
   hometown_city: string | null;
   hometown_state: string | null;
   address_primary: string | null;
+  person_kind?: "alum" | "supporter" | null;
 };
 
 type CacheEntry = LatLng & { method: ResolvedLocation["method"] };

@@ -237,7 +237,8 @@ export async function getAlumniLocationRows(filters: AlumniFilters): Promise<Alu
       a.hometown_state,
       a.current_city,
       a.current_state,
-      a.address_primary
+      a.address_primary,
+      coalesce(a.person_kind, 'alum') AS person_kind
     FROM alumni a
     ${whereSql}
     ORDER BY lower(a.last_name), lower(coalesce(a.first_name, ''))
