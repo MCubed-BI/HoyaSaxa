@@ -13,28 +13,9 @@ if (!url) {
 }
 
 const sql = neon(url);
-const CONCURRENCY = Number(process.env.GEOCODE_CONCURRENCY || 3);
-const DELAY_MS = Number(process.env.GEOCODE_DELAY_MS || 200);
-
-function normalizeCity(value) {
-  if (!value) return null;
-  const cleaned = String(value).replace(/\./g, "").replace(/\s+/g, " ").trim().toLowerCase();
-  if (!cleaned) return null;
-  const aliases = {
-    nyc: "new york",
-    "new york city": "new york",
-    "new york ny": "new york",
-    "washington dc": "washington",
-    "washington d c": "washington",
-    "ft lauderdale": "fort lauderdale",
-    "ft worth": "fort worth",
-    "saint louis": "st louis",
-    "st. louis": "st louis",
-    "saint paul": "st paul",
-    "st. paul": "st paul",
-  };
-  return aliases[cleaned] ?? cleaned;
-}
+const CONCURRENCY = Number(process.env.GEOCODE_CONCURRENCY || 2);
+const DELAY_MS = Number(process.env.GEOCODE_DELAY_MS || 400);
+const MAX_ATTEMPTS = Number(process.env.GEOCODE_MAX_ATTEMPTS || 4);
 
 const STATE_NAMES = {
   alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
@@ -50,6 +31,26 @@ const STATE_NAMES = {
   "district of columbia": "DC", "washington dc": "DC",
 };
 
+function normalizeCity(value) {
+  if (!value) return null;
+  const cleaned = String(value).replace(/\./g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  if (!cleaned) return null;
+  const aliases = {
+    nyc: "new york",
+    "new york city": "new york",
+    "new york ny": "new york",
+    "washington dc": "washington",
+    "washington d c": "washington",
+    "ft lauderdale": "fort lauderdale",
+    "ft worth": "fort worth",
+    "saint louis": "st louis",
+    "st louis": "st louis",
+    "saint paul": "st paul",
+    "st paul": "st paul",
+  };
+  return aliases[cleaned] ?? cleaned;
+}
+
 function normalizeState(value) {
   if (!value) return null;
   const cleaned = String(value).replace(/\./g, "").trim();
@@ -57,6 +58,27 @@ function normalizeState(value) {
   const upper = cleaned.toUpperCase();
   if (/^[A-Z]{2}$/.test(upper)) return upper;
   return STATE_NAMES[cleaned.toLowerCase()] ?? null;
+}
+
+/** Drop obvious junk from bad spreadsheet cells. */
+function sanitizePlace(city, state) {
+  let c = String(city || "").trim();
+  let s = String(state || "").trim();
+  if (!c || !s) return null;
+  if (c.includes(":::") || s.includes(":::")) return null;
+  if (/\d{3,}/.test(c)) return null; // street numbers / zips in city
+  if (/street|avenue|road|drive|lane|blvd/i.test(c)) return null;
+  // "Arlington, VA" stuffed into city
+  const embedded = c.match(/^([^,]+),\s*([A-Za-z]{2})\s*$/);
+  if (embedded) {
+    c = embedded[1].trim();
+    if (!normalizeState(s)) s = embedded[2];
+  }
+  const cityKey = normalizeCity(c);
+  const stateKey = normalizeState(s);
+  if (!cityKey || !stateKey) return null;
+  if (cityKey.length < 2 || cityKey.length > 48) return null;
+  return { city: c, state: stateKey, cityKey, stateKey };
 }
 
 async function ensureTable() {
@@ -102,10 +124,7 @@ async function cachedKeys() {
   return new Set(rows.map((r) => `${r.city_key}|${r.state}`));
 }
 
-async function upsert(city, state, lat, lng, method, provider) {
-  const cityKey = normalizeCity(city);
-  const stateKey = normalizeState(state);
-  if (!cityKey || !stateKey) return;
+async function upsert(city, stateKey, cityKey, lat, lng, method, provider) {
   const label = `${String(city).trim()}, ${stateKey}`;
   await sql.query(
     `
@@ -124,15 +143,17 @@ async function upsert(city, state, lat, lng, method, provider) {
   );
 }
 
-async function photon(city, state) {
-  const stateKey = normalizeState(state);
-  if (!stateKey) return null;
+async function photon(city, stateKey) {
   const url = new URL("https://photon.komoot.io/api/");
   url.searchParams.set("q", `${city}, ${stateKey}`);
   url.searchParams.set("limit", "5");
   url.searchParams.set("lang", "en");
   const res = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const err = new Error(`photon HTTP ${res.status}`);
+    err.retryable = res.status === 429 || res.status >= 500;
+    throw err;
+  }
   const data = await res.json();
   const cityNorm = normalizeCity(city);
   for (const feature of data.features || []) {
@@ -153,8 +174,7 @@ async function photon(city, state) {
   return null;
 }
 
-async function nominatim(city, state) {
-  const stateKey = normalizeState(state);
+async function nominatim(city, stateKey) {
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("city", city);
   url.searchParams.set("state", stateKey);
@@ -168,7 +188,11 @@ async function nominatim(city, state) {
       Accept: "application/json",
     },
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const err = new Error(`nominatim HTTP ${res.status}`);
+    err.retryable = res.status === 429 || res.status >= 500;
+    throw err;
+  }
   const rows = await res.json();
   const lat = Number(rows[0]?.lat);
   const lng = Number(rows[0]?.lon);
@@ -180,44 +204,86 @@ async function sleep(ms) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
+async function resolveWithRetry(city, stateKey) {
+  let lastErr = null;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      await sleep(DELAY_MS * attempt);
+      let hit = await photon(city, stateKey);
+      if (!hit) {
+        await sleep(1100);
+        hit = await nominatim(city, stateKey);
+      }
+      return hit;
+    } catch (err) {
+      lastErr = err;
+      const retryable =
+        err?.retryable ||
+        /fetch failed|ECONNRESET|ETIMEDOUT|socket|HTTP 429|HTTP 5/i.test(String(err?.message || err));
+      if (!retryable || attempt === MAX_ATTEMPTS) throw err;
+      await sleep(1000 * attempt);
+    }
+  }
+  throw lastErr;
+}
+
 async function main() {
   await ensureTable();
   const places = await listDistinctPlaces();
   const have = await cachedKeys();
-  const pending = places.filter((p) => {
-    const key = `${normalizeCity(p.city)}|${normalizeState(p.state)}`;
-    return key && !have.has(key);
-  });
-  console.log(`distinct=${places.length} cached=${have.size} pending=${pending.length} concurrency=${CONCURRENCY}`);
+  const pending = [];
+  let skippedJunk = 0;
+  for (const p of places) {
+    const clean = sanitizePlace(p.city, p.state);
+    if (!clean) {
+      skippedJunk += 1;
+      continue;
+    }
+    const key = `${clean.cityKey}|${clean.stateKey}`;
+    if (have.has(key)) continue;
+    pending.push({ ...clean, n: p.n, key });
+  }
+  // Dedupe by normalized key (keep highest n)
+  const byKey = new Map();
+  for (const p of pending) {
+    const prev = byKey.get(p.key);
+    if (!prev || p.n > prev.n) byKey.set(p.key, p);
+  }
+  const queue = [...byKey.values()];
+  console.log(
+    JSON.stringify({
+      distinct: places.length,
+      cached: have.size,
+      pending: queue.length,
+      skippedJunk,
+      concurrency: CONCURRENCY,
+      delayMs: DELAY_MS,
+    }),
+  );
 
   let ok = 0;
   let fail = 0;
   let idx = 0;
 
   async function worker() {
-    while (idx < pending.length) {
+    while (idx < queue.length) {
       const i = idx++;
-      const place = pending[i];
+      const place = queue[i];
       try {
-        await sleep(DELAY_MS);
-        let hit = await photon(place.city, place.state);
-        if (!hit) {
-          await sleep(1100);
-          hit = await nominatim(place.city, place.state);
-        }
+        const hit = await resolveWithRetry(place.city, place.stateKey);
         if (!hit) {
           fail += 1;
-          console.log(`FAIL ${place.city}, ${place.state} (n=${place.n})`);
+          console.log(`FAIL ${place.city}, ${place.stateKey} (n=${place.n})`);
           continue;
         }
-        await upsert(place.city, place.state, hit.lat, hit.lng, "geocoded", hit.provider);
+        await upsert(place.city, place.stateKey, place.cityKey, hit.lat, hit.lng, "geocoded", hit.provider);
         ok += 1;
         if (ok % 25 === 0 || i < 5) {
-          console.log(`OK ${ok}/${pending.length} ${place.city}, ${place.state} via ${hit.provider}`);
+          console.log(`OK ${ok}/${queue.length} ${place.city}, ${place.stateKey} via ${hit.provider}`);
         }
       } catch (err) {
         fail += 1;
-        console.log(`ERR ${place.city}, ${place.state}: ${err instanceof Error ? err.message : err}`);
+        console.log(`ERR ${place.city}, ${place.stateKey}: ${err instanceof Error ? err.message : err}`);
       }
     }
   }
