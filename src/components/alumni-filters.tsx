@@ -259,6 +259,15 @@ export function AlumniFiltersForm({
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
+                  checked={local.unverified}
+                  onChange={(event) => setLocal((current) => ({ ...current, unverified: event.target.checked }))}
+                  className="size-4 rounded border-input accent-navy"
+                />
+                Unverified
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
                   checked={local.hasEmail}
                   onChange={(event) => setLocal((current) => ({ ...current, hasEmail: event.target.checked }))}
                   className="size-4 rounded border-input accent-navy"

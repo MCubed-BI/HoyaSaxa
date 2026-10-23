@@ -108,4 +108,5 @@ export type AlumniMapPoint = {
   geocodeMethod: "city" | "state" | "nominatim";
   classYear: string | null;
   position: string | null;
+  personKind?: "alum" | "supporter" | null;
 };

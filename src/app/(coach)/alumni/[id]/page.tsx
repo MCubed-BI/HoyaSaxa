@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { AdminPersonKindPanel } from "@/components/admin-person-kind-panel";
 import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { HoyaBadgeRow } from "@/lib/badge-api";
 import { PageMain, PageShell } from "@/components/page-chrome";
@@ -13,6 +14,7 @@ import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
 import { listPublicBadgesFromFeed } from "@/lib/badges-attendance";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { canMessageHoyaProfile, linkedAlumniIdForViewer } from "@/lib/messages-dm";
+import { normalizePersonKind } from "@/lib/person-kind";
 import { isAdminRole } from "@/lib/roles";
 import {
   classYearLabel,
@@ -96,13 +98,22 @@ export default async function AlumniDetailPage({
                 <div>
                   <h2 className="font-heading text-3xl text-navy">{displayName(person)}</h2>
                   <p className="text-sm text-muted-foreground">
-                    {[positionLabel(person.position), classYearLabel(person.class_year), person.seasons]
-                      .filter(Boolean)
-                      .join(" · ") || "Georgetown football"}
+                    {person.person_kind === "supporter"
+                      ? "Georgetown supporter"
+                      : [positionLabel(person.position), classYearLabel(person.class_year), person.seasons]
+                          .filter(Boolean)
+                          .join(" · ") || "Georgetown football"}
                   </p>
                 </div>
                 {person.headline ? <p className="max-w-2xl text-sm">{person.headline}</p> : null}
                 <div className="flex flex-wrap gap-1.5">
+                  {person.person_kind === "supporter" ? (
+                    <Badge className="border-transparent bg-[var(--gold)] text-[var(--gold-foreground)] hover:bg-[var(--gold)]">
+                      Support
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary">Alum</Badge>
+                  )}
                   {positionLabel(person.position) ? (
                     <Badge variant="secondary">{positionLabel(person.position)}</Badge>
                   ) : null}
@@ -126,6 +137,14 @@ export default async function AlumniDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          {isAdminRole(viewer.role) ? (
+            <AdminPersonKindPanel
+              alumniId={person.id}
+              initialKind={normalizePersonKind(person.person_kind)}
+              initialVerified={person.admin_verified !== false}
+            />
+          ) : null}
 
           <Card>
             <CardHeader>
