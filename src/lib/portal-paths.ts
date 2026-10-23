@@ -49,6 +49,7 @@ const ALUM_ALLOWED_PREFIXES = [
   "/api/directory",
   "/api/feed",
   "/api/badges",
+  "/api/hoya-ai",
   "/api/admin",
   "/admin",
   "/data-cleanup",
