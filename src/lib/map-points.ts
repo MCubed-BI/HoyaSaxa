@@ -38,6 +38,14 @@ export async function getAlumniMapPoints(filters: AlumniFilters): Promise<{
       if (resolved.method === "none") continue;
       const source = resolved.source === "unknown" ? "address" : resolved.source;
       const markerKey = `${row.id}-${source}`;
+      const geocodeMethod =
+        resolved.method === "geocoded"
+          ? "geocoded"
+          : resolved.method === "nominatim"
+            ? "nominatim"
+            : resolved.method === "state"
+              ? "state"
+              : "city";
       points.push({
         id: markerKey,
         alumniId: row.id,
@@ -47,7 +55,7 @@ export async function getAlumniMapPoints(filters: AlumniFilters): Promise<{
         lng: resolved.lng,
         locationLabel: resolved.label,
         locationSource: source,
-        geocodeMethod: resolved.method,
+        geocodeMethod,
         classYear: row.class_year,
         position: row.position,
         personKind: row.person_kind === "supporter" ? "supporter" : "alum",

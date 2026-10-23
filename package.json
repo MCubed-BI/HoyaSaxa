@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "tsx --test src/lib/*.test.ts",
     "import": "tsx scripts/import-alumni.ts",
-    "farm-photos": "tsx scripts/farm-guhoyas-photos.ts"
+    "farm-photos": "tsx scripts/farm-guhoyas-photos.ts",
+    "seed:place-geocodes": "node --env-file=.env.local --import tsx scripts/seed-place-geocodes.mjs",
+    "backfill:place-geocodes": "node --env-file=.env.local scripts/backfill-place-geocodes.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

@@ -105,7 +105,7 @@ export type AlumniMapPoint = {
   lng: number;
   locationLabel: string;
   locationSource: "current" | "hometown" | "address";
-  geocodeMethod: "city" | "state" | "nominatim";
+  geocodeMethod: "city" | "state" | "nominatim" | "geocoded";
   classYear: string | null;
   position: string | null;
   personKind?: "alum" | "supporter" | null;
