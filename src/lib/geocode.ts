@@ -106,7 +106,8 @@ function hitToCacheEntry(hit: PlaceGeocodeHit): CacheEntry {
 }
 
 async function throttleNetwork() {
-  const wait = Math.max(0, 350 - (Date.now() - lastNetworkGeocodeAt));
+  // Nominatim policy is ~1 req/sec; keep a bit of headroom for hybrid retries.
+  const wait = Math.max(0, 1100 - (Date.now() - lastNetworkGeocodeAt));
   if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
   lastNetworkGeocodeAt = Date.now();
 }
@@ -156,13 +157,12 @@ async function resolvePlace(city: string | null, state: string | null): Promise<
     if (provider === "hybrid" || provider === "nominatim") {
       try {
         await throttleNetwork();
-        let hit =
-          provider === "nominatim"
-            ? await nominatimCityLookup(parts.rawCity, parts.stateKey)
-            : await photonCityLookup(parts.rawCity, parts.stateKey);
+        // Prefer Nominatim for city+state (reliable US city lookup). Photon is optional —
+        // some hosts see intermittent TLS failures to photon.komoot.io.
+        let hit = await nominatimCityLookup(parts.rawCity, parts.stateKey).catch(() => null);
         if (!hit && provider === "hybrid") {
           await throttleNetwork();
-          hit = await nominatimCityLookup(parts.rawCity, parts.stateKey);
+          hit = await photonCityLookup(parts.rawCity, parts.stateKey).catch(() => null);
         }
         if (hit) {
           const entry = hitToCacheEntry(hit);

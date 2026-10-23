@@ -13,9 +13,11 @@ if (!url) {
 }
 
 const sql = neon(url);
-const CONCURRENCY = Number(process.env.GEOCODE_CONCURRENCY || 2);
-const DELAY_MS = Number(process.env.GEOCODE_DELAY_MS || 400);
+// Nominatim usage policy: ~1 req/sec. Photon is optional (often TLS-fails from some hosts).
+const CONCURRENCY = Number(process.env.GEOCODE_CONCURRENCY || 1);
+const DELAY_MS = Number(process.env.GEOCODE_DELAY_MS || 1100);
 const MAX_ATTEMPTS = Number(process.env.GEOCODE_MAX_ATTEMPTS || 4);
+const PREFER = (process.env.GEOCODE_PREFER || "nominatim").trim().toLowerCase();
 
 const STATE_NAMES = {
   alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
@@ -204,27 +206,36 @@ async function sleep(ms) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
+async function tryProvider(name, city, stateKey) {
+  if (name === "photon") return photon(city, stateKey);
+  return nominatim(city, stateKey);
+}
+
 async function resolveWithRetry(city, stateKey) {
+  const order = PREFER === "photon" ? ["photon", "nominatim"] : ["nominatim", "photon"];
   let lastErr = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    try {
-      await sleep(DELAY_MS * attempt);
-      let hit = await photon(city, stateKey);
-      if (!hit) {
-        await sleep(1100);
-        hit = await nominatim(city, stateKey);
+    for (const name of order) {
+      try {
+        await sleep(name === "nominatim" ? DELAY_MS : Math.min(DELAY_MS, 400));
+        const hit = await tryProvider(name, city, stateKey);
+        if (hit) return hit;
+      } catch (err) {
+        lastErr = err;
+        const retryable =
+          err?.retryable ||
+          /fetch failed|ECONNRESET|ETIMEDOUT|socket|SSL|HTTP 429|HTTP 5/i.test(String(err?.message || err));
+        // Photon TLS failures are common here — skip to nominatim without burning attempts.
+        if (name === "photon" && /SSL|ECONNRESET|fetch failed|socket/i.test(String(err?.message || err))) {
+          continue;
+        }
+        if (!retryable) throw err;
       }
-      return hit;
-    } catch (err) {
-      lastErr = err;
-      const retryable =
-        err?.retryable ||
-        /fetch failed|ECONNRESET|ETIMEDOUT|socket|HTTP 429|HTTP 5/i.test(String(err?.message || err));
-      if (!retryable || attempt === MAX_ATTEMPTS) throw err;
-      await sleep(1000 * attempt);
     }
+    if (attempt < MAX_ATTEMPTS) await sleep(1500 * attempt);
   }
-  throw lastErr;
+  if (lastErr) throw lastErr;
+  return null;
 }
 
 async function main() {
