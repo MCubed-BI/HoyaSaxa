@@ -11,6 +11,8 @@ import {
 import { parseDirectoryPill } from "@/lib/locker-paths";
 import { emptyLockerQa, isLockerStubId } from "@/lib/locker-stubs";
 import type { DirectoryPill, LockerDirectoryResult, LockerPerson, LockerPersonDetail } from "@/lib/locker-types";
+import { ensurePersonColumns } from "@/lib/people-schema";
+import { parsePersonKinds, type PersonKind } from "@/lib/person-kind";
 
 export const LOCKER_PAGE_SIZE = 24;
 
@@ -170,7 +172,7 @@ function searchSql(q: string, startIndex: number) {
   };
 }
 
-function buildRosterWhere(q: string, role: DirectoryPill) {
+function buildRosterWhere(q: string, role: DirectoryPill, personKinds: PersonKind[] = []) {
   const year = new Date().getFullYear();
   const where: string[] = [];
   const params: unknown[] = [];
@@ -187,6 +189,16 @@ function buildRosterWhere(q: string, role: DirectoryPill) {
   if (rolePart.sql) {
     where.push(rolePart.sql);
     params.push(...rolePart.params);
+    i += rolePart.params.length;
+  }
+
+  if (personKinds.length === 1) {
+    where.push(`coalesce(a.person_kind, 'alum') = $${i}`);
+    params.push(personKinds[0]);
+    i += 1;
+  } else if (personKinds.length > 1) {
+    where.push(`coalesce(a.person_kind, 'alum') = ANY($${i}::text[])`);
+    params.push(personKinds);
   }
 
   return {
@@ -195,10 +207,17 @@ function buildRosterWhere(q: string, role: DirectoryPill) {
   };
 }
 
-async function queryRosterPage(q: string, role: DirectoryPill, offset: number, limit: number) {
+async function queryRosterPage(
+  q: string,
+  role: DirectoryPill,
+  offset: number,
+  limit: number,
+  personKinds: PersonKind[] = [],
+) {
   await ensureAlumniPhotoColumns();
+  await ensurePersonColumns();
   const sql = getSql();
-  const { whereSql, params } = buildRosterWhere(q, role);
+  const { whereSql, params } = buildRosterWhere(q, role, personKinds);
   const countQuery = `SELECT COUNT(*)::int AS total FROM alumni a ${whereSql}`;
   const listQuery = `
     SELECT ${PUBLIC_COLUMNS}
@@ -221,10 +240,12 @@ export async function searchLockerDirectory(input: {
   q?: string;
   role?: string;
   page?: number;
+  personKinds?: PersonKind[] | string[];
 }): Promise<LockerDirectoryResult> {
   const q = input.q?.trim() ?? "";
   const role = parseDirectoryPill(input.role);
   const page = Math.max(1, input.page ?? 1);
+  const personKinds = parsePersonKinds((input.personKinds ?? []).map(String));
 
   // Coaches / staff pills stay empty until a real staff table exists — no sample cards.
   if (role === "coaches" || role === "staff") {
@@ -236,7 +257,13 @@ export async function searchLockerDirectory(input: {
   }
 
   try {
-    const roster = await queryRosterPage(q, role === "all" ? "all" : role, (page - 1) * LOCKER_PAGE_SIZE, LOCKER_PAGE_SIZE);
+    const roster = await queryRosterPage(
+      q,
+      role === "all" ? "all" : role,
+      (page - 1) * LOCKER_PAGE_SIZE,
+      LOCKER_PAGE_SIZE,
+      personKinds,
+    );
     return { ...roster, page, pageSize: LOCKER_PAGE_SIZE, usingSample: false };
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {

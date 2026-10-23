@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 import { cn } from "cn";
 
-export type LoginGateMode = "alum" | "admin";
+export type LoginGateMode = "alum" | "supporter" | "admin";
 
 function gateHref(pathname: string, mode: LoginGateMode, next?: string) {
   const params = new URLSearchParams();
@@ -28,10 +28,25 @@ export function LoginGate({
   error?: boolean;
 }) {
   const isAlum = mode === "alum";
-  const action = isAlum ? "/api/locker/login" : "/api/login";
-  const subtitle = isAlum
-    ? `Alumni sign-in for ${PRODUCT_DISPLAY_NAME}.`
-    : `Admin sign-in for ${PRODUCT_DISPLAY_NAME}.`;
+  const isSupporter = mode === "supporter";
+  const isAdmin = mode === "admin";
+  const action = isAdmin ? "/api/login" : "/api/locker/login";
+  const subtitle = isSupporter
+    ? `Supporter sign-in for ${PRODUCT_DISPLAY_NAME}.`
+    : isAlum
+      ? `Alumni sign-in for ${PRODUCT_DISPLAY_NAME}.`
+      : `Admin sign-in for ${PRODUCT_DISPLAY_NAME}.`;
+  const userLabel = isAdmin ? "Username" : isSupporter ? "Username" : "Net ID";
+  const helpText = isSupporter
+    ? "Enter the username and password from the coaching staff."
+    : isAlum
+      ? "Enter your Net ID and password."
+      : "Enter the username and password issued to you.";
+  const errorText = isSupporter
+    ? "That username or password is not recognized."
+    : isAlum
+      ? "That GTown NetID, email, or password is not recognized."
+      : "That username or password is not recognized.";
 
   return (
     <AuthShell title="Sign in" subtitle={subtitle}>
@@ -46,10 +61,18 @@ export function LoginGate({
             Alum
           </Link>
           <Link
+            href={gateHref(pathname, "supporter", next)}
+            role="tab"
+            aria-selected={isSupporter}
+            className={cn("login-gate__tab", isSupporter && "is-active")}
+          >
+            Supporter
+          </Link>
+          <Link
             href={gateHref(pathname, "admin", next)}
             role="tab"
-            aria-selected={!isAlum}
-            className={cn("login-gate__tab", !isAlum && "is-active")}
+            aria-selected={isAdmin}
+            className={cn("login-gate__tab", isAdmin && "is-active")}
           >
             Admin
           </Link>
@@ -57,8 +80,9 @@ export function LoginGate({
 
         <form action={action} method="post" className="space-y-4">
           {next ? <input type="hidden" name="next" value={next} /> : null}
+          <input type="hidden" name="gate" value={mode} />
           <div className="space-y-1.5">
-            <Label htmlFor="username">{isAlum ? "Net ID" : "Username"}</Label>
+            <Label htmlFor="username">{userLabel}</Label>
             <Input id="username" name="username" autoComplete="username" required className="h-10" />
           </div>
           <div className="space-y-1.5">
@@ -73,17 +97,9 @@ export function LoginGate({
             />
           </div>
           {error ? (
-            <p className="text-sm text-destructive">
-              {isAlum
-                ? "That GTown NetID, email, or password is not recognized."
-                : "That username or password is not recognized."}
-            </p>
+            <p className="text-sm text-destructive">{errorText}</p>
           ) : (
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {isAlum
-                ? "Enter your Net ID and password."
-                : "Enter the username and password issued to you."}
-            </p>
+            <p className="text-sm leading-relaxed text-muted-foreground">{helpText}</p>
           )}
           <Button type="submit" className="h-10 w-full">
             Sign in
@@ -100,6 +116,10 @@ export function LoginGate({
                 Claimed record login
               </Link>
             </>
+          ) : isSupporter ? (
+            <p className="text-center text-muted-foreground">
+              Ask an Admin to create your username on the People page.
+            </p>
           ) : (
             <Link href="/register" className="text-muted-foreground underline-offset-4 hover:underline">
               Register myself

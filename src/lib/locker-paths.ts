@@ -58,12 +58,21 @@ export function parseLockerPage(value: string | null | undefined) {
   return Number.isFinite(page) && page > 0 ? page : 1;
 }
 
-export function directoryHref(input: { q?: string; role?: string; page?: number }) {
+export function directoryHref(input: {
+  q?: string;
+  role?: string;
+  page?: number;
+  personKinds?: string[];
+}) {
   const params = new URLSearchParams();
   const q = input.q?.trim();
   if (q) params.set("q", q);
   const role = parseDirectoryPill(input.role);
   if (role !== "all") params.set("role", role);
+  for (const kind of input.personKinds ?? []) {
+    const trimmed = kind.trim();
+    if (trimmed) params.append("personKind", trimmed);
+  }
   if (input.page && input.page > 1) params.set("page", String(input.page));
   const query = params.toString();
   return query ? `/directory?${query}` : "/directory";

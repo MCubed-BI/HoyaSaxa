@@ -85,7 +85,9 @@ const LIST_COLUMNS = `
   a.phone_primary,
   a.address_primary,
   a.football_photo_url,
-  a.linkedin_photo_url
+  a.linkedin_photo_url,
+  coalesce(a.person_kind, 'alum') AS person_kind,
+  coalesce(a.admin_verified, true) AS admin_verified
 `;
 
 let ensured = false;
@@ -398,12 +400,34 @@ export async function registerAlumniAccount(input: {
   return { account, claimedIds: idsToClaim, classYear, lastName };
 }
 
-export async function authenticateAlumni(identifier: string, password: string) {
+export async function authenticateAlumni(
+  identifier: string,
+  password: string,
+  options?: { expectPersonKind?: "alum" | "supporter" },
+) {
   const account = await getAccountByIdentifier(identifier);
   if (!account || !verifyAlumniPassword(password, account.password_hash)) {
-    throw new Error("That GTown NetID, email, or password is not recognized.");
+    throw new Error(
+      options?.expectPersonKind === "supporter"
+        ? "That username or password is not recognized."
+        : "That GTown NetID, email, or password is not recognized.",
+    );
   }
-  return { id: account.id, email: account.email, netId: account.net_id?.trim() ? account.net_id.trim().toLowerCase() : null };
+  if (options?.expectPersonKind) {
+    const { accountHasPersonKind } = await import("@/lib/supporter-login");
+    if (!(await accountHasPersonKind(account.id, options.expectPersonKind))) {
+      throw new Error(
+        options.expectPersonKind === "supporter"
+          ? "That username or password is not recognized."
+          : "That GTown NetID, email, or password is not recognized.",
+      );
+    }
+  }
+  return {
+    id: account.id,
+    email: account.email,
+    netId: account.net_id?.trim() ? account.net_id.trim().toLowerCase() : null,
+  };
 }
 
 export function alumDisplayName(
@@ -436,6 +460,8 @@ export async function alumSessionIdentityForAccount(account: { id: string; email
     throw new Error("Claim a roster row before signing in.");
   }
   for (const record of records) {
+    // Supporters are not Verified Hoyas — only roster alums get the badge on login.
+    if (normalizePersonKindFromRecord(record) === "supporter") continue;
     await grantVerifiedHoyaForAlumSession(record.id);
   }
   return {
@@ -444,6 +470,11 @@ export async function alumSessionIdentityForAccount(account: { id: string; email
     email: account.email,
     name: alumDisplayName(primary, account.email),
   };
+}
+
+function normalizePersonKindFromRecord(record: { person_kind?: string | null }) {
+  const raw = record.person_kind?.trim().toLowerCase();
+  return raw === "supporter" || raw === "support" ? "supporter" : "alum";
 }
 
 export type AlumniMeIdentity = {

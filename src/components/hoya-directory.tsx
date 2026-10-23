@@ -17,10 +17,12 @@ import { athleteHref, directoryHref } from "@/lib/locker-paths";
 import type { PublicBadge } from "@/lib/badges";
 import { isLockerStubId } from "@/lib/locker-stubs";
 import { DIRECTORY_PILLS, type DirectoryPill, type LockerPerson } from "@/lib/locker-types";
+import type { PersonKind } from "@/lib/person-kind";
 
 export function HoyaDirectory({
   q,
   role,
+  personKinds = [],
   rows,
   total,
   page,
@@ -31,6 +33,7 @@ export function HoyaDirectory({
 }: {
   q: string;
   role: DirectoryPill;
+  personKinds?: PersonKind[];
   rows: LockerPerson[];
   total: number;
   page: number;
@@ -44,6 +47,7 @@ export function HoyaDirectory({
   const noun = role === "all" ? "person" : role.slice(0, -1);
   const plural = role === "all" ? "people" : role;
   const highlightId = focusId || (total === 1 ? rows[0]?.id : null);
+  const hasFilters = Boolean(q || role !== "all" || personKinds.length);
 
   return (
     <div className="space-y-5">
@@ -53,18 +57,19 @@ export function HoyaDirectory({
             {range.label}
             {total > 0 ? ` · ${formatCount(total, noun, plural)}` : null}
             {q ? ` · matching “${q}”` : null}
+            {personKinds.length === 1 ? ` · ${personKinds[0] === "supporter" ? "Support" : "Alum"}` : null}
             {usingSample ? " · sample cards (roster unavailable)" : null}
           </p>
         }
       >
         <form action="/directory" method="get" className="flex flex-col gap-3 sm:flex-row sm:items-end">
           {role !== "all" ? <input type="hidden" name="role" value={role} /> : null}
-          <DirectoryNameSearch defaultValue={q} view="alum" />
+          <DirectoryNameSearch defaultValue={q} view="alum" personKinds={personKinds} />
           <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" className="h-11 px-4">
               Find
             </Button>
-            {q || role !== "all" ? (
+            {hasFilters ? (
               <Button asChild type="button" variant="outline" className="h-11">
                 <Link href="/directory">Clear</Link>
               </Button>
@@ -77,7 +82,7 @@ export function HoyaDirectory({
             return (
               <Link
                 key={pill.id}
-                href={directoryHref({ q, role: pill.id })}
+                href={directoryHref({ q, role: pill.id, personKinds })}
                 role="tab"
                 aria-selected={active}
                 className={pillClass(active)}
@@ -91,15 +96,15 @@ export function HoyaDirectory({
 
       {rows.length === 0 ? (
         <EmptyState
-          title={q || role !== "all" ? "No matches" : "Directory is empty"}
+          title={hasFilters ? "No matches" : "Directory is empty"}
           body={
-            q || role !== "all"
+            hasFilters
               ? "Try another name or preferred name, or clear the filter."
               : "Roster rows appear here after Neon is connected."
           }
           icon="directory"
           action={
-            q || role !== "all" ? (
+            hasFilters ? (
               <Button asChild variant="outline">
                 <Link href="/directory">Clear search</Link>
               </Button>
@@ -152,7 +157,11 @@ export function HoyaDirectory({
       )}
 
       <DirectoryFocus id={highlightId} />
-      <ResultPagination page={page} pageCount={pageCount} hrefFor={(next) => directoryHref({ q, role, page: next })} />
+      <ResultPagination
+        page={page}
+        pageCount={pageCount}
+        hrefFor={(next) => directoryHref({ q, role, personKinds, page: next })}
+      />
       <AlumEmailBar />
     </div>
   );

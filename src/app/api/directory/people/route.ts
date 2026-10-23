@@ -8,6 +8,7 @@ import {
   type DirectorySearchView,
 } from "@/lib/directory-search";
 import { searchLockerDirectory } from "@/lib/locker-directory";
+import { parsePersonKinds } from "@/lib/person-kind";
 import { searchAlumniByName } from "@/lib/queries";
 import { getCurrentViewer } from "@/lib/viewer";
 
@@ -27,24 +28,29 @@ export async function GET(request: Request) {
   const q = url.searchParams.get("q")?.trim() ?? "";
   const view = parseView(url.searchParams.get("view"));
   const limit = Number.parseInt(url.searchParams.get("limit") ?? "8", 10);
+  const personKinds = parsePersonKinds([
+    ...url.searchParams.getAll("personKind"),
+    ...url.searchParams.getAll("personKinds"),
+    ...(url.searchParams.get("kind") ? [url.searchParams.get("kind")!] : []),
+  ]);
 
   if (q.length < 1) {
-    return NextResponse.json({ q, people: [], single: false });
+    return NextResponse.json({ q, people: [], single: false, personKinds });
   }
 
   try {
     if (view === "alum") {
-      const result = await searchLockerDirectory({ q, page: 1 });
+      const result = await searchLockerDirectory({ q, page: 1, personKinds });
       const people = suggestFromLockerPeople(result.rows, q, Number.isFinite(limit) ? limit : 8);
-      return NextResponse.json({ q, people, single: isStrongSingleMatch(people) });
+      return NextResponse.json({ q, people, single: isStrongSingleMatch(people), personKinds });
     }
 
-    const rows = await searchAlumniByName(q, Number.isFinite(limit) ? limit : 8);
+    const rows = await searchAlumniByName(q, Number.isFinite(limit) ? limit : 8, personKinds);
     const people = suggestFromAlumniRows(rows, q, "admin", Number.isFinite(limit) ? limit : 8);
-    return NextResponse.json({ q, people, single: isStrongSingleMatch(people) });
+    return NextResponse.json({ q, people, single: isStrongSingleMatch(people), personKinds });
   } catch (error) {
     if (isMissingDatabaseConfig(error)) {
-      return NextResponse.json({ q, people: [], single: false });
+      return NextResponse.json({ q, people: [], single: false, personKinds });
     }
     const message = error instanceof Error ? error.message : "Could not search the directory.";
     return NextResponse.json({ error: message }, { status: 500 });

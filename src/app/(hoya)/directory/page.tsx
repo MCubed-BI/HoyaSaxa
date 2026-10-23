@@ -6,6 +6,7 @@ import { isMissingDatabaseConfig } from "@/lib/db";
 import { parseDirectoryPill, parseLockerPage } from "@/lib/locker-paths";
 import { searchLockerDirectory } from "@/lib/locker-directory";
 import { requireLockerViewer } from "@/lib/locker-viewer";
+import { parsePersonKinds } from "@/lib/person-kind";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +29,16 @@ export default async function DirectoryPage({
   const q = firstParam(params.q);
   const role = parseDirectoryPill(firstParam(params.role));
   const page = parseLockerPage(firstParam(params.page));
+  const personKinds = parsePersonKinds(
+    Array.isArray(params.personKind)
+      ? params.personKind
+      : params.personKind
+        ? [params.personKind]
+        : [],
+  );
 
   try {
-    const result = await searchLockerDirectory({ q, role, page });
+    const result = await searchLockerDirectory({ q, role, page, personKinds });
     const badgesById = await listPublicBadgesManyFromFeed(result.rows.map((row) => row.id), {
       verifiedAlumniIds: await sessionVerifiedAlumniIds(),
     });
@@ -39,11 +47,12 @@ export default async function DirectoryPage({
         <PageHeader
           eyebrow="Directory"
           title="Roster"
-          description="Search a name or preferred name to open one person. Role pills stay compact. Emails stay hidden here — select classmates and use Email selected to compose."
+          description="Search a name or preferred name to open one person. Filter Alum / Support, then use role pills. Emails stay hidden here — select classmates and use Email selected to compose."
         />
         <HoyaDirectory
           q={q}
           role={role}
+          personKinds={personKinds}
           rows={result.rows}
           total={result.total}
           page={result.page}
