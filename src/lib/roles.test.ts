@@ -214,6 +214,7 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/api/locker/feed"), true);
     assert.equal(isAlumAllowedPath("/board"), true);
     assert.equal(isAlumAllowedPath("/api/feed"), true);
+    assert.equal(isAlumAllowedPath("/api/hoya-ai/chat"), true);
     assert.equal(isAlumAllowedPath("/api/badges"), true);
     assert.equal(isAlumAllowedPath("/admin"), true);
     assert.equal(isAlumAllowedPath("/api/admin"), true);

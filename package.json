@@ -14,6 +14,7 @@
     "backfill:place-geocodes": "node --env-file=.env.local scripts/backfill-place-geocodes.mjs"
   },
   "dependencies": {
+    "@ai-sdk/react": "^4.0.154",
     "@neondatabase/serverless": "^1.1.0",
     "ai": "^7.0.148",
     "class-variance-authority": "^0.7.1",
