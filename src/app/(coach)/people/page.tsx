@@ -5,6 +5,7 @@ import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { countUnverifiedPeople, listPeopleForAdmin } from "@/lib/people-admin";
 import { ensurePersonColumns } from "@/lib/people-schema";
+import { ensurePortalTables } from "@/lib/portal-schema";
 import { requirePlatformRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function AdminPeoplePage() {
         <PageHeader
           eyebrow="Admin"
           title="People"
-          description="Add and verify Players (Alum) or Georgetown Supporters. Use the Alum / Support filter on Directory, Find My Alum, Blast, and Reports."
+          description="Add and verify Players (Alum), Georgetown Supporters, or Development admins. Development requires a username and password and gets full admin access. Use the Alum / Support filter on Directory, Find My Alum, Blast, and Reports."
         />
         {errorMessage ? (
           <StatusCard title="People unavailable" body={errorMessage} />

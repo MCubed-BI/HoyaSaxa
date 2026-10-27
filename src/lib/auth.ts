@@ -6,6 +6,9 @@ export const COACH_ROLE = "coach" as const;
 export const DEFAULT_COACH_USERNAME = "Hoyas";
 export const DEFAULT_COACH_PASSWORD = "Sgarlata35";
 
+/** Marker segment for DB-backed Development / staff_roles password sessions. */
+export const STAFF_DB_SESSION_MARKER = "staff";
+
 export function getCoachCredentials() {
   return {
     username: process.env.COACH_USERNAME?.trim() || DEFAULT_COACH_USERNAME,
@@ -41,6 +44,7 @@ function boardPassword() {
   return process.env.HOYA_BOARD_PASSWORD || getCoachCredentials().password;
 }
 
+/** Env-list staff session (classic `username.issuedAt.sig`). */
 export function createSessionToken(username?: string) {
   const staffUsername = (username?.trim() || getCoachCredentials().username).trim();
   const issuedAt = Date.now().toString();
@@ -48,12 +52,38 @@ export function createSessionToken(username?: string) {
   return `${payload}.${hmac(sessionSecret(), payload)}`;
 }
 
+/**
+ * DB-backed Development admin session (`username.issuedAt.staff.sig`).
+ * Middleware can validate sync without consulting Neon.
+ */
+export function createDbStaffSessionToken(username: string) {
+  const staffUsername = username.trim();
+  if (!staffUsername) throw new Error("Username is required.");
+  const issuedAt = Date.now().toString();
+  const payload = `${staffUsername}.${issuedAt}.${STAFF_DB_SESSION_MARKER}`;
+  return `${payload}.${hmac(sessionSecret(), payload)}`;
+}
+
 export function readSessionUsername(token: string | undefined | null) {
   if (!token) return null;
   const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  const [username, issuedAt, signature] = parts;
-  if (!username || !issuedAt || !signature) return null;
+  if (parts.length < 3) return null;
+  const signature = parts[parts.length - 1];
+  if (!signature) return null;
+
+  // Parse from the end so usernames may contain periods (e.g. Dev.Admin).
+  if (parts.length >= 4 && parts[parts.length - 2] === STAFF_DB_SESSION_MARKER) {
+    const issuedAt = parts[parts.length - 3];
+    const username = parts.slice(0, -3).join(".");
+    if (!username || !issuedAt || !/^\d+$/.test(issuedAt)) return null;
+    const expected = hmac(sessionSecret(), `${username}.${issuedAt}.${STAFF_DB_SESSION_MARKER}`);
+    if (!safeEqual(signature, expected)) return null;
+    return username;
+  }
+
+  const issuedAt = parts[parts.length - 2];
+  const username = parts.slice(0, -2).join(".");
+  if (!username || !issuedAt || !/^\d+$/.test(issuedAt)) return null;
   const expected = hmac(sessionSecret(), `${username}.${issuedAt}`);
   if (!safeEqual(signature, expected)) return null;
   if (!isAllowedStaffUsername(username)) return null;
@@ -68,6 +98,16 @@ export function isValidSessionToken(token: string | undefined | null) {
   return Boolean(readSessionUsername(token));
 }
 
+export function isDbStaffSessionToken(token: string | undefined | null) {
+  if (!token) return false;
+  const parts = token.split(".");
+  return (
+    parts.length >= 4 &&
+    parts[parts.length - 2] === STAFF_DB_SESSION_MARKER &&
+    Boolean(readSessionUsername(token))
+  );
+}
+
 export function verifyCredentials(username: string, password: string) {
   const trimmed = username.trim();
   if (!isAllowedStaffUsername(trimmed)) return false;
@@ -78,6 +118,26 @@ export function verifyCredentials(username: string, password: string) {
     !isAdminUsername(trimmed, coachUsername) &&
     boardNames.includes(trimmed.toLowerCase());
   return safeEqual(password, useBoardPassword ? boardPassword() : coachPassword);
+}
+
+/**
+ * Env credentials first, then Development staff_roles password_hash.
+ * Returns which session token shape to mint.
+ */
+export async function authenticateStaffLogin(username: string, password: string) {
+  const trimmed = username.trim();
+  if (!trimmed || !password) return null;
+  if (verifyCredentials(trimmed, password)) {
+    return { username: trimmed, session: "env" as const };
+  }
+  try {
+    const { verifyDevelopmentStaffCredentials } = await import("@/lib/development-staff");
+    const matched = await verifyDevelopmentStaffCredentials(trimmed, password);
+    if (!matched) return null;
+    return { username: matched.username, session: "db" as const };
+  } catch {
+    return null;
+  }
 }
 
 export function sessionCookieOptions() {

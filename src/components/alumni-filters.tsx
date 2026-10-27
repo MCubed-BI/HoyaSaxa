@@ -17,7 +17,11 @@ import {
   type AlumniFilters,
 } from "@/lib/filters";
 import type { DirectorySearchView } from "@/lib/directory-search";
-import { PERSON_KINDS, PERSON_KIND_LABELS, type PersonKind } from "@/lib/person-kind";
+import {
+  DIRECTORY_PERSON_KINDS,
+  PERSON_KIND_LABELS,
+  type PersonKind,
+} from "@/lib/person-kind";
 import type { AlumniFacets } from "@/lib/types";
 
 export function AlumniFiltersForm({
@@ -231,12 +235,12 @@ export function AlumniFiltersForm({
               <MultiSelect
                 label="Alum / Support"
                 placeholder="Alum and Support"
-                options={PERSON_KINDS.map((kind) => PERSON_KIND_LABELS[kind])}
+                options={DIRECTORY_PERSON_KINDS.map((kind) => PERSON_KIND_LABELS[kind])}
                 value={local.personKinds.map((kind) => PERSON_KIND_LABELS[kind])}
                 onChange={(labels) => {
                   const next: PersonKind[] = [];
                   for (const label of labels) {
-                    const kind = PERSON_KINDS.find((item) => PERSON_KIND_LABELS[item] === label);
+                    const kind = DIRECTORY_PERSON_KINDS.find((item) => PERSON_KIND_LABELS[item] === label);
                     if (kind && !next.includes(kind)) next.push(kind);
                   }
                   setLocal((current) => ({ ...current, personKinds: next }));

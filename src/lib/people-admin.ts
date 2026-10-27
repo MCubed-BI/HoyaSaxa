@@ -1,6 +1,12 @@
+import { grantDevelopmentAdmin } from "@/lib/development-staff";
 import { getSql } from "@/lib/db";
 import { ensurePersonColumns } from "@/lib/people-schema";
-import { normalizePersonKind, type PersonKind } from "@/lib/person-kind";
+import {
+  assertDevelopmentPassword,
+  normalizeDevelopmentUsername,
+  normalizePersonKind,
+  type PersonKind,
+} from "@/lib/person-kind";
 import { normalizeState } from "@/lib/us-centroids";
 
 export type AdminPersonRow = {
@@ -23,6 +29,8 @@ export type AdminPersonRow = {
   position: string | null;
   created_at: string;
   updated_at: string;
+  /** Present when person_kind is development and a staff login exists. */
+  staff_username?: string | null;
 };
 
 export type CreatePersonInput = {
@@ -38,6 +46,10 @@ export type CreatePersonInput = {
   classYear?: string;
   position?: string;
   personKind: PersonKind;
+  /** Required when personKind is development. */
+  username?: string;
+  /** Required when personKind is development. */
+  password?: string;
   /** When true (default), mark verified immediately. */
   verified?: boolean;
   verifiedBy?: string;
@@ -50,6 +62,41 @@ function trimOrNull(value: string | undefined) {
 
 function fullNameFrom(first: string | null, last: string) {
   return [first, last].filter(Boolean).join(" ").trim() || last;
+}
+
+const PERSON_SELECT = `
+  id, first_name, last_name, preferred_name, full_name,
+  person_kind, admin_verified, admin_verified_at::text, admin_verified_by,
+  email_primary, phone_primary,
+  current_city, current_state, hometown_city, hometown_state,
+  class_year, position,
+  created_at::text, updated_at::text
+`;
+
+async function attachStaffUsernames(rows: AdminPersonRow[]): Promise<AdminPersonRow[]> {
+  if (rows.length === 0) return rows;
+  const developmentIds = rows.filter((row) => row.person_kind === "development").map((row) => row.id);
+  if (developmentIds.length === 0) return rows;
+  try {
+    const sql = getSql();
+    const staff = (await sql.query(
+      `
+      SELECT alumni_id::text AS alumni_id, username
+      FROM staff_roles
+      WHERE alumni_id = ANY($1::uuid[])
+        AND username IS NOT NULL AND btrim(username) <> ''
+      `,
+      [developmentIds],
+    )) as Array<{ alumni_id: string; username: string }>;
+    const byId = new Map(staff.map((row) => [row.alumni_id, row.username]));
+    return rows.map((row) =>
+      row.person_kind === "development"
+        ? { ...row, staff_username: byId.get(row.id) ?? null }
+        : row,
+    );
+  } catch {
+    return rows;
+  }
 }
 
 export async function createPerson(input: CreatePersonInput): Promise<AdminPersonRow> {
@@ -65,6 +112,13 @@ export async function createPerson(input: CreatePersonInput): Promise<AdminPerso
   const currentState = normalizeState(input.currentState) ?? trimOrNull(input.currentState);
   const hometownState = normalizeState(input.hometownState) ?? trimOrNull(input.hometownState);
   const fullName = fullNameFrom(preferredName || firstName, lastName);
+
+  let developmentUsername: string | null = null;
+  let developmentPassword: string | null = null;
+  if (personKind === "development") {
+    developmentUsername = normalizeDevelopmentUsername(input.username);
+    developmentPassword = assertDevelopmentPassword(input.password);
+  }
 
   const rows = await sql.query(
     `
@@ -83,13 +137,7 @@ export async function createPerson(input: CreatePersonInput): Promise<AdminPerso
       $13, $14, CASE WHEN $14 THEN now() ELSE NULL END, $15,
       $16::jsonb
     )
-    RETURNING
-      id, first_name, last_name, preferred_name, full_name,
-      person_kind, admin_verified, admin_verified_at::text, admin_verified_by,
-      email_primary, phone_primary,
-      current_city, current_state, hometown_city, hometown_state,
-      class_year, position,
-      created_at::text, updated_at::text
+    RETURNING ${PERSON_SELECT}
     `,
     [
       firstName,
@@ -110,7 +158,20 @@ export async function createPerson(input: CreatePersonInput): Promise<AdminPerso
       JSON.stringify({ admin_created: true, person_kind: personKind }),
     ],
   );
-  return rows[0] as AdminPersonRow;
+  const person = rows[0] as AdminPersonRow;
+
+  if (personKind === "development" && developmentUsername && developmentPassword) {
+    await grantDevelopmentAdmin({
+      alumniId: person.id,
+      username: developmentUsername,
+      password: developmentPassword,
+      email: person.email_primary,
+      name: fullName,
+    });
+    person.staff_username = developmentUsername;
+  }
+
+  return person;
 }
 
 export async function listPeopleForAdmin(options?: {
@@ -123,13 +184,7 @@ export async function listPeopleForAdmin(options?: {
   const where = options?.unverifiedOnly ? "WHERE admin_verified = false" : "";
   const rows = await sql.query(
     `
-    SELECT
-      id, first_name, last_name, preferred_name, full_name,
-      person_kind, admin_verified, admin_verified_at::text, admin_verified_by,
-      email_primary, phone_primary,
-      current_city, current_state, hometown_city, hometown_state,
-      class_year, position,
-      created_at::text, updated_at::text
+    SELECT ${PERSON_SELECT}
     FROM alumni
     ${where}
     ORDER BY
@@ -140,7 +195,7 @@ export async function listPeopleForAdmin(options?: {
     LIMIT ${limit}
     `,
   );
-  return rows as AdminPersonRow[];
+  return attachStaffUsernames(rows as AdminPersonRow[]);
 }
 
 export async function setPersonVerified(
@@ -159,39 +214,61 @@ export async function setPersonVerified(
       admin_verified_by = CASE WHEN $2 THEN $3 ELSE NULL END,
       updated_at = now()
     WHERE id = $1::uuid
-    RETURNING
-      id, first_name, last_name, preferred_name, full_name,
-      person_kind, admin_verified, admin_verified_at::text, admin_verified_by,
-      email_primary, phone_primary,
-      current_city, current_state, hometown_city, hometown_state,
-      class_year, position,
-      created_at::text, updated_at::text
+    RETURNING ${PERSON_SELECT}
     `,
     [id, verified, verified ? trimOrNull(verifiedBy) ?? "Admin" : null],
   );
-  return (rows[0] as AdminPersonRow) ?? null;
+  const person = (rows[0] as AdminPersonRow) ?? null;
+  if (!person) return null;
+  return (await attachStaffUsernames([person]))[0]!;
 }
 
-export async function setPersonKind(id: string, kind: PersonKind): Promise<AdminPersonRow | null> {
+export async function setPersonKind(
+  id: string,
+  kind: PersonKind,
+  credentials?: { username?: string; password?: string },
+): Promise<AdminPersonRow | null> {
   await ensurePersonColumns();
   const sql = getSql();
   const personKind = normalizePersonKind(kind);
+
+  if (personKind === "development") {
+    const username = normalizeDevelopmentUsername(credentials?.username);
+    const password = assertDevelopmentPassword(credentials?.password);
+    const rows = await sql.query(
+      `
+      UPDATE alumni
+      SET person_kind = $2, updated_at = now()
+      WHERE id = $1::uuid
+      RETURNING ${PERSON_SELECT}
+      `,
+      [id, personKind],
+    );
+    const person = (rows[0] as AdminPersonRow) ?? null;
+    if (!person) return null;
+    await grantDevelopmentAdmin({
+      alumniId: person.id,
+      username,
+      password,
+      email: person.email_primary,
+      name: fullNameFrom(person.preferred_name || person.first_name, person.last_name),
+    });
+    person.staff_username = username;
+    return person;
+  }
+
   const rows = await sql.query(
     `
     UPDATE alumni
     SET person_kind = $2, updated_at = now()
     WHERE id = $1::uuid
-    RETURNING
-      id, first_name, last_name, preferred_name, full_name,
-      person_kind, admin_verified, admin_verified_at::text, admin_verified_by,
-      email_primary, phone_primary,
-      current_city, current_state, hometown_city, hometown_state,
-      class_year, position,
-      created_at::text, updated_at::text
+    RETURNING ${PERSON_SELECT}
     `,
     [id, personKind],
   );
-  return (rows[0] as AdminPersonRow) ?? null;
+  const person = (rows[0] as AdminPersonRow) ?? null;
+  if (!person) return null;
+  return (await attachStaffUsernames([person]))[0]!;
 }
 
 export async function countUnverifiedPeople() {

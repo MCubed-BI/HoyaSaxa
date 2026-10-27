@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { alumSessionIdentityForAccount, authenticateAlumni } from "@/lib/alumni-claim";
 import {
   SESSION_COOKIE,
+  authenticateStaffLogin,
+  createDbStaffSessionToken,
   createSessionToken,
   getCoachCredentials,
   sessionCookieOptions,
-  verifyCredentials,
 } from "@/lib/auth";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import {
@@ -35,12 +36,20 @@ export async function POST(request: Request) {
   const username = String(form.get("username") ?? "");
   const password = String(form.get("password") ?? "");
   const next = safeNextPath(typeof form.get("next") === "string" ? String(form.get("next")) : null);
-  if (verifyCredentials(username, password)) {
-    const role = resolveRoleFromEnv(username.trim(), getCoachCredentials().username);
+  const authenticated = await authenticateStaffLogin(username, password);
+  if (authenticated) {
+    const role =
+      authenticated.session === "db"
+        ? ("owner" as const)
+        : resolveRoleFromEnv(authenticated.username, getCoachCredentials().username);
     if (isAdminRole(role)) {
       const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
       clearAlumSessionCookies(response, true);
-      response.cookies.set(SESSION_COOKIE, createSessionToken(username.trim()), sessionCookieOptions());
+      const token =
+        authenticated.session === "db"
+          ? createDbStaffSessionToken(authenticated.username)
+          : createSessionToken(authenticated.username);
+      response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
       setCoachRoleHint(response);
       return response;
     }

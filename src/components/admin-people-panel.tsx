@@ -34,7 +34,14 @@ export function AdminPeoplePanel({
   const [currentCity, setCurrentCity] = useState("");
   const [currentState, setCurrentState] = useState("");
   const [personKind, setPersonKind] = useState<PersonKind>("supporter");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [verifiedOnCreate, setVerifiedOnCreate] = useState(true);
+
+  const isDevelopment = personKind === "development";
+  const canSubmit =
+    Boolean(lastName.trim()) &&
+    (!isDevelopment || (Boolean(username.trim()) && password.length >= 8));
 
   const visible = useMemo(
     () => (filter === "pending" ? people.filter((row) => !row.admin_verified) : people),
@@ -70,6 +77,7 @@ export function AdminPeoplePanel({
           currentCity,
           currentState,
           personKind,
+          ...(isDevelopment ? { username, password } : {}),
           verified: verifiedOnCreate,
         }),
       });
@@ -81,10 +89,16 @@ export function AdminPeoplePanel({
       setPhone("");
       setCurrentCity("");
       setCurrentState("");
+      setUsername("");
+      setPassword("");
+      const loginHint =
+        data.person!.person_kind === "development" && data.person!.staff_username
+          ? ` Login: ${data.person!.staff_username} at Admin sign-in.`
+          : "";
       setMessage(
         `Added ${displayName(data.person!)} as ${personKindLabel(data.person!.person_kind)}${
           data.person!.admin_verified ? " (verified)" : " — pending verification"
-        }.`,
+        }.${loginHint}`,
       );
       await refresh();
     } catch (err) {
@@ -121,14 +135,30 @@ export function AdminPeoplePanel({
     }
   }
 
+  function onRoleChange(row: AdminPersonRow, next: PersonKind) {
+    if (next === row.person_kind) return;
+    if (next === "development") {
+      const nextUsername = window.prompt(
+        `Username for ${displayName(row)} (Admin login)`,
+        row.staff_username || "",
+      );
+      if (nextUsername == null) return;
+      const nextPassword = window.prompt("Password (min 8 characters)");
+      if (nextPassword == null) return;
+      void patchPerson(row.id, { personKind: next, username: nextUsername, password: nextPassword });
+      return;
+    }
+    void patchPerson(row.id, { personKind: next });
+  }
+
   return (
     <div className="space-y-6">
       <form onSubmit={onCreate} className="space-y-4 rounded-xl border bg-card p-5 shadow-[var(--shadow-card)]">
         <div>
           <h3 className="font-heading text-base text-navy">Add person</h3>
           <p className="text-sm text-muted-foreground">
-            Create a Player (Alum) or Georgetown Supporter. Supporters are not tagged as Alum in filters and
-            directory badges.
+            Create a Player (Alum), Georgetown Supporter, or Development admin. Development gets full admin
+            access — set a username and password they will use at Admin sign-in.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -184,7 +214,7 @@ export function AdminPeoplePanel({
             />
           </label>
         </div>
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-end gap-4">
           <label className="space-y-1 text-sm">
             <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Role</span>
             <select
@@ -194,9 +224,42 @@ export function AdminPeoplePanel({
             >
               <option value="alum">{PERSON_KIND_ADMIN_LABELS.alum}</option>
               <option value="supporter">{PERSON_KIND_ADMIN_LABELS.supporter}</option>
+              <option value="development">{PERSON_KIND_ADMIN_LABELS.development}</option>
             </select>
           </label>
-          <label className="mt-5 flex items-center gap-2 text-sm">
+          {isDevelopment ? (
+            <>
+              <label className="space-y-1 text-sm">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Username *
+                </span>
+                <input
+                  required
+                  autoComplete="off"
+                  className="h-10 w-full min-w-[10rem] rounded-lg border border-input bg-background px-3"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="dev.admin"
+                />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Password *
+                </span>
+                <input
+                  required
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  className="h-10 w-full min-w-[10rem] rounded-lg border border-input bg-background px-3"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Min 8 characters"
+                />
+              </label>
+            </>
+          ) : null}
+          <label className="flex items-center gap-2 pb-2 text-sm">
             <input
               type="checkbox"
               className="size-4 accent-navy"
@@ -205,7 +268,7 @@ export function AdminPeoplePanel({
             />
             Mark verified on create
           </label>
-          <Button type="submit" disabled={busy || !lastName.trim()} className="mt-5">
+          <Button type="submit" disabled={busy || !canSubmit}>
             {busy ? "Saving…" : "Add person"}
           </Button>
         </div>
@@ -249,6 +312,9 @@ export function AdminPeoplePanel({
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {personKindLabel(row.person_kind)}
+                      {row.person_kind === "development" && row.staff_username
+                        ? ` · @${row.staff_username}`
+                        : ""}
                       {row.admin_verified ? " · Verified" : " · Unverified"}
                       {" · "}
                       {place(row)}
@@ -262,13 +328,12 @@ export function AdminPeoplePanel({
                       className="h-9 rounded-lg border border-input bg-background px-2 text-sm"
                       value={row.person_kind}
                       disabled={busy}
-                      onChange={(event) =>
-                        patchPerson(row.id, { personKind: event.target.value as PersonKind })
-                      }
+                      onChange={(event) => onRoleChange(row, event.target.value as PersonKind)}
                       aria-label={`Role for ${displayName(row)}`}
                     >
                       <option value="alum">{PERSON_KIND_ADMIN_LABELS.alum}</option>
                       <option value="supporter">{PERSON_KIND_ADMIN_LABELS.supporter}</option>
+                      <option value="development">{PERSON_KIND_ADMIN_LABELS.development}</option>
                     </select>
                     {row.admin_verified ? (
                       <Button

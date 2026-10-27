@@ -21,8 +21,8 @@ export type AlumniListItem = {
   address_primary: string | null;
   football_photo_url?: string | null;
   linkedin_photo_url?: string | null;
-  /** alum (player) or supporter — defaults to alum for roster imports. */
-  person_kind?: "alum" | "supporter" | null;
+  /** alum (player), supporter, or development — defaults to alum for roster imports. */
+  person_kind?: "alum" | "supporter" | "development" | null;
   admin_verified?: boolean | null;
 };
 
@@ -108,5 +108,5 @@ export type AlumniMapPoint = {
   geocodeMethod: "city" | "state" | "nominatim" | "geocoded";
   classYear: string | null;
   position: string | null;
-  personKind?: "alum" | "supporter" | null;
+  personKind?: "alum" | "supporter" | "development" | null;
 };

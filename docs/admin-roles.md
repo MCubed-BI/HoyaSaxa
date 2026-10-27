@@ -12,6 +12,17 @@ Platform overlay for Coders 1–5 (`src/lib/platform-roles.ts`): feed section ke
 
 Resolution order: env lists (`HOYA_ADMIN_USERNAMES` / `HOYA_OWNER_USERNAMES` / `HOYA_COACH_USERNAMES` / `HOYA_BOARD_USERNAMES` / `HOYA_ALUM_USERNAMES`) then `staff_roles` in Neon (username or email). Admin wins if a name is on both Admin and Board lists.
 
+## Add a Development admin (People)
+
+**Preferred (Admin UI):**
+
+1. Sign in as Admin → **People**.
+2. Role → **Development**. Enter first/last name plus a **username** and **password** (min 8 characters).
+3. Add person. That creates the roster row (`person_kind=development`), writes `staff_roles` with `role=admin` and a password hash, and links `alumni_id`.
+4. They sign in at `/login` (Admin tab) with that username and password and receive a full-admin `ga_session` (same staff tools as coach/env admins).
+
+Changing an existing person to Development from the People list or athlete profile prompts for username/password and grants the same admin login.
+
 ## Add an Admin
 
 **Preferred (env, same pattern as coach):**

@@ -5,7 +5,8 @@ import {
   listPeopleForAdmin,
 } from "@/lib/people-admin";
 import { ensurePersonColumns } from "@/lib/people-schema";
-import { normalizePersonKind } from "@/lib/person-kind";
+import { isPersonKind, normalizePersonKind } from "@/lib/person-kind";
+import { ensurePortalTables } from "@/lib/portal-schema";
 import { requirePlatformRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   await requirePlatformRole(["admin"]);
   await ensurePersonColumns();
+  await ensurePortalTables();
   const url = new URL(request.url);
   const unverifiedOnly = url.searchParams.get("unverified") === "1";
   const people = await listPeopleForAdmin({ unverifiedOnly, limit: 150 });
@@ -34,6 +36,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Last name is required." }, { status: 400 });
   }
 
+  const personKind = normalizePersonKind(body.personKind ?? body.kind);
+  if (!isPersonKind(personKind)) {
+    return NextResponse.json(
+      { error: "personKind must be alum, supporter, or development." },
+      { status: 400 },
+    );
+  }
+
   try {
     const person = await createPerson({
       firstName: typeof body.firstName === "string" ? body.firstName : undefined,
@@ -47,7 +57,9 @@ export async function POST(request: Request) {
       hometownState: typeof body.hometownState === "string" ? body.hometownState : undefined,
       classYear: typeof body.classYear === "string" ? body.classYear : undefined,
       position: typeof body.position === "string" ? body.position : undefined,
-      personKind: normalizePersonKind(body.personKind ?? body.kind),
+      personKind,
+      username: typeof body.username === "string" ? body.username : undefined,
+      password: typeof body.password === "string" ? body.password : undefined,
       verified: body.verified !== false && body.verified !== "0",
       verifiedBy: viewer.label || "Admin",
     });

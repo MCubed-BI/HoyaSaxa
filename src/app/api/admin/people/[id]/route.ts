@@ -28,9 +28,22 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (body.personKind != null || body.kind != null) {
     const kind = normalizePersonKind(body.personKind ?? body.kind);
     if (!isPersonKind(kind)) {
-      return NextResponse.json({ error: "personKind must be alum or supporter." }, { status: 400 });
+      return NextResponse.json(
+        { error: "personKind must be alum, supporter, or development." },
+        { status: 400 },
+      );
     }
-    person = await setPersonKind(id, kind);
+    try {
+      person = await setPersonKind(id, kind, {
+        username: typeof body.username === "string" ? body.username : undefined,
+        password: typeof body.password === "string" ? body.password : undefined,
+      });
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Could not update role." },
+        { status: 400 },
+      );
+    }
   }
 
   if (!person) {

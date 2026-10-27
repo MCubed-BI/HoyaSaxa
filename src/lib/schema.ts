@@ -144,6 +144,7 @@ export const staffRoles = pgTable("staff_roles", {
   email: text("email"),
   alumniId: uuid("alumni_id"),
   role: text("role").notNull(),
+  passwordHash: text("password_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

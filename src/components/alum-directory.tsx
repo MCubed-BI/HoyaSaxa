@@ -75,14 +75,20 @@ export function AlumDirectory({
                     <span className="shrink-0 rounded-md bg-[var(--gold)] px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--gold-foreground)]">
                       Support
                     </span>
+                  ) : person.person_kind === "development" ? (
+                    <span className="shrink-0 rounded-md bg-navy px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+                      Development
+                    </span>
                   ) : null}
                 </Link>
                 <p className="text-sm text-muted-foreground">
                   {person.person_kind === "supporter"
                     ? "Georgetown supporter"
-                    : [positionLabel(person.position), classYearLabel(person.class_year) || person.seasons]
-                        .filter(Boolean)
-                        .join(" · ") || "Roster details pending"}
+                    : person.person_kind === "development"
+                      ? "Development admin"
+                      : [positionLabel(person.position), classYearLabel(person.class_year) || person.seasons]
+                          .filter(Boolean)
+                          .join(" · ") || "Roster details pending"}
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
                   {jobLabel(person.company_name, person.job_title) || residenceLabel(person) || "Location unknown"}

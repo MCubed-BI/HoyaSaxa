@@ -13,17 +13,11 @@ export async function ensurePersonColumns() {
       ADD COLUMN IF NOT EXISTS admin_verified_at timestamptz,
       ADD COLUMN IF NOT EXISTS admin_verified_by text
   `);
+  await sql.query(`ALTER TABLE alumni DROP CONSTRAINT IF EXISTS alumni_person_kind_check`);
   await sql.query(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'alumni_person_kind_check'
-      ) THEN
-        ALTER TABLE alumni
-          ADD CONSTRAINT alumni_person_kind_check
-          CHECK (person_kind IN ('alum', 'supporter'));
-      END IF;
-    END $$;
+    ALTER TABLE alumni
+      ADD CONSTRAINT alumni_person_kind_check
+      CHECK (person_kind IN ('alum', 'supporter', 'development'))
   `);
   await sql.query(`
     CREATE INDEX IF NOT EXISTS idx_alumni_person_kind ON alumni (person_kind)

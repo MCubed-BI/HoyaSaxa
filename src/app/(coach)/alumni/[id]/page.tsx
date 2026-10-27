@@ -100,9 +100,11 @@ export default async function AlumniDetailPage({
                   <p className="text-sm text-muted-foreground">
                     {person.person_kind === "supporter"
                       ? "Georgetown supporter"
-                      : [positionLabel(person.position), classYearLabel(person.class_year), person.seasons]
-                          .filter(Boolean)
-                          .join(" · ") || "Georgetown football"}
+                      : person.person_kind === "development"
+                        ? "Development admin"
+                        : [positionLabel(person.position), classYearLabel(person.class_year), person.seasons]
+                            .filter(Boolean)
+                            .join(" · ") || "Georgetown football"}
                   </p>
                 </div>
                 {person.headline ? <p className="max-w-2xl text-sm">{person.headline}</p> : null}
@@ -111,6 +113,8 @@ export default async function AlumniDetailPage({
                     <Badge className="border-transparent bg-[var(--gold)] text-[var(--gold-foreground)] hover:bg-[var(--gold)]">
                       Support
                     </Badge>
+                  ) : person.person_kind === "development" ? (
+                    <Badge variant="secondary">Development</Badge>
                   ) : (
                     <Badge variant="secondary">Alum</Badge>
                   )}

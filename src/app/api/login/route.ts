@@ -6,10 +6,11 @@ import {
 } from "@/lib/alum-session";
 import {
   SESSION_COOKIE,
+  authenticateStaffLogin,
+  createDbStaffSessionToken,
   createSessionToken,
   getCoachCredentials,
   sessionCookieOptions,
-  verifyCredentials,
 } from "@/lib/auth";
 import { homePathForRole, resolveRoleFromEnv } from "@/lib/roles";
 import { clearAlumSessionCookies, clearCoachSessionCookies, setCoachRoleHint } from "@/lib/session";
@@ -25,14 +26,18 @@ export async function POST(request: Request) {
   const password = String(form.get("password") ?? "");
   const requestedNext = typeof form.get("next") === "string" ? String(form.get("next")) : null;
 
-  if (!verifyCredentials(username, password)) {
+  const authenticated = await authenticateStaffLogin(username, password);
+  if (!authenticated) {
     const url = new URL("/login", request.url);
     url.searchParams.set("error", "1");
     if (requestedNext && requestedNext !== "/") url.searchParams.set("next", requestedNext);
     return NextResponse.redirect(url, { status: 303 });
   }
 
-  const role = resolveRoleFromEnv(username, getCoachCredentials().username);
+  const role =
+    authenticated.session === "db"
+      ? ("owner" as const)
+      : resolveRoleFromEnv(authenticated.username, getCoachCredentials().username);
   const next = safeNextPath(requestedNext, homePathForRole(role));
   const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
 
@@ -43,7 +48,7 @@ export async function POST(request: Request) {
       createAlumSessionToken({
         role,
         email: "",
-        name: username,
+        name: authenticated.username,
       }),
       alumSessionCookieOptions(),
     );
@@ -51,7 +56,11 @@ export async function POST(request: Request) {
   }
 
   clearAlumSessionCookies(response, true);
-  response.cookies.set(SESSION_COOKIE, createSessionToken(username), sessionCookieOptions());
+  const token =
+    authenticated.session === "db"
+      ? createDbStaffSessionToken(authenticated.username)
+      : createSessionToken(authenticated.username);
+  response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   setCoachRoleHint(response);
   return response;
 }

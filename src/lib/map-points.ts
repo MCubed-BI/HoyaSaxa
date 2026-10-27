@@ -58,7 +58,12 @@ export async function getAlumniMapPoints(filters: AlumniFilters): Promise<{
         geocodeMethod,
         classYear: row.class_year,
         position: row.position,
-        personKind: row.person_kind === "supporter" ? "supporter" : "alum",
+        personKind:
+          row.person_kind === "supporter"
+            ? "supporter"
+            : row.person_kind === "development"
+              ? "development"
+              : "alum",
       });
     }
   }
