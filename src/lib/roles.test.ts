@@ -209,6 +209,7 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/feed"), true);
     assert.equal(isAlumAllowedPath("/messages"), true);
     assert.equal(isAlumAllowedPath("/find-my-alum"), true);
+    assert.equal(isAlumAllowedPath("/api/find-my-alum/points"), true);
     assert.equal(isAlumAllowedPath("/message"), true);
     assert.equal(isAlumAllowedPath("/api/portal/newsflash"), true);
     assert.equal(isAlumAllowedPath("/api/locker/feed"), true);

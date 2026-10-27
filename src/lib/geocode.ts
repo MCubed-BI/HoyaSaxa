@@ -1,5 +1,6 @@
 import {
   lookupCachedPlaceGeocode,
+  lookupCachedPlaceGeocodesBatch,
   persistPlaceGeocode,
   photonCityLookup,
   nominatimCityLookup,
@@ -38,9 +39,17 @@ export type AlumniLocationRow = {
   person_kind?: "alum" | "supporter" | "development" | null;
 };
 
+/** Request-path geocoding must stay offline — Nominatim ~1 req/sec will 300s-timeout /find-my-alum. */
+export type ResolvePlaceOptions = {
+  /** When true, may call Photon/Nominatim. Default false (cache → centroid → state only). */
+  allowNetwork?: boolean;
+};
+
 type CacheEntry = LatLng & { method: ResolvedLocation["method"] };
 
 const memoryCache = new Map<string, CacheEntry | null>();
+/** Keys batch-checked against place_geocodes this process — skip repeat DB lookups. */
+const dbLookupDone = new Set<string>();
 let lastNetworkGeocodeAt = 0;
 
 function hashJitter(seed: string): [number, number] {
@@ -112,49 +121,118 @@ async function throttleNetwork() {
   lastNetworkGeocodeAt = Date.now();
 }
 
+function memoryCacheKey(city: string | null | undefined, state: string | null | undefined) {
+  return `${normalizeCity(city) ?? ""}|${normalizeState(state) ?? state ?? ""}`;
+}
+
 /**
- * City+state: DB cache → hard-coded centroid → Photon/Nominatim (persisted).
- * State-only / failed city: loose state jitter (accuracy not required).
+ * Prefetch place_geocodes (+ hard-coded centroids) into the in-memory map so
+ * /find-my-alum can resolve every pin without per-row DB or network round-trips.
  */
-async function resolvePlace(city: string | null, state: string | null): Promise<CacheEntry | null> {
-  const cacheKey = `${normalizeCity(city) ?? ""}|${normalizeState(state) ?? state ?? ""}`;
+export async function warmGeocodeCacheForRows(rows: AlumniLocationRow[]): Promise<void> {
+  const places: Array<{ city: string | null; state: string | null }> = [];
+  for (const row of rows) {
+    places.push({ city: row.current_city, state: row.current_state });
+    places.push({ city: row.hometown_city, state: row.hometown_state });
+    if (row.address_primary?.trim()) {
+      const parsed = parseAddressCityState(row.address_primary);
+      places.push({ city: parsed.city, state: parsed.state });
+    }
+  }
+
+  const toQuery: Array<{ city: string; state: string }> = [];
+  const seen = new Set<string>();
+  for (const place of places) {
+    const parts = placeKeyParts(place.city, place.state);
+    if (!parts) continue;
+    const id = `${parts.cityKey}|${parts.stateKey}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    toQuery.push({ city: parts.rawCity, state: parts.stateKey });
+  }
+
+  try {
+    const hits = await lookupCachedPlaceGeocodesBatch(toQuery);
+    for (const [id, hit] of hits) {
+      const [cityKey, stateKey] = id.split("|");
+      const cacheKey = memoryCacheKey(cityKey, stateKey);
+      memoryCache.set(cacheKey, hitToCacheEntry(hit));
+      dbLookupDone.add(cacheKey);
+    }
+  } catch {
+    // DB optional in unit tests without DATABASE_URL.
+  }
+
+  for (const place of toQuery) {
+    const cacheKey = memoryCacheKey(place.city, place.state);
+    dbLookupDone.add(cacheKey);
+    if (memoryCache.has(cacheKey)) continue;
+    const centroid = lookupCentroidOnly(place.city, place.state);
+    if (centroid) {
+      memoryCache.set(cacheKey, centroid);
+      continue;
+    }
+    // Prefill state fallback so request-path resolve stays synchronous after warm.
+    const stateHit = lookupStateFallback(place.city, place.state);
+    if (stateHit) memoryCache.set(cacheKey, stateHit);
+  }
+}
+
+/**
+ * City+state: DB cache → hard-coded centroid → optional Photon/Nominatim (persisted).
+ * State-only / failed city: loose state jitter (accuracy not required).
+ * Network is opt-in — the Find My Alum page must never await Nominatim.
+ */
+async function resolvePlace(
+  city: string | null,
+  state: string | null,
+  options?: ResolvePlaceOptions,
+): Promise<CacheEntry | null> {
+  const cacheKey = memoryCacheKey(city, state);
   if (memoryCache.has(cacheKey)) return memoryCache.get(cacheKey) ?? null;
 
   const parts = placeKeyParts(city, state);
   const provider = geocodeProvider();
+  const allowNetwork = options?.allowNetwork === true;
 
   // City + state → must be city-accurate when possible.
   if (parts) {
-    try {
-      const cached = await lookupCachedPlaceGeocode(parts.rawCity, parts.stateKey);
-      if (cached) {
-        const entry = hitToCacheEntry(cached);
-        memoryCache.set(cacheKey, entry);
-        return entry;
+    if (!dbLookupDone.has(cacheKey)) {
+      try {
+        const cached = await lookupCachedPlaceGeocode(parts.rawCity, parts.stateKey);
+        dbLookupDone.add(cacheKey);
+        if (cached) {
+          const entry = hitToCacheEntry(cached);
+          memoryCache.set(cacheKey, entry);
+          return entry;
+        }
+      } catch {
+        // DB optional in unit tests without DATABASE_URL.
       }
-    } catch {
-      // DB optional in unit tests without DATABASE_URL.
     }
 
     const centroid = lookupCentroidOnly(parts.rawCity, parts.stateKey);
     if (centroid) {
       memoryCache.set(cacheKey, centroid);
-      try {
-        await persistPlaceGeocode({
-          city: parts.rawCity,
-          state: parts.stateKey,
-          lat: centroid.lat,
-          lng: centroid.lng,
-          method: "city",
-          provider: "centroid",
-        });
-      } catch {
-        // ignore persist failures
+      // Persist only on explicit network/backfill paths — never on map page loads.
+      if (allowNetwork) {
+        try {
+          await persistPlaceGeocode({
+            city: parts.rawCity,
+            state: parts.stateKey,
+            lat: centroid.lat,
+            lng: centroid.lng,
+            method: "city",
+            provider: "centroid",
+          });
+        } catch {
+          // ignore persist failures
+        }
       }
       return centroid;
     }
 
-    if (provider === "hybrid" || provider === "nominatim") {
+    if (allowNetwork && (provider === "hybrid" || provider === "nominatim")) {
       try {
         await throttleNetwork();
         // Prefer Nominatim for city+state (reliable US city lookup). Photon is optional —
@@ -197,9 +275,10 @@ async function resolveAttempt(
   city: string | null,
   state: string | null,
   source: ResolvedLocation["source"],
+  options?: ResolvePlaceOptions,
 ): Promise<ResolvedLocation | null> {
   if (!city?.trim() && !state?.trim()) return null;
-  const resolved = await resolvePlace(city, state);
+  const resolved = await resolvePlace(city, state, options);
   if (!resolved) return null;
   return {
     ...resolved,
@@ -209,14 +288,17 @@ async function resolveAttempt(
 }
 
 /** Best single pin: current → hometown → parsed address (legacy callers / tests). */
-export async function resolveAlumniLocation(row: AlumniLocationRow): Promise<ResolvedLocation | null> {
-  const current = await resolveAttempt(row.current_city, row.current_state, "current");
+export async function resolveAlumniLocation(
+  row: AlumniLocationRow,
+  options?: ResolvePlaceOptions,
+): Promise<ResolvedLocation | null> {
+  const current = await resolveAttempt(row.current_city, row.current_state, "current", options);
   if (current) return current;
-  const hometown = await resolveAttempt(row.hometown_city, row.hometown_state, "hometown");
+  const hometown = await resolveAttempt(row.hometown_city, row.hometown_state, "hometown", options);
   if (hometown) return hometown;
   if (row.address_primary?.trim()) {
     const parsed = parseAddressCityState(row.address_primary);
-    return resolveAttempt(parsed.city, parsed.state, "address");
+    return resolveAttempt(parsed.city, parsed.state, "address", options);
   }
   return null;
 }
@@ -225,15 +307,18 @@ export async function resolveAlumniLocation(row: AlumniLocationRow): Promise<Res
  * All mappable places for an alum: current and hometown when both resolve.
  * Address is only used when neither current nor hometown maps.
  */
-export async function resolveAlumniLocations(row: AlumniLocationRow): Promise<ResolvedLocation[]> {
+export async function resolveAlumniLocations(
+  row: AlumniLocationRow,
+  options?: ResolvePlaceOptions,
+): Promise<ResolvedLocation[]> {
   const out: ResolvedLocation[] = [];
-  const current = await resolveAttempt(row.current_city, row.current_state, "current");
+  const current = await resolveAttempt(row.current_city, row.current_state, "current", options);
   if (current) out.push(current);
-  const hometown = await resolveAttempt(row.hometown_city, row.hometown_state, "hometown");
+  const hometown = await resolveAttempt(row.hometown_city, row.hometown_state, "hometown", options);
   if (hometown) out.push(hometown);
   if (out.length === 0 && row.address_primary?.trim()) {
     const parsed = parseAddressCityState(row.address_primary);
-    const address = await resolveAttempt(parsed.city, parsed.state, "address");
+    const address = await resolveAttempt(parsed.city, parsed.state, "address", options);
     if (address) out.push(address);
   }
   return out;
@@ -241,5 +326,6 @@ export async function resolveAlumniLocations(row: AlumniLocationRow): Promise<Re
 
 export function resetGeocodeCache() {
   memoryCache.clear();
+  dbLookupDone.clear();
   lastNetworkGeocodeAt = 0;
 }

@@ -78,33 +78,66 @@ export async function lookupCachedPlaceGeocode(
 ): Promise<PlaceGeocodeHit | null> {
   const parts = placeKeyParts(city, state);
   if (!parts) return null;
+  const hits = await lookupCachedPlaceGeocodesBatch([
+    { city: parts.rawCity, state: parts.stateKey },
+  ]);
+  return hits.get(`${parts.cityKey}|${parts.stateKey}`) ?? null;
+}
+
+/**
+ * One round-trip for many city|state keys. Used to warm the map page so we
+ * do not N+1 query place_geocodes (or hit Nominatim) per alumnus.
+ */
+export async function lookupCachedPlaceGeocodesBatch(
+  places: Array<{ city: string | null | undefined; state: string | null | undefined }>,
+): Promise<Map<string, PlaceGeocodeHit>> {
+  const out = new Map<string, PlaceGeocodeHit>();
+  const keys: Array<{ cityKey: string; stateKey: string }> = [];
+  const seen = new Set<string>();
+  for (const place of places) {
+    const parts = placeKeyParts(place.city, place.state);
+    if (!parts) continue;
+    const id = `${parts.cityKey}|${parts.stateKey}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    keys.push({ cityKey: parts.cityKey, stateKey: parts.stateKey });
+  }
+  if (!keys.length) return out;
+
   await ensurePlaceGeocodeTable();
   const sql = getSql();
+  const cityKeys = keys.map((k) => k.cityKey);
+  const stateKeys = keys.map((k) => k.stateKey);
   const rows = (await sql.query(
     `
-    SELECT lat, lng, method, provider, label
-    FROM place_geocodes
-    WHERE city_key = $1 AND state = $2
-    LIMIT 1
+    SELECT g.city_key, g.state, g.lat, g.lng, g.method, g.provider, g.label
+    FROM place_geocodes g
+    INNER JOIN unnest($1::text[], $2::text[]) AS q(city_key, state)
+      ON g.city_key = q.city_key AND g.state = q.state
+    WHERE g.method IN ('city', 'geocoded')
     `,
-    [parts.cityKey, parts.stateKey],
+    [cityKeys, stateKeys],
   )) as Array<{
+    city_key: string;
+    state: string;
     lat: number;
     lng: number;
     method: string;
     provider: string;
     label: string | null;
   }>;
-  const row = rows[0];
-  if (!row) return null;
-  if (row.method !== "city" && row.method !== "geocoded") return null;
-  return {
-    lat: Number(row.lat),
-    lng: Number(row.lng),
-    method: row.method,
-    provider: row.provider,
-    label: row.label,
-  };
+
+  for (const row of rows) {
+    if (row.method !== "city" && row.method !== "geocoded") continue;
+    out.set(`${row.city_key}|${row.state}`, {
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      method: row.method as PlaceGeocodeHit["method"],
+      provider: row.provider,
+      label: row.label,
+    });
+  }
+  return out;
 }
 
 export async function persistPlaceGeocode(input: {
