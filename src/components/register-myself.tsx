@@ -32,11 +32,14 @@ export function RegisterMyself({
   claimedAlumniId = null,
   initialEmail = "",
   initialNetId = "",
+  forgotPassword = false,
 }: {
   initialStep?: "roster" | "account" | "photos" | "netid";
   claimedAlumniId?: string | null;
   initialEmail?: string;
   initialNetId?: string;
+  /** Forgot-password path: re-register with the same email to replace the password. */
+  forgotPassword?: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<"roster" | "account" | "photos" | "netid">(initialStep);
@@ -142,6 +145,7 @@ export function RegisterMyself({
           alumniIds: selected,
           firstName,
           createIfMissing: createIfMissing && selected.length === 0,
+          replaceExisting: forgotPassword,
           linkedin_url: photos.linkedin_url,
           ...(hasClaimPhotoValues(photos) ? photos : {}),
         }),
@@ -271,17 +275,18 @@ export function RegisterMyself({
         </div>
         {error ? <p className="text-sm text-destructive">{error}</p> : (
           <p className="text-sm text-muted-foreground">
-            Use the last name and class year from the football roster. Then add or replace your photos and create an
-            alumni login.
+            {forgotPassword
+              ? "Use the last name and class year from the football roster, then re-register with the same alumni email to set a new password."
+              : "Use the last name and class year from the football roster. Then add or replace your photos and create an alumni login."}
           </p>
         )}
         <Button type="submit" className="w-full" disabled={pending}>
           {pending ? "Looking up…" : "Find my roster row"}
         </Button>
         <p className="text-center text-sm text-muted-foreground">
-          Already registered?{" "}
-          <Link href="/alumni-login" className="text-navy underline-offset-4 hover:underline">
-            Alumni login
+          {forgotPassword ? "Remembered it? " : "Already registered? "}
+          <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
+            {forgotPassword ? "Back to sign in" : "Alumni login"}
           </Link>
         </p>
       </form>
@@ -350,17 +355,22 @@ export function RegisterMyself({
         {matches.length === 0
           ? `No roster row matched ${lastName} · class ${resolvedYear ?? classYear}. You can create one.`
           : `${matches.length} roster ${matches.length === 1 ? "row" : "rows"} matched ${lastName} · class ${resolvedYear ?? classYear}.`}
+        {forgotPassword
+          ? " Select your row and enter the email on that login — this replaces your password."
+          : ""}
       </p>
       {matches.length > 0 ? (
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Claim these rows</legend>
-          {matches.map((row) => (
+          <legend className="text-sm font-medium">{forgotPassword ? "Your roster row" : "Claim these rows"}</legend>
+          {matches.map((row) => {
+            const locked = row.claimed && !row.claimed_by_me && !forgotPassword;
+            return (
             <label key={row.id} className="flex items-start gap-3 rounded-lg border px-3 py-2">
               <input
                 type="checkbox"
                 className="mt-1"
                 checked={selected.includes(row.id)}
-                disabled={row.claimed && !row.claimed_by_me}
+                disabled={locked}
                 onChange={(event) => {
                   const nextSelected = event.target.checked
                     ? [...selected, row.id]
@@ -385,12 +395,17 @@ export function RegisterMyself({
                   {[row.position, row.class_year ? `Class of ${row.class_year}` : null, row.seasons]
                     .filter(Boolean)
                     .join(" · ") || "Georgetown football"}
-                  {row.claimed && !row.claimed_by_me ? " · already claimed" : ""}
+                  {row.claimed && !row.claimed_by_me
+                    ? forgotPassword
+                      ? " · claimed — use that login’s email"
+                      : " · already claimed"
+                    : ""}
                   {row.football_photo_url ? " · roster photo on file" : ""}
                 </span>
               </span>
             </label>
-          ))}
+            );
+          })}
         </fieldset>
       ) : (
         <div className="space-y-1.5">
@@ -415,7 +430,7 @@ export function RegisterMyself({
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{forgotPassword ? "New password" : "Password"}</Label>
         <Input
           id="password"
           type="password"
@@ -436,7 +451,13 @@ export function RegisterMyself({
           Back
         </Button>
         <Button type="submit" className="flex-1" disabled={pending}>
-          {pending ? "Creating…" : "Create alumni login"}
+          {pending
+            ? forgotPassword
+              ? "Updating…"
+              : "Creating…"
+            : forgotPassword
+              ? "Set new password"
+              : "Create alumni login"}
         </Button>
       </div>
     </form>

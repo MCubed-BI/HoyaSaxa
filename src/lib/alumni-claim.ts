@@ -338,6 +338,8 @@ export async function registerAlumniAccount(input: {
   alumniIds: string[];
   firstName?: string;
   createIfMissing?: boolean;
+  /** Forgot-password path: replace the password on an existing login and reclaim its rows. */
+  replaceExisting?: boolean;
   photos?: AlumniPhotoPatch;
   linkedinUrl?: string | null;
 }) {
@@ -347,16 +349,31 @@ export async function registerAlumniAccount(input: {
   if (input.password.length < 8) throw new Error("Password must be at least 8 characters.");
 
   const existing = await getAccountByEmail(email);
-  if (existing) throw new Error("That email already has an alumni login. Sign in instead.");
+  if (existing && !input.replaceExisting) {
+    throw new Error("That email already has an alumni login. Sign in instead.");
+  }
+  if (input.replaceExisting && !existing) {
+    // Fall through to a normal first-time registration with the same form.
+  }
 
-  const { lastName, classYear, matches } = await lookupRosterMatches(input.lastName, input.classYear);
+  const { lastName, classYear, matches } = await lookupRosterMatches(
+    input.lastName,
+    input.classYear,
+    existing?.id,
+  );
   const selected = matches.filter((row) => input.alumniIds.includes(row.id));
   const claimedByOther = selected.filter((row) => row.claimed && !row.claimed_by_me);
   if (claimedByOther.length > 0) {
-    throw new Error("One of those roster rows is already claimed. Contact the coaching staff.");
+    throw new Error(
+      input.replaceExisting
+        ? "One of those roster rows is claimed by a different login. Use that account’s email, or contact the coaching staff."
+        : "One of those roster rows is already claimed. Contact the coaching staff.",
+    );
   }
 
-  let idsToClaim = selected.filter((row) => !row.claimed).map((row) => row.id);
+  let idsToClaim = selected
+    .filter((row) => !row.claimed || row.claimed_by_me)
+    .map((row) => row.id);
   if (idsToClaim.length === 0 && input.createIfMissing) {
     const firstName = input.firstName?.trim();
     if (!firstName) throw new Error("Enter your first name to create a new roster row.");
@@ -371,15 +388,28 @@ export async function registerAlumniAccount(input: {
     idsToClaim = [created[0]!.id];
   }
   if (idsToClaim.length === 0) {
-    throw new Error("Select a roster match, or create a new row if yours is missing.");
+    throw new Error(
+      input.replaceExisting
+        ? "Select your roster row and use the email on that alumni login to set a new password."
+        : "Select a roster match, or create a new row if yours is missing.",
+    );
   }
 
   const passwordHash = hashAlumniPassword(input.password);
-  const createdAccount = await query<AlumniAccountRow[]>(
-    `INSERT INTO alumni_accounts (email, password_hash) VALUES ($1, $2) RETURNING id, email, net_id`,
-    [email, passwordHash],
-  );
-  const account = toAlumniAccount(createdAccount[0]!);
+  let account: AlumniAccount;
+  if (existing) {
+    await query(`UPDATE alumni_accounts SET password_hash = $1, updated_at = now() WHERE id = $2`, [
+      passwordHash,
+      existing.id,
+    ]);
+    account = toAlumniAccount(existing);
+  } else {
+    const createdAccount = await query<AlumniAccountRow[]>(
+      `INSERT INTO alumni_accounts (email, password_hash) VALUES ($1, $2) RETURNING id, email, net_id`,
+      [email, passwordHash],
+    );
+    account = toAlumniAccount(createdAccount[0]!);
+  }
   for (const alumniId of idsToClaim) {
     await query(`INSERT INTO alumni_claims (account_id, alumni_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [
       account.id,
@@ -395,7 +425,7 @@ export async function registerAlumniAccount(input: {
       await updateAlumniPhotos(alumniId, input.photos);
     }
   }
-  return { account, claimedIds: idsToClaim, classYear, lastName };
+  return { account, claimedIds: idsToClaim, classYear, lastName, replaced: Boolean(existing) };
 }
 
 export async function authenticateAlumni(identifier: string, password: string) {
