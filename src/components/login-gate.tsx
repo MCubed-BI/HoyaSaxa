@@ -88,6 +88,11 @@ export function LoginGate({
           <Button type="submit" className="h-10 w-full">
             Sign in
           </Button>
+          {isAlum ? (
+            <Button asChild type="button" variant="outline" className="h-10 w-full">
+              <Link href="/register?forgot=1">Forgot Password</Link>
+            </Button>
+          ) : null}
         </form>
 
         <div className="flex flex-col items-center gap-1 pt-1 text-sm">

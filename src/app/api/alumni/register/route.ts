@@ -15,6 +15,7 @@ export async function POST(request: Request) {
       alumniIds?: string[];
       firstName?: string;
       createIfMissing?: boolean;
+      replaceExisting?: boolean;
       football_photo_url?: string;
       linkedin_photo_url?: string;
       linkedin_url?: string;
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
       alumniIds: Array.isArray(body.alumniIds) ? body.alumniIds : [],
       firstName: body.firstName,
       createIfMissing: Boolean(body.createIfMissing),
+      replaceExisting: Boolean(body.replaceExisting),
       photos: Object.keys(photos).length > 0 ? photos : undefined,
       linkedinUrl,
     });

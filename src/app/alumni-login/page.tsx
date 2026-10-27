@@ -55,6 +55,9 @@ export default async function AlumniLoginPage({
         <Button type="submit" className="w-full">
           Sign in
         </Button>
+        <Button asChild type="button" variant="outline" className="w-full">
+          <Link href="/register?forgot=1">Forgot Password</Link>
+        </Button>
       </form>
       <p className="text-center text-sm text-muted-foreground">
         Need an account?{" "}

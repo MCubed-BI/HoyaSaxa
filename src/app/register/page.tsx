@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   title: "Register myself",
 };
 
+function flagParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value.some((item) => item === "1" || item === "true");
+  return value === "1" || value === "true";
+}
+
 export default async function RegisterPage({
   searchParams,
 }: {
@@ -23,6 +28,7 @@ export default async function RegisterPage({
   const jar = await cookies();
   const session = getAlumSession(jar);
   const validate = isClaimPhotoValidateStep(params.validate, params.step, params.photos);
+  const forgotPassword = flagParam(params.forgot);
   let needsNetId = false;
   let initialEmail = "";
   let initialNetId = "";
@@ -42,23 +48,29 @@ export default async function RegisterPage({
     }
   }
 
+  const title = needsNetId
+    ? "GTown NetID"
+    : validate
+      ? "Validate photos"
+      : forgotPassword
+        ? "Forgot password"
+        : "Register myself";
+  const subtitle = needsNetId
+    ? "Add your Georgetown NetID — the part before @georgetown.edu — so you can sign in with it."
+    : validate
+      ? "Upload or paste image URLs for your football roster photo and LinkedIn headshot, then save before you finish."
+      : forgotPassword
+        ? `There is no email reset. Re-register with your roster details and the same alumni email to set a new password in ${PRODUCT_DISPLAY_NAME}.`
+        : `Claim your roster row in ${PRODUCT_DISPLAY_NAME}, add or replace photos, then create an alumni login.`;
+
   return (
-    <AuthShell
-      wide
-      title={needsNetId ? "GTown NetID" : validate ? "Validate photos" : "Register myself"}
-      subtitle={
-        needsNetId
-          ? "Add your Georgetown NetID — the part before @georgetown.edu — so you can sign in with it."
-          : validate
-            ? "Upload or paste image URLs for your football roster photo and LinkedIn headshot, then save before you finish."
-            : `Claim your roster row in ${PRODUCT_DISPLAY_NAME}, add or replace photos, then create an alumni login.`
-      }
-    >
+    <AuthShell wide title={title} subtitle={subtitle}>
       <RegisterMyself
         initialStep={validate && session?.alumniId ? "photos" : needsNetId ? "netid" : "roster"}
         claimedAlumniId={validate ? session?.alumniId ?? null : null}
         initialEmail={initialEmail}
         initialNetId={initialNetId}
+        forgotPassword={forgotPassword && !needsNetId && !validate}
       />
       <p className="text-center text-sm text-muted-foreground">
         Already have access?{" "}
