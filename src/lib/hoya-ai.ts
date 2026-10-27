@@ -1,7 +1,12 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { displayName } from "@/lib/format";
-import { emptyFilters, type AlumniFilters } from "@/lib/filters";
+import {
+  emptyFilters,
+  filtersToSearchParams,
+  hasActiveFilters,
+  type AlumniFilters,
+} from "@/lib/filters";
 import { HOYA_AI_NAME } from "@/lib/hoya-ai-brand";
 import { canUseBlast, canUseOwnerTools, type Role } from "@/lib/roles";
 import {
@@ -21,6 +26,24 @@ export { HOYA_AI_NAME };
 export function hoyaAiModel() {
   return (process.env.AI_HOYA_MODEL || process.env.AI_MODEL || "openai/gpt-5-mini").trim();
 }
+
+/** Shared filter args for countPeople / listPeople / directory deep links. */
+export const hoyaAiPeopleFilterSchema = z.object({
+  q: z.string().optional(),
+  state: z.string().optional(),
+  city: z.string().optional(),
+  classYear: z.string().optional(),
+  position: z.string().optional(),
+  hasEmail: z.boolean().optional(),
+  hasPhone: z.boolean().optional(),
+  hasLinkedin: z.boolean().optional(),
+  /** Claimed / Registered Hoyas only (Directory “Registered” filter). */
+  registered: z.boolean().optional(),
+  /** Admin-unverified people only (Directory “Unverified” filter). */
+  unverified: z.boolean().optional(),
+});
+
+export type HoyaAiPeopleFilterInput = z.infer<typeof hoyaAiPeopleFilterSchema>;
 
 function personSummary(
   row: Awaited<ReturnType<typeof searchAlumniByName>>[number],
@@ -54,15 +77,7 @@ function personSummary(
   };
 }
 
-function filtersFromTool(input: {
-  q?: string;
-  state?: string;
-  city?: string;
-  classYear?: string;
-  position?: string;
-  hasEmail?: boolean;
-  hasPhone?: boolean;
-}): AlumniFilters {
+export function filtersFromTool(input: HoyaAiPeopleFilterInput): AlumniFilters {
   const base = emptyFilters();
   return {
     ...base,
@@ -73,7 +88,27 @@ function filtersFromTool(input: {
     positions: input.position ? [input.position.trim()] : [],
     hasEmail: Boolean(input.hasEmail),
     hasPhone: Boolean(input.hasPhone),
+    hasLinkedin: Boolean(input.hasLinkedin),
+    registered: Boolean(input.registered),
+    unverified: Boolean(input.unverified),
   };
+}
+
+function directoryHrefForFilters(role: Role, filters: AlumniFilters) {
+  const base = directoryHrefForRole(role);
+  const qs = filtersToSearchParams(filters).toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+function directoryLinkForFilters(role: Role, filters: AlumniFilters) {
+  if (!hasActiveFilters(filters)) return null;
+  const href = directoryHrefForFilters(role, filters);
+  const label = filters.registered
+    ? "Open Registered Hoyas"
+    : filters.unverified
+      ? "Open Unverified"
+      : "Open in Directory";
+  return { href, label };
 }
 
 function eventActorFromViewer(viewer: Viewer): EventActor {
@@ -122,6 +157,7 @@ Rules:
 - For alums, do not reveal another person's email/phone/LinkedIn unless a tool returns them (tools redact contact for non-staff).
 - Never claim you sent a blast, email, or SMS. Draft only; tell them to open Blast to send.
 - When suggesting navigation, call openLink so the UI can show a button.
+- Treat “Registered Hoyas”, “registered”, “claimed”, or “who has claimed a profile” as the Directory Registered filter: set registered=true on countPeople/listPeople (and openLink with ?registered=1 on the directory home when they want to browse). Same idea for Unverified → unverified=true.
 - If a request needs Admin/People/Data Cleanup and the viewer is not staff, explain and point them to an Admin.
 - Prefer short answers with concrete next steps.`;
 }
@@ -168,41 +204,37 @@ export function createHoyaAiTools(viewer: Viewer) {
     }),
 
     countPeople: tool({
-      description: "Count people matching optional filters (state, city, class year, position, contact flags).",
-      inputSchema: z.object({
-        q: z.string().optional(),
-        state: z.string().optional(),
-        city: z.string().optional(),
-        classYear: z.string().optional(),
-        position: z.string().optional(),
-        hasEmail: z.boolean().optional(),
-        hasPhone: z.boolean().optional(),
-      }),
+      description:
+        "Count people matching optional filters (state, city, class year, position, contact flags, Registered Hoyas, unverified).",
+      inputSchema: hoyaAiPeopleFilterSchema,
       execute: async (input) => {
         const filters = filtersFromTool(input);
         const total = await getAlumniCount(filters);
-        return { total, filters };
+        const directory = directoryLinkForFilters(viewer.role, filters);
+        return {
+          total,
+          filters,
+          ...(directory ? { href: directory.href, label: directory.label } : {}),
+        };
       },
     }),
 
     listPeople: tool({
-      description: "List a page of people for filters (name/state/city/class). Max one page.",
-      inputSchema: z.object({
-        q: z.string().optional(),
-        state: z.string().optional(),
-        city: z.string().optional(),
-        classYear: z.string().optional(),
-        position: z.string().optional(),
+      description:
+        "List a page of people for filters (name/state/city/class, Registered Hoyas, unverified). Max one page.",
+      inputSchema: hoyaAiPeopleFilterSchema.extend({
         page: z.number().int().min(1).max(5).optional(),
       }),
       execute: async (input) => {
         const filters = filtersFromTool(input);
         const result = await searchAlumni(filters, input.page ?? 1);
+        const directory = directoryLinkForFilters(viewer.role, filters);
         return {
           total: result.total,
           page: result.page,
           pageSize: result.pageSize,
           people: result.rows.slice(0, 15).map((row) => personSummary(row, { includeContact })),
+          ...(directory ? { href: directory.href, label: directory.label } : {}),
         };
       },
     }),
@@ -256,7 +288,8 @@ export function createHoyaAiTools(viewer: Viewer) {
           directory: {
             title: "Directory",
             href: directoryHrefForRole(viewer.role),
-            blurb: "Search and filter alumni and supporters. Open a row for the full profile.",
+            blurb:
+              "Search and filter alumni and supporters (including Registered Hoyas who claimed a profile). Open a row for the full profile.",
           },
           "find-my-alum": {
             title: "Find My Alum",
