@@ -6,7 +6,6 @@ import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { parseAlumniFilters } from "@/lib/filters";
-import { getAlumniMapPoints } from "@/lib/map-points";
 import { getAlumniFacets } from "@/lib/queries";
 import { canUseOwnerTools } from "@/lib/roles";
 import { requireViewer } from "@/lib/viewer";
@@ -21,11 +20,12 @@ export default async function FindMyAlumPage({
   const viewer = await requireViewer();
   const filters = parseAlumniFilters(await searchParams);
   let errorMessage: string | null = null;
-  let mapped: Awaited<ReturnType<typeof getAlumniMapPoints>> | null = null;
   let facets: Awaited<ReturnType<typeof getAlumniFacets>> | null = null;
 
+  // Facets only on the document request — map pins load via /api/find-my-alum/points
+  // so the shell paints immediately instead of waiting on ~4k geocoded rows.
   try {
-    [mapped, facets] = await Promise.all([getAlumniMapPoints(filters), getAlumniFacets()]);
+    facets = await getAlumniFacets();
   } catch (error) {
     errorMessage = isMissingDatabaseConfig(error)
       ? "DATABASE_URL is not set. Add it to .env.local and reload."
@@ -40,25 +40,17 @@ export default async function FindMyAlumPage({
         eyebrow="Directory"
         title="Find My Alum"
         description="Current towns in navy, hometowns in gray. Filter All / Hometown / Current. Heat density uses city-level locations only (one per alum on All) so state estimates don’t inflate the map. Pins still show every place and jitter slightly so shared cities stay clickable."
-      >
-        {mapped ? (
-          <p className="text-sm text-muted-foreground">
-            {mapped.mappedCount} alumni mapped · {mapped.points.length} pins
-            {mapped.skippedCount ? ` · ${mapped.skippedCount} without a usable place` : ""}
-            {mapped.totalAlumni ? ` · ${mapped.totalAlumni} in this filter` : ""}
-          </p>
-        ) : null}
-      </PageHeader>
+      />
       {facets ? <AlumniFiltersForm filters={filters} facets={facets} action="/find-my-alum" /> : null}
       {viewer.platformRole === "admin" ? <AdminAlumniMergeCard /> : null}
       {errorMessage ? (
         <StatusCard title="Find My Alum unavailable" body={errorMessage} />
-      ) : mapped ? (
+      ) : (
         <FindMyAlumMapLoader
-          points={mapped.points}
+          filters={filters}
           profileBase={canUseOwnerTools(viewer.role) ? "/alumni" : "/directory"}
         />
-      ) : null}
+      )}
     </>
   );
 

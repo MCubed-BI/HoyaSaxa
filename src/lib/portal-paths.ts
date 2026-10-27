@@ -47,6 +47,7 @@ const ALUM_ALLOWED_PREFIXES = [
   "/api/giving",
   "/api/blast",
   "/api/directory",
+  "/api/find-my-alum",
   "/api/feed",
   "/api/badges",
   "/api/hoya-ai",
