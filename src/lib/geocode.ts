@@ -168,7 +168,13 @@ export async function warmGeocodeCacheForRows(rows: AlumniLocationRow[]): Promis
     dbLookupDone.add(cacheKey);
     if (memoryCache.has(cacheKey)) continue;
     const centroid = lookupCentroidOnly(place.city, place.state);
-    if (centroid) memoryCache.set(cacheKey, centroid);
+    if (centroid) {
+      memoryCache.set(cacheKey, centroid);
+      continue;
+    }
+    // Prefill state fallback so request-path resolve stays synchronous after warm.
+    const stateHit = lookupStateFallback(place.city, place.state);
+    if (stateHit) memoryCache.set(cacheKey, stateHit);
   }
 }
 
@@ -208,17 +214,20 @@ async function resolvePlace(
     const centroid = lookupCentroidOnly(parts.rawCity, parts.stateKey);
     if (centroid) {
       memoryCache.set(cacheKey, centroid);
-      try {
-        await persistPlaceGeocode({
-          city: parts.rawCity,
-          state: parts.stateKey,
-          lat: centroid.lat,
-          lng: centroid.lng,
-          method: "city",
-          provider: "centroid",
-        });
-      } catch {
-        // ignore persist failures
+      // Persist only on explicit network/backfill paths — never on map page loads.
+      if (allowNetwork) {
+        try {
+          await persistPlaceGeocode({
+            city: parts.rawCity,
+            state: parts.stateKey,
+            lat: centroid.lat,
+            lng: centroid.lng,
+            method: "city",
+            provider: "centroid",
+          });
+        } catch {
+          // ignore persist failures
+        }
       }
       return centroid;
     }

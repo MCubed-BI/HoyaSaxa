@@ -136,11 +136,26 @@ async function loadFacetIndex(): Promise<AlumniFacetIndex> {
   };
 }
 
+function needsFilterAliasExpansion(filters: AlumniFilters) {
+  return Boolean(
+    filters.states.length ||
+      filters.cities.length ||
+      filters.positions.length ||
+      filters.classYears.length ||
+      filters.careers.length,
+  );
+}
+
 async function filtersForQuery(filters: AlumniFilters): Promise<AlumniFilters> {
   await ensurePersonColumns();
   if (filters.registered) {
     const { ensureAlumniAuthTables } = await import("@/lib/alumni-claim");
     await ensureAlumniAuthTables();
+  }
+  // Unfiltered map/directory loads used to pay for 6 DISTINCT facet queries here
+  // and again in getAlumniFacets() — skip alias expansion when nothing needs it.
+  if (!needsFilterAliasExpansion(filters)) {
+    return filters;
   }
   const index = await loadFacetIndex();
   return expandAlumniFilters(filters, index.aliases);
