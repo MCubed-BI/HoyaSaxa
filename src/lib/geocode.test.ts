@@ -286,6 +286,31 @@ describe("geocode", () => {
     assert.equal(resolved.length, 1);
     assert.equal(resolved[0]?.source, "address");
   });
+
+  it("skips network geocoding by default so the map page cannot hang on Nominatim", async () => {
+    process.env.GEOCODE_PROVIDER = "hybrid";
+    const started = Date.now();
+    const resolved = await resolveAlumniLocations(
+      {
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        first_name: "Pat",
+        last_name: "Hoya",
+        preferred_name: null,
+        full_name: null,
+        position: null,
+        class_year: null,
+        current_city: "DefinitelyNotInAnyCentroidAtlasXYZ",
+        current_state: "MD",
+        hometown_city: null,
+        hometown_state: null,
+        address_primary: null,
+      },
+      { allowNetwork: false },
+    );
+    assert.ok(Date.now() - started < 500, "offline resolve must stay under half a second");
+    assert.equal(resolved.length, 1);
+    assert.equal(resolved[0]?.method, "state");
+  });
 });
 
 describe("map points", () => {
