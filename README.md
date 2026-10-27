@@ -203,7 +203,7 @@ One shared header for Admin and Alum. Primary nav is **For You · Directory · E
 - `/portal/events` / `/portal/giving` — aliases to `/events` and `/giving`
 - `/portal/feed` / `/portal/messages` / `/portal/newsflash` — aliases (`/portal/newsflash` → `/board`)
 - `/alum` — redirects to `/portal`
-- `/find-my-alum` — alumni location map + heat (current city/state, hometown, or parsed US address). Staff nav link; alum More link. Defaults to US centroids; optional `GEOCODE_PROVIDER=nominatim|hybrid`.
+- `/find-my-alum` — alumni location map + heat (current city/state, hometown, or parsed US address). Staff nav link; alum More link. Page load resolves offline only (`place_geocodes` cache → US city centroids → state fallback) so it cannot hang on Nominatim. Improve coverage with `npm run seed:place-geocodes` / `npm run backfill:place-geocodes`. Optional `GEOCODE_PROVIDER=nominatim|hybrid` applies to backfill/network opt-in only.
 - `/locker` — messages access-code preview
 - `/home/login` — locker preview login
 - `/` — searchable staff directory (cards on mobile, table on desktop)

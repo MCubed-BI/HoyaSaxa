@@ -1,6 +1,6 @@
 import { displayName } from "@/lib/format";
 import type { AlumniFilters } from "@/lib/filters";
-import { resolveAlumniLocations } from "@/lib/geocode";
+import { resolveAlumniLocations, warmGeocodeCacheForRows } from "@/lib/geocode";
 import { getAlumniLocationRows } from "@/lib/queries";
 import type { AlumniMapPoint } from "@/lib/types";
 
@@ -29,9 +29,13 @@ export async function getAlumniMapPoints(filters: AlumniFilters): Promise<{
   const points: AlumniMapPoint[] = [];
   let mappedAlumni = 0;
 
-  // Geocode sequentially so Nominatim rate limiting stays honest when enabled.
+  // Offline only on the request path: batch-warm cache/centroids, never await
+  // Nominatim (~1 req/sec) — that was timing out /find-my-alum at 300s on Vercel.
+  // Run `npm run backfill:place-geocodes` to improve city accuracy off-request.
+  await warmGeocodeCacheForRows(rows);
+
   for (const row of rows) {
-    const resolvedList = await resolveAlumniLocations(row);
+    const resolvedList = await resolveAlumniLocations(row, { allowNetwork: false });
     if (resolvedList.length === 0) continue;
     mappedAlumni += 1;
     for (const resolved of resolvedList) {
