@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { AdminCrmPanel } from "@/components/admin-crm-panel";
 import { AdminPersonKindPanel } from "@/components/admin-person-kind-panel";
 import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { HoyaBadgeRow } from "@/lib/badge-api";
@@ -12,10 +13,12 @@ import { getAccountByAlumniId } from "@/lib/alumni-claim";
 import { getAthleteActor } from "@/lib/athlete-access";
 import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
 import { listPublicBadgesFromFeed } from "@/lib/badges-attendance";
+import { getCrmSnapshot } from "@/lib/crm";
+import { ensureCrmTables } from "@/lib/crm-schema";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { canMessageHoyaProfile, linkedAlumniIdForViewer } from "@/lib/messages-dm";
 import { normalizePersonKind } from "@/lib/person-kind";
-import { isAdminRole } from "@/lib/roles";
+import { canManageFundraising, isAdminRole } from "@/lib/roles";
 import {
   classYearLabel,
   displayName,
@@ -67,6 +70,12 @@ export default async function AlumniDetailPage({
     const claimedAccount = await getAccountByAlumniId(person.id).catch(() => null);
     const photos = athletePhotoSlots(person);
     const actor = await getAthleteActor(person.id);
+    const showCrm = canManageFundraising(viewer.role);
+    let crm = null;
+    if (showCrm) {
+      await ensureCrmTables();
+      crm = await getCrmSnapshot(person.id);
+    }
 
     const emails = [
       ...(person.email_primary ? [{ email: person.email_primary, label: "Primary" }] : []),
@@ -148,6 +157,18 @@ export default async function AlumniDetailPage({
               initialKind={normalizePersonKind(person.person_kind)}
               initialVerified={person.admin_verified !== false}
             />
+          ) : null}
+
+          {showCrm && crm ? (
+            <div className="flex flex-wrap gap-2">
+              <a
+                href="#crm"
+                className="inline-flex h-9 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium text-navy hover:bg-muted"
+              >
+                Jump to CRM
+                {crm.donationCallCount > 0 ? ` · ${crm.donationCallCount} donation calls` : ""}
+              </a>
+            </div>
           ) : null}
 
           <Card>
@@ -275,6 +296,10 @@ export default async function AlumniDetailPage({
               )}
             </CardContent>
           </Card>
+
+          {showCrm && crm ? (
+            <AdminCrmPanel alumniId={person.id} personName={displayName(person)} initialCrm={crm} />
+          ) : null}
         </PageMain>
       </PageShell>
     );

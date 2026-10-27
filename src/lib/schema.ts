@@ -101,6 +101,44 @@ export const emailBlastRecipients = pgTable("email_blast_recipients", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const pushBlasts = pgTable("push_blasts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title"),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("draft"),
+  provider: text("provider"),
+  recipientCount: integer("recipient_count").notNull().default(0),
+  sentCount: integer("sent_count").notNull().default(0),
+  failedCount: integer("failed_count").notNull().default(0),
+  filterSnapshot: jsonb("filter_snapshot").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const pushBlastRecipients = pgTable("push_blast_recipients", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+  blastId: uuid("blast_id")
+    .notNull()
+    .references(() => pushBlasts.id, { onDelete: "cascade" }),
+  alumniId: uuid("alumni_id").references(() => alumni.id, { onDelete: "set null" }),
+  name: text("name"),
+  deviceToken: text("device_token"),
+  status: text("status").notNull().default("pending"),
+  error: text("error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const alumniCrmNotes = pgTable("alumni_crm_notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  alumniId: uuid("alumni_id")
+    .notNull()
+    .references(() => alumni.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull().default("note"),
+  body: text("body").notNull().default(""),
+  calledAt: timestamp("called_at", { withTimezone: true }),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const alumniRosterYears = pgTable("alumni_roster_years", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
   alumniId: uuid("alumni_id")

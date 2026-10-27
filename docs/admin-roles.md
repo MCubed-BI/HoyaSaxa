@@ -12,6 +12,16 @@ Platform overlay for Coders 1–5 (`src/lib/platform-roles.ts`): feed section ke
 
 Resolution order: env lists (`HOYA_ADMIN_USERNAMES` / `HOYA_OWNER_USERNAMES` / `HOYA_COACH_USERNAMES` / `HOYA_BOARD_USERNAMES` / `HOYA_ALUM_USERNAMES`) then `staff_roles` in Neon (username or email). Admin wins if a name is on both Admin and Board lists.
 
+## Alum / Parent CRM
+
+On an Admin or Board staff open of `/alumni/[id]`, the **CRM** panel shows:
+
+1. **Blast history** — every text and email blast that listed this person as a recipient (`text_blast_recipients` / `email_blast_recipients`), plus push when that channel is wired (`push_blast_recipients`).
+2. **Donation calls** — log each manual fundraising call with a timestamp and note. The panel shows a running count.
+3. **Staff notes** — free-form CRM notes that do not increment the call count.
+
+APIs: `GET /api/admin/crm/[id]`, `POST|DELETE /api/admin/crm/[id]/notes` (owner / coach / board).
+
 ## Add a Development admin (People)
 
 **Preferred (Admin UI):**
