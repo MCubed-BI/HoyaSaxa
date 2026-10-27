@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   attendancePersonFromStaffInput,
   checkInToEvent,
+  getEventById,
   isEventRecordId,
 } from "@/lib/event-attendance";
 import { getEventActor } from "@/lib/event-actor";
@@ -94,17 +95,21 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     });
   }
 
-  // Guests present a QR; only admins complete check-in (self or scanned guest).
+  // Default: guests present a QR and an admin scans. Events with
+  // self_check_in_allowed let the guest complete check-in themselves.
   if (!person && !canStaffCheckInOthers(actor)) {
-    if (asJson) {
-      return NextResponse.json(
-        { error: "Show your QR code to an admin to check in." },
-        { status: 403 },
-      );
+    const event = await getEventById(id);
+    if (!event?.selfCheckInAllowed) {
+      if (asJson) {
+        return NextResponse.json(
+          { error: "Show your QR code to an admin to check in." },
+          { status: 403 },
+        );
+      }
+      const dest = new URL(next, request.url);
+      dest.searchParams.set("status", "show-qr");
+      return NextResponse.redirect(dest, { status: 303 });
     }
-    const dest = new URL(next, request.url);
-    dest.searchParams.set("status", "show-qr");
-    return NextResponse.redirect(dest, { status: 303 });
   }
 
   try {

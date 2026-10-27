@@ -173,7 +173,9 @@ export async function getEventById(eventId: string) {
   await readyAttendanceStore();
   const rows = await query<Record<string, unknown>[]>(
     `
-      SELECT id, title, category, starts_at, location, thumbnail_url, description, created_by, created_by_role
+      SELECT
+        id, title, category, starts_at, location, thumbnail_url, description,
+        created_by, created_by_role, self_check_in_allowed
       FROM events
       WHERE id = $1
       LIMIT 1
@@ -192,6 +194,7 @@ export async function getEventById(eventId: string) {
     description: typeof row.description === "string" ? row.description : null,
     createdBy: String(row.created_by ?? ""),
     createdByRole: row.created_by_role === "board" ? ("board" as const) : ("coach" as const),
+    selfCheckInAllowed: Boolean(row.self_check_in_allowed),
   };
 }
 

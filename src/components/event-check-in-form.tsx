@@ -14,7 +14,8 @@ export function EventCheckInForm({
   checkedInAt,
   eventBadge = null,
   qrToken = null,
-  canSelfCheckIn = false,
+  selfCheckInAllowed = false,
+  canAdminSelfCheckIn = false,
 }: {
   eventId: string;
   actorName: string;
@@ -25,14 +26,19 @@ export function EventCheckInForm({
   checkedInAt: string | null;
   eventBadge?: PublicBadge | null;
   qrToken?: string | null;
-  canSelfCheckIn?: boolean;
+  selfCheckInAllowed?: boolean;
+  canAdminSelfCheckIn?: boolean;
 }) {
+  const title = alreadyCheckedIn
+    ? "You are checked in"
+    : selfCheckInAllowed
+      ? "Check in"
+      : "Your check-in code";
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">
-          {alreadyCheckedIn ? "You are checked in" : "Your check-in code"}
-        </CardTitle>
+        <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {alreadyCheckedIn ? (
@@ -47,6 +53,19 @@ export function EventCheckInForm({
             </p>
             {eventBadge ? <HoyaBadgeRow badges={[eventBadge]} /> : null}
           </div>
+        ) : selfCheckInAllowed ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Checking in as <span className="font-medium text-foreground">{actorName}</span>. This
+              event allows self check-in — tap below, or show your QR if an admin is scanning at the
+              door.
+            </p>
+            <form action={`/api/events/${eventId}/check-in`} method="post">
+              <input type="hidden" name="next" value={`/events/${eventId}/check-in`} />
+              <Button type="submit">Check in</Button>
+            </form>
+            {qrToken ? <EventCheckInQr token={qrToken} label={actorName} /> : null}
+          </div>
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -55,18 +74,23 @@ export function EventCheckInForm({
               events.
             </p>
             {qrToken ? <EventCheckInQr token={qrToken} label={actorName} /> : null}
+            {canAdminSelfCheckIn ? (
+              <form
+                action={`/api/events/${eventId}/check-in`}
+                method="post"
+                className="space-y-2 border-t pt-4"
+              >
+                <input type="hidden" name="next" value={`/events/${eventId}/check-in`} />
+                <p className="text-xs text-muted-foreground">
+                  Admin only — check yourself in without a scan.
+                </p>
+                <Button type="submit" variant="outline" size="sm">
+                  Check myself in
+                </Button>
+              </form>
+            ) : null}
           </div>
         )}
-
-        {canSelfCheckIn && !alreadyCheckedIn ? (
-          <form action={`/api/events/${eventId}/check-in`} method="post" className="space-y-2 border-t pt-4">
-            <input type="hidden" name="next" value={`/events/${eventId}/check-in`} />
-            <p className="text-xs text-muted-foreground">Admin only — check yourself in without a scan.</p>
-            <Button type="submit" variant="outline" size="sm">
-              Check myself in
-            </Button>
-          </form>
-        ) : null}
       </CardContent>
     </Card>
   );

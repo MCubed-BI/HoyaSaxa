@@ -62,6 +62,25 @@ export function CreateEventForm({ error }: { error?: string }) {
             <Label htmlFor="description">Details (optional)</Label>
             <Textarea id="description" name="description" maxLength={2000} rows={4} />
           </div>
+          <label
+            htmlFor="self_check_in_allowed"
+            className="flex cursor-pointer items-start gap-3 rounded-xl border bg-muted/30 px-3 py-3"
+          >
+            <input
+              id="self_check_in_allowed"
+              name="self_check_in_allowed"
+              type="checkbox"
+              value="1"
+              className="mt-1 h-4 w-4 accent-[var(--navy,#041E42)]"
+            />
+            <span className="space-y-0.5">
+              <span className="block text-sm font-medium text-foreground">Self Check-in Allowed</span>
+              <span className="block text-xs text-muted-foreground">
+                Let guests check themselves in. Leave off to require an admin QR scan at the door
+                (better for app adoption).
+              </span>
+            </span>
+          </label>
           {error && ERRORS[error] ? <p className="text-sm text-destructive">{ERRORS[error]}</p> : null}
           <div className="flex flex-wrap gap-2">
             <Button type="submit">Save event</Button>

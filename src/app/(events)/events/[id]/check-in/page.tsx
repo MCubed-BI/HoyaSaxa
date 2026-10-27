@@ -61,9 +61,13 @@ export default async function EventCheckInPage({
     const when = formatEventWhen(event.startsAt);
     const status = Array.isArray(query.status) ? query.status[0] : query.status;
     const isAdminChecker = canStaffCheckInOthers(actor);
+    const selfCheckInAllowed = Boolean(event.selfCheckInAllowed);
     const qrToken = mine ? null : createCheckInQrToken({ eventId: id, person });
     const profileBase =
       locker && (locker.platformRole === "admin" || locker.role === "coach") ? "/alumni" : "/athletes";
+    const checkInBlurb = selfCheckInAllowed
+      ? "Self check-in is on for this event — or show your QR if an admin is scanning."
+      : "Show your QR to an admin — they scan to check you in.";
 
     return (
       <EventsChrome locker={locker}>
@@ -71,7 +75,7 @@ export default async function EventCheckInPage({
           <PageHeader
             eyebrow="Check in"
             title={event.title}
-            description={`${when.label}${event.location ? ` · ${event.location}` : ""}. Show your QR to an admin — they scan to check you in.`}
+            description={`${when.label}${event.location ? ` · ${event.location}` : ""}. ${checkInBlurb}`}
             actions={
               <div className="flex flex-wrap gap-2">
                 {isAdminChecker ? (
@@ -108,7 +112,8 @@ export default async function EventCheckInPage({
             checkedInAt={mine?.checkedInAt ?? null}
             eventBadge={myRank ? eventBadgeFromAttendanceLeader(myRank) : null}
             qrToken={qrToken}
-            canSelfCheckIn={isAdminChecker}
+            selfCheckInAllowed={selfCheckInAllowed}
+            canAdminSelfCheckIn={isAdminChecker}
           />
 
           <section className="space-y-3">
