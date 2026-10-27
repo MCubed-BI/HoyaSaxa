@@ -101,6 +101,18 @@ export const emailBlastRecipients = pgTable("email_blast_recipients", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Staff CRM notes on a contact — donation call log and freeform notes. */
+export const contactNotes = pgTable("contact_notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  alumniId: uuid("alumni_id")
+    .notNull()
+    .references(() => alumni.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull().default("donation_call"),
+  body: text("body").notNull(),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const alumniRosterYears = pgTable("alumni_roster_years", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
   alumniId: uuid("alumni_id")

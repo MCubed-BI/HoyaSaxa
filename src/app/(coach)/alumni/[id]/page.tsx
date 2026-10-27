@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { AdminCrmPanel } from "@/components/admin-crm-panel";
 import { AdminPersonKindPanel } from "@/components/admin-person-kind-panel";
 import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { HoyaBadgeRow } from "@/lib/badge-api";
@@ -12,6 +13,7 @@ import { getAccountByAlumniId } from "@/lib/alumni-claim";
 import { getAthleteActor } from "@/lib/athlete-access";
 import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
 import { listPublicBadgesFromFeed } from "@/lib/badges-attendance";
+import { getContactCrmSummary } from "@/lib/crm";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { canMessageHoyaProfile, linkedAlumniIdForViewer } from "@/lib/messages-dm";
 import { normalizePersonKind } from "@/lib/person-kind";
@@ -67,6 +69,14 @@ export default async function AlumniDetailPage({
     const claimedAccount = await getAccountByAlumniId(person.id).catch(() => null);
     const photos = athletePhotoSlots(person);
     const actor = await getAthleteActor(person.id);
+    const showCrm = isAdminRole(viewer.role);
+    const crm = showCrm
+      ? await getContactCrmSummary(person.id).catch(() => ({
+          communications: [],
+          notes: [],
+          donation_call_count: 0,
+        }))
+      : null;
 
     const emails = [
       ...(person.email_primary ? [{ email: person.email_primary, label: "Primary" }] : []),
@@ -143,6 +153,15 @@ export default async function AlumniDetailPage({
               alumniId={person.id}
               initialKind={normalizePersonKind(person.person_kind)}
               initialVerified={person.admin_verified !== false}
+            />
+          ) : null}
+
+          {showCrm && crm ? (
+            <AdminCrmPanel
+              alumniId={person.id}
+              communications={crm.communications}
+              notes={crm.notes}
+              donationCallCount={crm.donation_call_count}
             />
           ) : null}
 

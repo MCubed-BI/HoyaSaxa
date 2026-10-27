@@ -866,6 +866,11 @@ export async function mergeAlumniPair(input: {
   );
   await query(`UPDATE text_blast_recipients SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]);
   await query(`UPDATE email_blast_recipients SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]);
+  try {
+    await query(`UPDATE contact_notes SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]);
+  } catch {
+    // contact_notes may not exist yet on older databases; CRM ensure creates it on first use.
+  }
   await query(
     `
     UPDATE alumni_group_members AS source
