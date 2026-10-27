@@ -236,6 +236,7 @@ The app uses existing Neon tables `alumni_accounts`, `alumni_claims`, and `alumn
 - The list filters by upcoming / past / mine, search (`q`), and category.
 - My Events is the current viewer’s created rows plus **Add to My Events**.
 - Home’s upcoming-event card reads the next `events.starts_at` row when this table exists.
+- **QR check-in:** Alums open **Check in** on an event to show a signed QR. Platform **admins** get a **Check you in** button per event (`/events/[id]/scan`) and must scan that QR to write `event_checkins` (drives app adoption at Hoya events). Optional env: `EVENT_CHECKIN_QR_SECRET`.
 
 This lane does not change Register myself / claim or the portal shell.
 

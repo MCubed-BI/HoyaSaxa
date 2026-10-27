@@ -12,7 +12,7 @@ import {
   rankByCount,
   resolveCheckInAction,
 } from "./event-attendance";
-import { canCreateEvents, canOverrideEventCheckIn } from "./event-auth";
+import { canCreateEvents, canOverrideEventCheckIn, canStaffCheckInOthers } from "./event-auth";
 import { eventSlugFromTitle, type AlumAttendanceTotals, type EventCheckinFeedRow } from "./event-attendance-feed";
 import { createHoyaAlumSessionToken } from "./hoya-alum-session";
 import { isAlumAllowedPath, isDataSyncPath } from "./portal-paths";
@@ -59,8 +59,11 @@ describe("event check-in rules", () => {
     assert.equal(resolveCheckInAction({ existing: true, override: false, canOverride: false }), "noop");
     assert.equal(resolveCheckInAction({ existing: true, override: true, canOverride: false }), "forbidden-override");
     assert.equal(resolveCheckInAction({ existing: true, override: true, canOverride: true }), "override");
-    assert.equal(canOverrideEventCheckIn("coach"), false);
+    assert.equal(canStaffCheckInOthers("coach"), true);
+    assert.equal(canOverrideEventCheckIn("coach"), true);
+    assert.equal(canStaffCheckInOthers("board"), false);
     assert.equal(canOverrideEventCheckIn("board"), false);
+    assert.equal(canStaffCheckInOthers("alum"), false);
     assert.equal(canOverrideEventCheckIn("alum"), false);
     assert.equal(canCreateEvents("alum"), true);
   });

@@ -4,7 +4,7 @@ import { PageHeader, pillClass } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { canCreateEvents, type EventActor } from "@/lib/event-auth";
+import { canCreateEvents, canStaffCheckInOthers, type EventActor } from "@/lib/event-auth";
 import { formatEventWhen } from "@/lib/event-datetime";
 import { eventsHref, type EventListFilters } from "@/lib/event-filters";
 import type { EventListItem, EventTab } from "@/lib/event-types";
@@ -42,6 +42,7 @@ export function EventsList({
     mine: mineCount,
   };
   const canCreate = canCreateEvents(actor);
+  const canCheckOthersIn = canStaffCheckInOthers(actor);
   const listHref = eventsHref(filters);
   const emptyCopy =
     tab === "upcoming"
@@ -139,6 +140,11 @@ export function EventsList({
                         {event.checked_in ? "Checked in" : "Check in"}
                       </Link>
                     </Button>
+                    {canCheckOthersIn ? (
+                      <Button asChild size="sm">
+                        <Link href={`/events/${event.id}/scan`}>Check you in</Link>
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               </li>

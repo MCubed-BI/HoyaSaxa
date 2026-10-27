@@ -266,10 +266,10 @@ export async function checkInToEvent(input: {
     throw new Error("Event not found");
   }
 
-  const staffPerson = input.person && canOverrideEventCheckIn(input.actor.role) ? input.person : null;
+  const staffPerson = input.person && canOverrideEventCheckIn(input.actor) ? input.person : null;
   const person = staffPerson ?? attendancePersonFromActor(input.actor);
   const override = Boolean(input.override);
-  const canOverride = canOverrideEventCheckIn(input.actor.role);
+  const canOverride = canOverrideEventCheckIn(input.actor);
   const existing = await getAttendanceRecord(input.eventId, person.personKey);
   const action = resolveCheckInAction({
     existing: Boolean(existing),

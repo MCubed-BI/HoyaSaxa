@@ -4,6 +4,7 @@ import { PageHeader, PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { Button } from "@/components/ui/button";
 import { getEventActor } from "@/lib/event-actor";
+import { canStaffCheckInOthers } from "@/lib/event-auth";
 import { listEvents } from "@/lib/event-queries";
 import { formatEventWhen } from "@/lib/event-datetime";
 import { isMissingDatabaseConfig } from "@/lib/db";
@@ -27,6 +28,7 @@ export default async function EventCheckInIndexPage() {
   try {
     const [upcoming, past] = await Promise.all([listEvents("upcoming", actor), listEvents("past", actor)]);
     const rows = [...upcoming.rows, ...past.rows];
+    const canCheckOthersIn = canStaffCheckInOthers(actor);
 
     return (
       <EventsChrome locker={locker}>
@@ -34,7 +36,7 @@ export default async function EventCheckInIndexPage() {
           <PageHeader
             eyebrow="Events"
             title="Check in"
-            description="Sign in and check yourself in to an event. One record per person — no checking in for others."
+            description="Open an event to show your QR. An admin scans it to check you in — one durable record per person."
             actions={
               <Button asChild variant="outline">
                 <Link href="/events/attendance">Attendance ranks</Link>
@@ -56,11 +58,18 @@ export default async function EventCheckInIndexPage() {
                         {event.location ? ` · ${event.location}` : ""}
                       </p>
                     </div>
-                    <Button asChild size="sm" variant={event.checked_in ? "outline" : "default"}>
-                      <Link href={`/events/${event.id}/check-in`}>
-                        {event.checked_in ? "Checked in" : "Check in"}
-                      </Link>
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button asChild size="sm" variant={event.checked_in ? "outline" : "default"}>
+                        <Link href={`/events/${event.id}/check-in`}>
+                          {event.checked_in ? "Checked in" : "Check in"}
+                        </Link>
+                      </Button>
+                      {canCheckOthersIn ? (
+                        <Button asChild size="sm" variant="secondary">
+                          <Link href={`/events/${event.id}/scan`}>Check you in</Link>
+                        </Button>
+                      ) : null}
+                    </div>
                   </li>
                 );
               })}
