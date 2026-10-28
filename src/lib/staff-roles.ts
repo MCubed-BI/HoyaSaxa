@@ -164,6 +164,186 @@ export async function listBoardMembers() {
   );
 }
 
+export async function listAdminMembers() {
+  await ensurePortalTables();
+  return query<StaffRoleRow[]>(
+    `
+    SELECT id, username, email, alumni_id, role
+    FROM staff_roles
+    WHERE role IN ('admin', 'owner')
+    ORDER BY lower(coalesce(username, email, alumni_id::text))
+    `,
+  );
+}
+
+export type AdminGrantDecision =
+  | { action: "upsert-admin" }
+  | { action: "delete-admin" }
+  | { action: "keep-owner" };
+
+/** Pure helper: never demote seeded owner rows via the Admin toggle. */
+export function adminGrantDecision(currentRole: string | null | undefined, grant: boolean): AdminGrantDecision {
+  if (currentRole === "owner" && !grant) return { action: "keep-owner" };
+  if (grant) return { action: "upsert-admin" };
+  if (isAssignedAdmin(currentRole) || isAssignedBoard(currentRole) || !currentRole) {
+    return { action: "delete-admin" };
+  }
+  return { action: "delete-admin" };
+}
+
+async function updateAdminByIdentity(identity: StaffRoleIdentity) {
+  const rows = await query<StaffRoleRow[]>(
+    `
+    UPDATE staff_roles
+    SET role = CASE
+          WHEN staff_roles.role = 'owner' THEN staff_roles.role
+          ELSE 'admin'
+        END,
+        alumni_id = COALESCE(NULLIF($1, '')::uuid, staff_roles.alumni_id),
+        email = COALESCE(staff_roles.email, NULLIF($2, '')),
+        username = COALESCE(NULLIF($3, ''), staff_roles.username)
+    WHERE ($1 <> '' AND alumni_id::text = $1)
+       OR ($2 <> '' AND lower(email) = lower($2))
+       OR ($3 <> '' AND lower(username) = lower($3))
+    RETURNING id, username, email, alumni_id, role
+    `,
+    [identity.alumniId, identity.email, identity.username],
+  );
+  return rows[0] ?? null;
+}
+
+async function revokeAdminByIdentity(identity: StaffRoleIdentity, currentId?: string | null) {
+  await query(
+    `
+    DELETE FROM staff_roles
+    WHERE role = 'admin'
+      AND (
+        ($1 <> '' AND alumni_id::text = $1)
+        OR ($2 <> '' AND lower(email) = lower($2))
+        OR ($3 <> '' AND lower(username) = lower($3))
+        OR ($4 <> '' AND id::text = $4)
+      )
+    `,
+    [identity.alumniId, identity.email, identity.username, currentId?.trim() ?? ""],
+  );
+}
+
+async function upsertAdminRow(identity: StaffRoleIdentity, current: StaffRoleRow | null) {
+  if (current) {
+    if (current.role === "owner") return current;
+    try {
+      const rows = await query<StaffRoleRow[]>(
+        `
+        UPDATE staff_roles
+        SET role = 'admin',
+            alumni_id = COALESCE($2::uuid, staff_roles.alumni_id),
+            username = COALESCE(NULLIF($3, ''), staff_roles.username),
+            email = COALESCE(NULLIF($4, ''), staff_roles.email)
+        WHERE id = $1
+        RETURNING id, username, email, alumni_id, role
+        `,
+        [current.id, identity.alumniId || null, identity.username, identity.email],
+      );
+      return rows[0] ?? current;
+    } catch (error) {
+      if (!isStaffRolesUniqueViolation(error)) throw error;
+      const recovered = await updateAdminByIdentity(identity);
+      if (!recovered) throw error;
+      return recovered;
+    }
+  }
+
+  try {
+    const rows = await query<StaffRoleRow[]>(
+      `
+      INSERT INTO staff_roles (username, email, alumni_id, role)
+      VALUES (NULLIF($1, ''), NULLIF($2, ''), $3::uuid, 'admin')
+      ON CONFLICT ((lower(username))) WHERE username IS NOT NULL AND btrim(username) <> ''
+      DO UPDATE SET
+        role = CASE
+          WHEN staff_roles.role = 'owner' THEN staff_roles.role
+          ELSE 'admin'
+        END,
+        alumni_id = COALESCE(EXCLUDED.alumni_id, staff_roles.alumni_id),
+        email = COALESCE(EXCLUDED.email, staff_roles.email)
+      RETURNING id, username, email, alumni_id, role
+      `,
+      [identity.username, identity.email, identity.alumniId || null],
+    );
+    return rows[0] ?? null;
+  } catch (error) {
+    if (isOnConflictTargetMissing(error)) {
+      return (await updateAdminByIdentity(identity)) ??
+        (
+          await query<StaffRoleRow[]>(
+            `
+            INSERT INTO staff_roles (username, email, alumni_id, role)
+            VALUES (NULLIF($1, ''), NULLIF($2, ''), $3::uuid, 'admin')
+            RETURNING id, username, email, alumni_id, role
+            `,
+            [identity.username, identity.email, identity.alumniId || null],
+          )
+        )[0] ??
+        null;
+    }
+    if (!isStaffRolesUniqueViolation(error)) throw error;
+    const recovered = await updateAdminByIdentity(identity);
+    if (!recovered) throw error;
+    return recovered;
+  }
+}
+
+export async function setAdminMember(input: {
+  alumniId: string;
+  grant: boolean;
+  name?: string | null;
+  email?: string | null;
+  username?: string | null;
+}) {
+  const alumniId = input.alumniId.trim();
+  if (!isAlumniRecordId(alumniId)) {
+    throw new Error("A roster alumni id is required.");
+  }
+  await ensurePortalTables();
+  const requested = staffRoleIdentity({
+    alumniId,
+    email: input.email,
+    username: input.username,
+    name: input.name,
+  });
+  const current = await findStaffRole(requested);
+  const identity = staffRoleIdentity({
+    alumniId,
+    email: requested.email || current?.email,
+    username: requested.username || current?.username || input.name,
+  });
+  if (!identity.username && !identity.email) {
+    throw new Error("A username, Net ID, or email is required to grant Admin.");
+  }
+
+  const decision = adminGrantDecision(current?.role, input.grant);
+  if (decision.action === "keep-owner") {
+    return {
+      ok: true as const,
+      admin: true,
+      keptOwner: true as const,
+      role: current?.role ?? "owner",
+    };
+  }
+  if (decision.action === "delete-admin") {
+    await revokeAdminByIdentity(identity, current?.id);
+    return { ok: true as const, admin: false, keptOwner: false as const, role: null };
+  }
+
+  const row = await upsertAdminRow(identity, current);
+  return {
+    ok: true as const,
+    admin: true,
+    keptOwner: row?.role === "owner",
+    role: (row?.role ?? "admin") as string,
+  };
+}
+
 async function findStaffRole(identity: StaffRoleIdentity) {
   if (!identity.alumniId && !identity.email && !identity.username) return null;
   const rows = await query<StaffRoleRow[]>(

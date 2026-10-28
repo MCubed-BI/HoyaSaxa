@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   UPSERT_BOARD_STAFF_ROLE_SQL,
+  adminGrantDecision,
   boardGrantDecision,
   isAlumniRecordId,
   isOnConflictTargetMissing,
@@ -57,5 +58,15 @@ describe("staff_roles Board grant", () => {
       isOnConflictTargetMissing(new Error("there is no unique or exclusion constraint matching the ON CONFLICT specification")),
       true,
     );
+  });
+});
+
+describe("staff_roles Admin grant", () => {
+  it("upserts Admin and never demotes owner", () => {
+    assert.deepEqual(adminGrantDecision(null, true), { action: "upsert-admin" });
+    assert.deepEqual(adminGrantDecision("board", true), { action: "upsert-admin" });
+    assert.deepEqual(adminGrantDecision("admin", false), { action: "delete-admin" });
+    assert.deepEqual(adminGrantDecision("owner", false), { action: "keep-owner" });
+    assert.deepEqual(adminGrantDecision("owner", true), { action: "upsert-admin" });
   });
 });

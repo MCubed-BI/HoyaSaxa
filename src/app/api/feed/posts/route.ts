@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     if ((request.headers.get("content-type") ?? "").includes("application/json")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.redirect(new URL("/home/login", request.url), { status: 303 });
+    return NextResponse.redirect(new URL("/login", request.url), { status: 303 });
   }
 
   const input = await readPostInput(request);

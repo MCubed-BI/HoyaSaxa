@@ -4,7 +4,7 @@ import { clearAllAuthCookies } from "@/lib/logout";
 export const dynamic = "force-dynamic";
 
 async function signOut(request: Request) {
-  const response = NextResponse.redirect(new URL("/home/login", request.url), { status: 303 });
+  const response = NextResponse.redirect(new URL("/login", request.url), { status: 303 });
   clearAllAuthCookies(response);
   return response;
 }

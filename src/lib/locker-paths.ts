@@ -28,11 +28,11 @@ export function isLockerPath(pathname: string) {
 }
 
 export function lockerLoginPath() {
-  return "/home/login";
+  return "/login";
 }
 
-export function loginPathFor(pathname: string) {
-  return isLockerPath(pathname) ? lockerLoginPath() : "/login";
+export function loginPathFor(_pathname?: string) {
+  return "/login";
 }
 
 export function parseDirectoryPill(value: string | null | undefined) {

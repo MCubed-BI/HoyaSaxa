@@ -24,7 +24,7 @@ export default async function GivingPage({
   const [viewer, locker] = await Promise.all([getCurrentViewer(), getLockerViewer()]);
 
   if (!viewer || !canOpenGiving(viewer.role)) {
-    redirect("/home/login");
+    redirect("/login");
   }
 
   let summary = emptyGivingSummary;

@@ -1,12 +1,10 @@
 import { ALUMNI_SESSION_COOKIE, ALUM_SESSION_COOKIE, LEGACY_ALUMNI_SESSION_COOKIE } from "@/lib/alum-session";
 import { SESSION_COOKIE } from "@/lib/auth";
 import { isLockerPath } from "@/lib/locker-paths";
-import { isAlumAllowedPath } from "@/lib/portal-paths";
 import { expiredAuthCookieOptions } from "@/lib/session";
 
 const CLAIM_PREFIXES = ["/me", "/alumni-login", "/register"];
 const MESSAGES_PREFIXES = ["/messages", "/message", "/locker"];
-const STAFF_PREFIXES = ["/", "/blast", "/reports", "/sync", "/alumni", "/fundraising", "/find-my-alum"];
 
 export type LogoutContext = {
   from?: string | null;
@@ -86,25 +84,13 @@ export function isClaimSignOutPath(pathname: string) {
   return CLAIM_PREFIXES.some((prefix) => startsWithPath(pathname, prefix));
 }
 
-function isStaffSignOutPath(pathname: string) {
-  if (isLockerSignOutPath(pathname) || isMessagesSignOutPath(pathname) || isClaimSignOutPath(pathname)) {
-    return false;
-  }
-  return STAFF_PREFIXES.some((prefix) => startsWithPath(pathname, prefix));
-}
-
 export function logoutRedirectPath(input: LogoutContext) {
   const origin = safeLogoutFromPath(input.from) ?? safeLogoutFromPath(input.refererPath);
   if (origin) {
+    // Messages still uses the access-code gate at /locker, not username/password.
     if (isMessagesSignOutPath(origin)) return "/locker";
-    if (isClaimSignOutPath(origin)) return "/alumni-login";
-    if (isLockerSignOutPath(origin) || isAlumAllowedPath(origin)) return "/home/login";
-    if (isStaffSignOutPath(origin)) return "/login";
   }
-
-  if (input.hadAlumCookie) return "/home/login";
-  if (input.hadStaffCookie) return "/login";
-  return "/home/login";
+  return "/login";
 }
 
 export function clearAllAuthCookies(response: CookieSetter) {

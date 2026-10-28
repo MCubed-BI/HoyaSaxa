@@ -7,7 +7,7 @@ import { getLockerViewer } from "@/lib/locker-viewer";
 export async function POST(request: Request) {
   const viewer = await getLockerViewer();
   if (!viewer) {
-    return NextResponse.redirect(new URL("/home/login", request.url), { status: 303 });
+    return NextResponse.redirect(new URL("/login", request.url), { status: 303 });
   }
   if (!viewer.canPostNewsflash || !canPostToFeedSection(viewer.platformRole, "board")) {
     return NextResponse.redirect(new URL("/board", request.url), { status: 303 });

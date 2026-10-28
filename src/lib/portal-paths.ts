@@ -109,37 +109,7 @@ export function isDataSyncPath(pathname: string) {
   return pathname === "/sync" || pathname.startsWith("/sync/") || pathname.startsWith("/api/data-sync");
 }
 
-export function loginPathFor(pathname: string) {
-  if (
-    pathname === "/directory" ||
-    pathname.startsWith("/directory/") ||
-    pathname === "/athletes" ||
-    pathname.startsWith("/athletes/") ||
-    pathname === "/alumni" ||
-    pathname.startsWith("/alumni/")
-  ) {
-    return "/home/login";
-  }
-  if (
-    pathname === "/home" ||
-    pathname.startsWith("/home/") ||
-    pathname === "/feed" ||
-    pathname.startsWith("/feed/") ||
-    pathname === "/events" ||
-    pathname.startsWith("/events/") ||
-    pathname === "/newsflash" ||
-    pathname.startsWith("/newsflash/") ||
-    pathname === "/board" ||
-    pathname.startsWith("/board/") ||
-    pathname === "/brothers" ||
-    pathname.startsWith("/brothers/") ||
-    pathname === "/giving" ||
-    pathname.startsWith("/giving/")
-  ) {
-    return "/home/login";
-  }
-  if (pathname === "/messages" || pathname.startsWith("/messages/") || pathname === "/locker") {
-    return "/locker";
-  }
-  return isAlumAllowedPath(pathname) ? "/alumni-login" : "/login";
+/** One central sign-in for staff, admin grants, and claimed alumni. */
+export function loginPathFor(_pathname?: string) {
+  return "/login";
 }

@@ -207,7 +207,7 @@ export async function readAlumSessionFromCookies() {
 export async function requireAlumRole(...roles: AlumRole[]) {
   const session = await readAlumSessionFromCookies();
   if (!session || (roles.length > 0 && !roles.includes(session.role))) {
-    redirect("/alumni-login");
+    redirect("/login");
   }
   return session;
 }

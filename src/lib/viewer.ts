@@ -7,7 +7,7 @@ import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/a
 import { readHoyaAlumSession } from "@/lib/hoya-alum-session";
 import { getDatabaseUrl } from "@/lib/db";
 import { lookupAlumniClaim, lookupStaffRole } from "@/lib/portal-queries";
-import { lookupAssignedRole } from "@/lib/staff-roles";
+import { lookupAssignedRole, lookupStaffAlumniId } from "@/lib/staff-roles";
 import { identityFromViewer } from "@/lib/platform-session";
 import { resolvePlatformRole, type PlatformRole } from "@/lib/platform-roles";
 import { homePathForRole, resolveRoleFromEnv, roleLabel, type Role } from "@/lib/roles";
@@ -51,9 +51,11 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
   if (staffUsername) {
     let role = resolveRoleFromEnv(staffUsername, getCoachCredentials().username);
     let assignedRole: Role | "admin" | null = null;
+    let alumniId: string | null = null;
     if (getDatabaseUrl()) {
       try {
         assignedRole = await lookupStaffRole(staffUsername);
+        alumniId = await lookupStaffAlumniId(staffUsername);
         if (assignedRole === "admin") {
           role = "owner";
         } else if (assignedRole && assignedRole !== "alum") {
@@ -70,7 +72,7 @@ export async function getCurrentViewer(): Promise<Viewer | null> {
         username: staffUsername,
         email: null,
         accountId: null,
-        alumniId: null,
+        alumniId,
         source: "staff",
         homePath: homePathForRole(role),
         verifiedHoya: false,
