@@ -15,6 +15,8 @@ export type EventListItem = {
   created_by_me: boolean;
   rsvped: boolean;
   checked_in: boolean;
+  /** When false, door check-in requires an admin QR scan. */
+  self_check_in_allowed: boolean;
 };
 
 export type EventListResult = {

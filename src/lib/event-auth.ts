@@ -129,9 +129,25 @@ export function canCreateEvents(role: EventCreateGate) {
   return canPostEvents(platformRoleForEventActor({ role }));
 }
 
-/** Check-in is self-only. Staff cannot check in someone else or restamp a row. */
-export function canOverrideEventCheckIn(_role: EventRole | null | undefined) {
-  return false;
+export type EventCheckInGate =
+  | EventRole
+  | Pick<EventActor, "role" | "platformRole" | "username" | "alumId">
+  | null
+  | undefined;
+
+/**
+ * Platform admins (staff `ga_session` / coach, seed admins) may check others in
+ * by scanning their QR. Board and plain alum cannot.
+ */
+export function canStaffCheckInOthers(gate: EventCheckInGate) {
+  if (!gate) return false;
+  if (typeof gate === "string") return gate === "coach";
+  return platformRoleForEventActor(gate) === "admin";
+}
+
+/** Same ACL as staff QR check-in — admins may restamp when `override` is set. */
+export function canOverrideEventCheckIn(gate: EventCheckInGate) {
+  return canStaffCheckInOthers(gate);
 }
 
 export function getEventActorFromToken(token: string | undefined | null): EventActor | null {
