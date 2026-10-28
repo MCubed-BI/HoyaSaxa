@@ -141,8 +141,8 @@ describe("hoya_alum_session contract", () => {
       roles: ["alum"],
       alum: true,
       coach: false,
-      platformRole: "admin",
-      admin: true,
+      platformRole: "alum",
+      admin: false,
     });
   });
 

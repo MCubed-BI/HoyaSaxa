@@ -1,7 +1,18 @@
+import { getCoachCredentials } from "@/lib/auth";
 import { getSql } from "@/lib/db";
-import { DEFAULT_ADMIN_USERNAMES } from "@/lib/roles";
+import { adminUsernamesFromEnv } from "@/lib/roles";
 
 let ensured = false;
+
+/** Legacy silent seed usernames — remove when they are not linked or passworded. */
+const LEGACY_SEED_ADMIN_USERNAMES = [
+  "Lars",
+  "Sgarlata",
+  "Mike",
+  "Michael",
+  "Michael Kasten",
+  "Hoyas",
+] as const;
 
 export async function ensurePortalTables() {
   if (ensured) return;
@@ -34,7 +45,9 @@ export async function ensurePortalTables() {
     WHERE alumni_id IS NOT NULL
   `);
 
-  for (const username of [...DEFAULT_ADMIN_USERNAMES, "Hoyas"]) {
+  const coachUsername = getCoachCredentials().username;
+  const presetAdmins = adminUsernamesFromEnv(coachUsername);
+  for (const username of presetAdmins) {
     await sql.query(
       `
       INSERT INTO staff_roles (username, role)
@@ -46,6 +59,22 @@ export async function ensurePortalTables() {
       [username],
     );
   }
+
+  // Drop legacy seed Admin rows that were never granted (no roster / password).
+  const keep = presetAdmins.map((name) => name.toLowerCase());
+  await sql.query(
+    `
+    DELETE FROM staff_roles
+    WHERE role IN ('admin', 'owner')
+      AND alumni_id IS NULL
+      AND (password_hash IS NULL OR btrim(password_hash) = '')
+      AND username IS NOT NULL
+      AND btrim(username) <> ''
+      AND lower(username) = ANY($1::text[])
+      AND NOT (lower(username) = ANY($2::text[]))
+    `,
+    [LEGACY_SEED_ADMIN_USERNAMES.map((name) => name.toLowerCase()), keep],
+  );
 
   await sql.query(`
     CREATE TABLE IF NOT EXISTS coach_messages (

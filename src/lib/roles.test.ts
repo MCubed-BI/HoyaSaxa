@@ -33,7 +33,7 @@ afterEach(() => {
 });
 
 describe("roles", () => {
-  it("maps default staff usernames", () => {
+  it("maps default staff usernames to the coach preset only", () => {
     delete process.env.HOYA_ADMIN_USERNAMES;
     delete process.env.HOYA_OWNER_USERNAMES;
     delete process.env.HOYA_COACH_USERNAMES;
@@ -41,24 +41,25 @@ describe("roles", () => {
     delete process.env.HOYA_ALUM_USERNAMES;
     const lists = staffUsernamesFromEnv("Hoyas");
     assert.deepEqual(lists.owner, ["Hoyas", ...DEFAULT_ADMIN_USERNAMES]);
+    assert.deepEqual(lists.owner, ["Hoyas"]);
     assert.deepEqual(lists.board, ["Board"]);
     assert.deepEqual(lists.alum, ["Alum"]);
   });
 
-  it("resolves seeded admins and keeps a distinct Board preview", () => {
+  it("keeps only the coach preset as Admin unless env grants more", () => {
     delete process.env.HOYA_ADMIN_USERNAMES;
     delete process.env.HOYA_OWNER_USERNAMES;
     process.env.HOYA_BOARD_USERNAMES = "Board";
     assert.equal(resolveRoleFromEnv("Hoyas", "Hoyas"), "owner");
-    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "owner");
-    assert.equal(resolveRoleFromEnv("Sgarlata", "Hoyas"), "owner");
-    assert.equal(resolveRoleFromEnv("Mike", "Hoyas"), "owner");
-    assert.equal(resolveRoleFromEnv("Michael Kasten", "Hoyas"), "owner");
+    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "coach");
+    assert.equal(resolveRoleFromEnv("Sgarlata", "Hoyas"), "coach");
+    assert.equal(resolveRoleFromEnv("Mike", "Hoyas"), "coach");
+    assert.equal(resolveRoleFromEnv("Michael Kasten", "Hoyas"), "coach");
     assert.equal(resolveRoleFromEnv("Board", "Hoyas"), "board");
     assert.equal(resolveRoleFromEnv("Alum", "Hoyas"), "alum");
   });
 
-  it("lets HOYA_ADMIN_USERNAMES replace the seed list", () => {
+  it("lets HOYA_ADMIN_USERNAMES add Admins beyond the coach preset", () => {
     process.env.HOYA_ADMIN_USERNAMES = "Pat";
     delete process.env.HOYA_OWNER_USERNAMES;
     process.env.HOYA_BOARD_USERNAMES = "Lars";
@@ -66,7 +67,7 @@ describe("roles", () => {
     assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "board");
     assert.equal(resolveRoleFromEnv("Hoyas", "Hoyas"), "owner");
     process.env.HOYA_ADMIN_USERNAMES = "";
-    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "owner");
+    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "board");
   });
 
   it("maps product modes and compose rights", () => {

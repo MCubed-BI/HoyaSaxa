@@ -12,9 +12,9 @@
  *              Granted via Admin toggle → `staff_roles` (`assignedRole=board`).
  *   - alum   — claim/login unlocks For You Brothers, directory, /me photo edit; Verified Hoya.
  *
- * Prefer ADMIN_EMAILS, then `staff_roles` (role=admin), then a coach `ga_session`.
- * Seeded admins: Lars (board cookie), Sgarlata / Hoyas (coach session),
- * Michael Kasten / Mike (alum id c8fc1d9c-d5a7-445d-8e59-b2bddd53d136).
+ * Prefer coach/`ga_session`, then ADMIN_EMAILS, then explicit `staff_roles`
+ * (role=admin|owner). Identity seed labels (Lars / Mike / …) are not Admin
+ * by themselves — grant Admin on `/admin` or set `HOYA_ADMIN_USERNAMES`.
  */
 import { DEFAULT_ADMIN_USERNAMES, parseCsvEnv, type Role } from "@/lib/roles";
 
@@ -46,18 +46,6 @@ export const SEED_ADMINS = {
     sessionRole: "alum" as const,
   },
 } as const;
-
-const SEED_ADMIN_USERNAMES = uniqueLower([
-  ...SEED_ADMINS.lars.usernames,
-  ...SEED_ADMINS.sgarlata.usernames,
-  ...SEED_ADMINS.mike.usernames,
-]);
-
-const SEED_ADMIN_NAMES = uniqueLower([
-  ...SEED_ADMINS.lars.names,
-  ...SEED_ADMINS.sgarlata.names,
-  ...SEED_ADMINS.mike.names,
-]);
 
 export type PlatformIdentity = {
   /** Existing session / env role (`owner` maps to admin). */
@@ -91,22 +79,25 @@ export function isSeedAdminAlumniId(alumniId: string | null | undefined) {
   return Boolean(alumniId && alumniId.trim().toLowerCase() === SEED_ADMIN_ALUMNI_ID);
 }
 
-/** Usernames treated as Admin. `HOYA_ADMIN_USERNAMES` replaces the seed list when set. */
+/**
+ * Usernames treated as Admin via env only.
+ * `HOYA_ADMIN_USERNAMES` is the allowlist; there is no silent seed fallback.
+ */
 export function platformAdminUsernames() {
-  const listed = parseCsvEnv(process.env.HOYA_ADMIN_USERNAMES);
-  if (listed.length) return uniqueLower(listed);
-  return uniqueLower([...SEED_ADMIN_USERNAMES, ...DEFAULT_ADMIN_USERNAMES]);
+  return uniqueLower([...parseCsvEnv(process.env.HOYA_ADMIN_USERNAMES), ...DEFAULT_ADMIN_USERNAMES]);
 }
 
+/**
+ * Env-username Admin match only (not alumni-id / display-name seeds).
+ * Prefer `assignedRole` from `staff_roles` for granted Admins.
+ */
 export function isSeedAdminIdentity(identity: PlatformIdentity) {
-  if (isSeedAdminAlumniId(identity.alumniId)) return true;
   const admins = platformAdminUsernames();
+  if (!admins.length) return false;
   const username = identity.username?.trim().toLowerCase();
   if (username && admins.includes(username)) return true;
   const name = identity.name?.trim().toLowerCase();
   if (name && admins.includes(name)) return true;
-  if (parseCsvEnv(process.env.HOYA_ADMIN_USERNAMES).length) return false;
-  if (name && SEED_ADMIN_NAMES.includes(name)) return true;
   return false;
 }
 
@@ -120,7 +111,8 @@ export function isAssignedBoard(role: string | null | undefined) {
 
 /**
  * Sync resolver for middleware / cookie gates (no DB).
- * Order: coach session → ADMIN_EMAILS → seed identities → assignedRole → session role.
+ * Order: coach/staff session → ADMIN_EMAILS → env Admin usernames → assignedRole → session role.
+ * Roster seed identities alone are not Admin.
  */
 export function resolvePlatformRole(identity: PlatformIdentity): PlatformRole {
   if (

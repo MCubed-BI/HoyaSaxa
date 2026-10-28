@@ -28,16 +28,18 @@ describe("platform roles", () => {
     assert.equal(resolvePlatformRole({ sessionRole: "coach" }), "admin");
   });
 
-  it("seeds Lars, Sgarlata/Hoyas, and Mike as admin", () => {
-    assert.equal(resolvePlatformRole({ sessionRole: "board", username: "Lars" }), "admin");
-    assert.equal(resolvePlatformRole({ sessionRole: "board", name: "Lars" }), "admin");
-    assert.equal(resolvePlatformRole({ sessionRole: "alum", username: "Hoyas" }), "admin");
-    assert.equal(resolvePlatformRole({ sessionRole: "alum", name: "Rob Sgarlata" }), "admin");
+  it("does not treat legacy seed names or Mike alumni id as Admin by themselves", () => {
+    delete process.env.HOYA_ADMIN_USERNAMES;
+    assert.equal(resolvePlatformRole({ sessionRole: "board", username: "Lars" }), "board");
+    assert.equal(resolvePlatformRole({ sessionRole: "board", name: "Lars" }), "board");
+    assert.equal(resolvePlatformRole({ sessionRole: "alum", username: "Hoyas" }), "alum");
+    assert.equal(resolvePlatformRole({ sessionRole: "alum", name: "Rob Sgarlata" }), "alum");
     assert.equal(
       resolvePlatformRole({ sessionRole: "alum", alumniId: SEED_ADMIN_ALUMNI_ID, name: "Michael Kasten" }),
-      "admin",
+      "alum",
     );
-    assert.equal(isSeedAdminIdentity({ alumniId: SEED_ADMIN_ALUMNI_ID }), true);
+    assert.equal(isSeedAdminIdentity({ alumniId: SEED_ADMIN_ALUMNI_ID }), false);
+    assert.equal(isSeedAdminIdentity({ username: "Lars" }), false);
   });
 
   it("honors ADMIN_EMAILS and staff_roles admin", () => {
@@ -48,11 +50,12 @@ describe("platform roles", () => {
     assert.equal(resolvePlatformRole({ sessionRole: "alum", email: "pat@example.com" }), "alum");
   });
 
-  it("lets HOYA_ADMIN_USERNAMES replace username seeds but keeps Mike alumni id", () => {
+  it("lets HOYA_ADMIN_USERNAMES grant Admin by username only", () => {
     process.env.HOYA_ADMIN_USERNAMES = "Pat";
     assert.equal(resolvePlatformRole({ sessionRole: "board", username: "Lars" }), "board");
     assert.equal(resolvePlatformRole({ sessionRole: "alum", username: "Pat" }), "admin");
-    assert.equal(resolvePlatformRole({ sessionRole: "alum", alumniId: SEED_ADMIN_ALUMNI_ID }), "admin");
+    assert.equal(resolvePlatformRole({ sessionRole: "alum", alumniId: SEED_ADMIN_ALUMNI_ID }), "alum");
+    assert.equal(isSeedAdminIdentity({ username: "Pat" }), true);
   });
 
   it("keeps ordinary board below Sgarlata compose and alum on Brothers only", () => {

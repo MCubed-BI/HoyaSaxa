@@ -17,11 +17,7 @@ import {
   verifyLockerCredentials,
   type LockerRole,
 } from "@/lib/hoya-alum-session";
-import {
-  isAdminEmail,
-  isAssignedAdmin,
-  isSeedAdminIdentity,
-} from "@/lib/platform-roles";
+import { isAdminEmail, isAssignedAdmin } from "@/lib/platform-roles";
 import {
   homePathForRole,
   isAdminRole,
@@ -104,18 +100,8 @@ async function elevateAlumniToAdmin(account: AlumniAccount): Promise<CentralLogi
     else throw error;
   }
 
-  const admin =
-    isAssignedAdmin(assignedRole) ||
-    isAdminEmail(account.email) ||
-    isSeedAdminIdentity({
-      email: account.email,
-      alumniId: identity.alumniId,
-      username: account.netId,
-      name: identity.name,
-      sessionRole: "alum",
-      source: "alum-session",
-    });
-
+  // Only explicit grants (staff_roles) or ADMIN_EMAILS — not seed name/id matches.
+  const admin = isAssignedAdmin(assignedRole) || isAdminEmail(account.email);
   if (!admin) return null;
 
   const username = (account.netId || identity.name || account.email).trim();

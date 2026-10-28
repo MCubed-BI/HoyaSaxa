@@ -28,14 +28,14 @@ afterEach(() => {
 });
 
 describe("hoya_alum_session", () => {
-  it("defaults Board preview and Alum as alumnus, and keeps seeded admins off the locker board list", () => {
+  it("defaults Board preview and Alum as alumnus; coach Admin is filtered off the board list", () => {
     delete process.env.HOYA_ADMIN_USERNAMES;
     delete process.env.HOYA_BOARD_USERNAMES;
     delete process.env.HOYA_ALUM_USERNAMES;
     assert.deepEqual(lockerBoardUsernames(), ["Board"]);
     assert.deepEqual(lockerAlumUsernames(), ["Alum"]);
-    process.env.HOYA_BOARD_USERNAMES = "Lars,Board";
-    assert.deepEqual(lockerBoardUsernames(), ["Board"]);
+    process.env.HOYA_BOARD_USERNAMES = "Lars,Board,Hoyas";
+    assert.deepEqual(lockerBoardUsernames(), ["Lars", "Board"]);
   });
 
   it("issues a signed cookie payload with role=board", () => {

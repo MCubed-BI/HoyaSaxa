@@ -34,7 +34,7 @@ export default async function AdminMasterPage() {
         />
         <StatusCard
           title="How Admin works"
-          body="Sign-in is username or GTown Net ID plus password at /login. Seeded and granted Admins automatically receive a staff session with admin rights. Use the search below to add roster people as Admin. Board grants remain available for Message from the Board without full Admin."
+          body="Sign-in is username or GTown Net ID plus password at /login. Only the preset coach Admin (and usernames in HOYA_ADMIN_USERNAMES) start as Admin. Use the search below to grant Admin to other roster people — they get admin rights on their next sign-in. Board grants remain available for Message from the Board without full Admin."
         />
         {loadError ? (
           <StatusCard title="Admin list unavailable" body={loadError} />
