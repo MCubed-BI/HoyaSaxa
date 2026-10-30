@@ -218,7 +218,10 @@ describe("home quick actions and upcoming event copy", () => {
 
   it("does not serve demo smoke content from locker queries", () => {
     const queries = readFileSync(join(process.cwd(), "src/lib/locker-queries.ts"), "utf8");
+    const lockerData = readFileSync(join(process.cwd(), "src/lib/locker-data.ts"), "utf8");
     assert.doesNotMatch(queries, /DEMO_NEWSFLASH|DEMO_FEED|DEMO_UPCOMING_EVENT/);
+    assert.doesNotMatch(lockerData, /DEMO_NEWSFLASH|DEMO_FEED|DEMO_UPCOMING_EVENT|demo-newsflash-|demo-feed-/);
+    assert.doesNotMatch(lockerData, /source:\s*"demo"/);
     assert.match(queries, /href:\s*"\/events"/);
     assert.doesNotMatch(queries, /From the Events lane/);
     assert.doesNotMatch(queries, /href:\s*"\/portal\/events"/);
