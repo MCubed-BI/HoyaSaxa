@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { alumEmailBlastRejection, getBlastActor, normalizeBlastIds } from "@/lib/blast-auth";
 import { emailProvider } from "@/lib/email";
 import { coerceAlumniFilters } from "@/lib/filters";
-import { toE164 } from "@/lib/phone";
 import { getBlastRecipients } from "@/lib/queries";
 import { twilioConfigured } from "@/lib/sms";
 
@@ -44,14 +43,17 @@ export async function POST(request: Request) {
       includeGroups: actor.kind === "alum" ? false : Boolean(body.includeGroups) && groupIds.length > 0,
     });
 
-    const phoneRecipients = rows.filter((row) => toE164(row.phone ?? ""));
+    const withAnyPhone = rows.filter((row) => row.phone);
+    const phoneRecipients = withAnyPhone.filter((row) => !row.likelyLandline);
+    const landlineRecipients = withAnyPhone.filter((row) => row.likelyLandline);
     const emailRecipients = rows.filter((row) => isEmail(row.email));
 
     return NextResponse.json({
       count: rows.length,
       withPhone: phoneRecipients.length,
+      withLandline: landlineRecipients.length,
       withEmail: emailRecipients.length,
-      missingPhone: rows.length - phoneRecipients.length,
+      missingPhone: rows.length - withAnyPhone.length,
       missingEmail: rows.length - emailRecipients.length,
       twilio: twilioConfigured(),
       emailProvider: emailProvider(),
@@ -59,6 +61,16 @@ export async function POST(request: Request) {
         id: row.id,
         name: row.name,
         phone: row.phone,
+        phoneLabel: row.phoneLabel ?? null,
+        phoneKind: row.phoneKind ?? null,
+        email: row.email,
+      })),
+      landlineRecipients: landlineRecipients.map((row) => ({
+        id: row.id,
+        name: row.name,
+        phone: row.phone,
+        phoneLabel: row.phoneLabel ?? null,
+        phoneKind: row.phoneKind ?? null,
         email: row.email,
       })),
       emailRecipients: emailRecipients.map((row) => ({

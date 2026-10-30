@@ -24,9 +24,14 @@ export async function ensureBlastTables() {
       phone text NOT NULL,
       status text NOT NULL DEFAULT 'pending',
       error text,
+      provider_sid text,
       created_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  await sql.query(`ALTER TABLE text_blast_recipients ADD COLUMN IF NOT EXISTS provider_sid text`);
+  await sql.query(
+    `CREATE INDEX IF NOT EXISTS text_blast_recipients_provider_sid_idx ON text_blast_recipients (provider_sid)`,
+  );
   await sql.query(`
     CREATE TABLE IF NOT EXISTS email_blasts (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
