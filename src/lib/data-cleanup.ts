@@ -525,5 +525,26 @@ export async function decideCleanupSuggestion(input: {
     [input.id, input.action === "approve" ? "approved" : "rejected", input.decidedBy],
   );
 
+  if (input.action === "approve") {
+    // Source row is gone — close other pending pairs that referenced it.
+    await query(
+      `
+      UPDATE alumni_cleanup_suggestions
+      SET status = 'rejected',
+          decided_by = $2,
+          decided_at = now(),
+          updated_at = now(),
+          reason = CASE
+            WHEN reason IS NULL OR btrim(reason) = '' THEN 'Auto-closed: related record was merged.'
+            ELSE reason || ' Auto-closed: related record was merged.'
+          END
+      WHERE status = 'pending'
+        AND id <> $1
+        AND (keeper_id = $3 OR source_id = $3)
+      `,
+      [input.id, input.decidedBy, row.source_id],
+    );
+  }
+
   return { ok: true as const, action: input.action, keeperId: row.keeper_id, sourceId: row.source_id };
 }
