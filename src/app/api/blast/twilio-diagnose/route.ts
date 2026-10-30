@@ -54,6 +54,53 @@ export async function GET(request: Request) {
       });
     }
 
+    if (url.searchParams.get("a2p") === "1") {
+      const messagingServiceSid = auth.messagingServiceSid;
+      const brandsRes = await fetch("https://messaging.twilio.com/v1/a2p/BrandRegistrations?PageSize=20", {
+        headers: { Authorization: basic },
+        cache: "no-store",
+      });
+      const brandsPayload = (await brandsRes.json().catch(() => ({}))) as {
+        data?: Array<{
+          sid?: string;
+          status?: string;
+          brand_type?: string;
+          tcr_id?: string;
+          failure_reason?: string;
+        }>;
+        message?: string;
+      };
+
+      let usa2p: unknown = null;
+      let usa2pError: string | null = null;
+      if (messagingServiceSid) {
+        const usa2pRes = await fetch(
+          `https://messaging.twilio.com/v1/Services/${messagingServiceSid}/Compliance/Usa2p?PageSize=20`,
+          { headers: { Authorization: basic }, cache: "no-store" },
+        );
+        const usa2pPayload = await usa2pRes.json().catch(() => ({}));
+        if (usa2pRes.ok) {
+          usa2p = usa2pPayload;
+        } else {
+          usa2pError =
+            (usa2pPayload as { message?: string }).message || `Usa2p ${usa2pRes.status}`;
+        }
+      }
+
+      return NextResponse.json({
+        fromConfigured: auth.from,
+        messagingServiceConfigured: messagingServiceSid,
+        brandsOk: brandsRes.ok,
+        brandsError: brandsRes.ok ? null : brandsPayload.message || `Brands ${brandsRes.status}`,
+        brands: brandsPayload.data ?? [],
+        usa2p,
+        usa2pError,
+        hint: messagingServiceSid
+          ? "If brands/usa2p are empty, finish Brand + Campaign registration in Twilio Console and link this Messaging Service."
+          : "Set TWILIO_MESSAGING_SERVICE_SID first, then register Brand + Campaign.",
+      });
+    }
+
     if (url.searchParams.get("services") === "1") {
       const response = await fetch(
         `https://messaging.twilio.com/v1/Services?PageSize=20`,
@@ -101,7 +148,7 @@ export async function GET(request: Request) {
     const toRaw = url.searchParams.get("to")?.trim() ?? "";
     const to = firstValidE164(toRaw) ?? toE164(toRaw);
     if (!to) {
-      return NextResponse.json({ error: "Pass ?to=+1… or ?services=1" }, { status: 400 });
+      return NextResponse.json({ error: "Pass ?to=+1…, ?services=1, or ?a2p=1" }, { status: 400 });
     }
 
     const params = new URLSearchParams({

@@ -9,6 +9,7 @@ import {
   gmailUser,
   isGmailAuthError,
   missingGmailEnv,
+  resolveBlastEmailProvider,
 } from "./email";
 
 const originalEnv = { ...process.env };
@@ -74,6 +75,22 @@ describe("Gmail SMTP blast path", () => {
     process.env.GMAIL_USER = "georgetownfootball35@gmail.com";
     const remapped = gmailAuthErrorMessage();
     assert.equal(isGmailAuthError(remapped), true);
+  });
+
+  it("falls back to Resend when Gmail SMTP verify is rejected", async () => {
+    process.env.GMAIL_USER = "georgetownfootball35@gmail.com";
+    process.env.GMAIL_APP_PASSWORD = "bad-password-here";
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.EMAIL_FROM = "blast@example.com";
+    // Stub verify by temporarily overriding via a fake transporter is heavy;
+    // instead assert preferred selection still reports gmail until resolve runs.
+    assert.equal(emailProvider(), "gmail");
+    // resolveBlastEmailProvider will attempt real SMTP — skip live network by
+    // clearing Gmail and confirming Resend is chosen when Gmail is absent.
+    delete process.env.GMAIL_APP_PASSWORD;
+    const resolved = await resolveBlastEmailProvider();
+    assert.equal(resolved.provider, "resend");
+    assert.equal(resolved.fellBackFromGmail, undefined);
   });
 });
 

@@ -7,11 +7,10 @@ import {
   EMAIL_SEND_LIMIT,
   buildGmailComposeLink,
   buildMailtoLink,
-  emailProvider,
   gmailUser,
   isGmailAuthError,
+  resolveBlastEmailProvider,
   sendProviderEmail,
-  verifyGmailSmtp,
 } from "@/lib/email";
 import { coerceAlumniFilters } from "@/lib/filters";
 import { buildSmsDeepLink, toE164 } from "@/lib/phone";
@@ -343,20 +342,18 @@ async function sendEmailBlast({
     );
   }
 
-  const provider = emailProvider();
-  if (provider === "gmail") {
-    const verified = await verifyGmailSmtp();
-    if (!verified.ok) {
-      return NextResponse.json(
-        {
-          error: verified.error,
-          channel: "email",
-          mode: "gmail",
-          from: gmailUser() || null,
-        },
-        { status: 502 },
-      );
-    }
+  const resolved = await resolveBlastEmailProvider();
+  const provider = resolved.provider;
+  if (!provider && resolved.gmailError) {
+    return NextResponse.json(
+      {
+        error: resolved.gmailError,
+        channel: "email",
+        mode: "gmail",
+        from: gmailUser() || null,
+      },
+      { status: 502 },
+    );
   }
 
   const sql = getSql();
@@ -370,7 +367,7 @@ async function sendEmailBlast({
       provider ? "sending" : "fallback",
       provider ?? "fallback",
       recipients.length,
-      JSON.stringify({ filters, ids, groupIds }),
+      JSON.stringify({ filters, ids, groupIds, gmailError: resolved.gmailError ?? null }),
     ],
   )) as Array<{ id: string }>;
   const blastId = created[0]!.id;
@@ -401,7 +398,7 @@ async function sendEmailBlast({
   let failed = 0;
   const results: Array<{ name: string; email: string; status: string; error?: string }> = [];
   for (const row of recipients) {
-    const result = await sendProviderEmail(row.email, subject, message);
+    const result = await sendProviderEmail(row.email, subject, message, provider);
     if (result.status === "sent") sent += 1;
     else failed += 1;
     results.push({ name: row.name, email: result.email, status: result.status, error: result.error });
@@ -441,6 +438,8 @@ async function sendEmailBlast({
     channel: "email",
     mode: provider,
     from: provider === "gmail" ? gmailUser() : null,
+    fellBackFromGmail: resolved.fellBackFromGmail ?? false,
+    gmailError: resolved.gmailError ?? null,
     blastId,
     count: recipients.length,
     sent,

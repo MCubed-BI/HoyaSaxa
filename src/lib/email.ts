@@ -45,12 +45,43 @@ export function emailConfigured() {
   return emailProvider() !== null;
 }
 
+function resendConfigured() {
+  return Boolean(process.env.RESEND_API_KEY?.trim() && emailFromAddress());
+}
+
+function sendgridConfigured() {
+  return Boolean(process.env.SENDGRID_API_KEY?.trim() && emailFromAddress());
+}
+
 /** Live blast uses Gmail SMTP. Resend/SendGrid remain optional leftovers. */
 export function emailProvider(): EmailProvider | null {
   if (gmailConfigured()) return "gmail";
-  if (process.env.RESEND_API_KEY?.trim() && emailFromAddress()) return "resend";
-  if (process.env.SENDGRID_API_KEY?.trim() && emailFromAddress()) return "sendgrid";
+  if (resendConfigured()) return "resend";
+  if (sendgridConfigured()) return "sendgrid";
   return null;
+}
+
+/**
+ * Prefer Gmail when SMTP auth works; otherwise fall back to Resend/SendGrid so a
+ * stale GMAIL_APP_PASSWORD does not hard-block every blast.
+ */
+export async function resolveBlastEmailProvider(): Promise<{
+  provider: EmailProvider | null;
+  gmailError?: string;
+  fellBackFromGmail?: boolean;
+}> {
+  if (gmailConfigured()) {
+    const verified = await verifyGmailSmtp();
+    if (verified.ok) return { provider: "gmail" };
+    if (resendConfigured()) {
+      return { provider: "resend", gmailError: verified.error, fellBackFromGmail: true };
+    }
+    if (sendgridConfigured()) {
+      return { provider: "sendgrid", gmailError: verified.error, fellBackFromGmail: true };
+    }
+    return { provider: null, gmailError: verified.error };
+  }
+  return { provider: emailProvider() };
 }
 
 export function buildMailtoLink(emails: string[], subject: string, body: string) {
@@ -210,11 +241,16 @@ async function sendResendEmail(email: string, subject: string, text: string): Pr
 }
 
 /** Staff `/blast` and alum `/portal/blast` both call this. Gmail SMTP wins when env is set. */
-export async function sendProviderEmail(to: string, subject: string, text: string): Promise<EmailSendResult> {
+export async function sendProviderEmail(
+  to: string,
+  subject: string,
+  text: string,
+  providerOverride?: EmailProvider | null,
+): Promise<EmailSendResult> {
   const email = normalizeEmail(to);
   if (!email) return { email: to, status: "failed", error: "Invalid email" };
 
-  const provider = emailProvider();
+  const provider = providerOverride === undefined ? emailProvider() : providerOverride;
   if (provider === "gmail") return sendGmailEmail(email, subject, text);
   if (provider === "resend") return sendResendEmail(email, subject, text);
   return { email, status: "failed", error: "Gmail SMTP is not configured (GMAIL_USER + GMAIL_APP_PASSWORD)" };
