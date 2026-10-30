@@ -14,15 +14,18 @@ export function AdminPersonKindPanel({
   initialKind,
   initialVerified,
   initialStaffUsername,
+  initialLoginUsername,
 }: {
   alumniId: string;
   initialKind: PersonKind;
   initialVerified: boolean;
   initialStaffUsername?: string | null;
+  initialLoginUsername?: string | null;
 }) {
   const [kind, setKind] = useState<PersonKind>(initialKind);
   const [verified, setVerified] = useState(initialVerified);
   const [staffUsername, setStaffUsername] = useState(initialStaffUsername ?? null);
+  const [loginUsername, setLoginUsername] = useState(initialLoginUsername ?? null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -38,7 +41,12 @@ export function AdminPersonKindPanel({
         body: JSON.stringify(body),
       });
       const data = (await response.json()) as {
-        person?: { person_kind: PersonKind; admin_verified: boolean; staff_username?: string | null };
+        person?: {
+          person_kind: PersonKind;
+          admin_verified: boolean;
+          staff_username?: string | null;
+          login_username?: string | null;
+        };
         error?: string;
       };
       if (!response.ok) throw new Error(data.error || "Could not update person.");
@@ -46,6 +54,7 @@ export function AdminPersonKindPanel({
         setKind(data.person.person_kind);
         setVerified(data.person.admin_verified);
         if (data.person.staff_username != null) setStaffUsername(data.person.staff_username);
+        if (data.person.login_username != null) setLoginUsername(data.person.login_username);
       }
       setMessage("Saved.");
     } catch (err) {
@@ -65,8 +74,31 @@ export function AdminPersonKindPanel({
       void patch({ personKind: next, username: nextUsername, password: nextPassword });
       return;
     }
+    if (next === "alum") {
+      const nextNetId = window.prompt("GTown NetID for Alum login", loginUsername || "");
+      if (nextNetId == null) return;
+      const nextPassword = window.prompt("Password (min 8 characters)");
+      if (nextPassword == null) return;
+      void patch({ personKind: next, username: nextNetId, password: nextPassword });
+      return;
+    }
+    if (next === "supporter") {
+      const nextUsername = window.prompt("Username for Support login", loginUsername || "");
+      if (nextUsername == null) return;
+      const nextPassword = window.prompt("Password (min 8 characters)");
+      if (nextPassword == null) return;
+      void patch({ personKind: next, username: nextUsername, password: nextPassword });
+      return;
+    }
     void patch({ personKind: next });
   }
+
+  const loginSuffix =
+    kind === "development" && staffUsername
+      ? ` · @${staffUsername}`
+      : (kind === "alum" || kind === "supporter") && loginUsername
+        ? ` · Login: ${loginUsername}`
+        : "";
 
   return (
     <div className="rounded-xl border bg-card px-4 py-3 text-sm shadow-[var(--shadow-xs)]">
@@ -74,8 +106,8 @@ export function AdminPersonKindPanel({
         <div className="space-y-1">
           <p className="font-medium text-navy">Directory role</p>
           <p className="text-muted-foreground">
-            Player (Alum), Georgetown Supporter, or Development. Development gets full admin access with a
-            username and password for Admin sign-in.
+            Player (Alum) needs a NetID and password. Support needs a username and password. Development gets
+            full admin access with Admin sign-in credentials.
           </p>
           <p className="flex flex-wrap items-center gap-2 pt-1">
             {kind === "supporter" ? (
@@ -91,8 +123,7 @@ export function AdminPersonKindPanel({
             )}
             <span className="text-xs text-muted-foreground">
               {personKindLabel(kind)}
-              {kind === "development" && staffUsername ? ` · @${staffUsername}` : ""} ·{" "}
-              {verified ? "Verified" : "Unverified"}
+              {loginSuffix} · {verified ? "Verified" : "Unverified"}
             </span>
           </p>
         </div>
