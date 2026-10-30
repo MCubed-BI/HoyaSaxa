@@ -23,7 +23,7 @@ import {
 } from "./for-you";
 import { readPlatformRole } from "./platform-session";
 import { canPostBoardSection, canPostBrothers } from "./platform-roles";
-import { DEMO_FEED, DEMO_NEWSFLASH, filterFeedPostsBySection, newsflashToFeedPost } from "./locker-data";
+import { filterFeedPostsBySection, newsflashToFeedPost, type FeedPost } from "./locker-data";
 import { DESKTOP_PRIMARY_NAV_CLASS, HEADER_BRAND_SLOT_CLASS } from "./header-chrome";
 import {
   alumPrimaryNavItems,
@@ -67,7 +67,27 @@ describe("for you myspace stack", () => {
   });
 
   it("splits locker feed onto brothers | board | sgarlata", () => {
-    const feed = [...DEMO_NEWSFLASH.map(newsflashToFeedPost), ...DEMO_FEED];
+    const feed: FeedPost[] = [
+      newsflashToFeedPost({
+        id: "fixture-board",
+        title: "Board note",
+        body: "Official board update",
+        event_at: null,
+        author_label: "Board",
+        created_at: "2026-09-18T12:00:00.000Z",
+      }),
+      {
+        id: "fixture-brothers",
+        author_label: "Pat Hoya ’15",
+        author_role: "alum",
+        audience: "alumni",
+        title: "Hello brothers",
+        body: "In town this weekend.",
+        created_at: "2026-09-16T21:00:00.000Z",
+        source: "feed",
+        section: "brothers",
+      },
+    ];
     const brothers = filterFeedPostsBySection(feed, "brothers").map(feedPostToCard);
     const board = filterFeedPostsBySection(feed, "board").map(feedPostToCard);
     const sgarlata = filterFeedPostsBySection(feed, "sgarlata").map(feedPostToCard);
