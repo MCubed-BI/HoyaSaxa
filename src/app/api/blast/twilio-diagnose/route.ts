@@ -22,10 +22,56 @@ export async function GET(request: Request) {
     }
 
     const url = new URL(request.url);
+    const basic = `Basic ${Buffer.from(`${auth.username}:${auth.password}`).toString("base64")}`;
+
+    if (url.searchParams.get("services") === "1") {
+      const response = await fetch(
+        `https://messaging.twilio.com/v1/Services?PageSize=20`,
+        { headers: { Authorization: basic }, cache: "no-store" },
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        services?: Array<{
+          sid?: string;
+          friendly_name?: string;
+          date_created?: string;
+          inbound_request_url?: string | null;
+        }>;
+        message?: string;
+      };
+      if (!response.ok) {
+        return NextResponse.json(
+          { error: payload.message || `Twilio ${response.status}` },
+          { status: 502 },
+        );
+      }
+      const services = [];
+      for (const service of payload.services ?? []) {
+        if (!service.sid) continue;
+        const numbersRes = await fetch(
+          `https://messaging.twilio.com/v1/Services/${service.sid}/PhoneNumbers?PageSize=20`,
+          { headers: { Authorization: basic }, cache: "no-store" },
+        );
+        const numbersPayload = (await numbersRes.json().catch(() => ({}))) as {
+          phone_numbers?: Array<{ phone_number?: string; sid?: string }>;
+        };
+        services.push({
+          sid: service.sid,
+          friendlyName: service.friendly_name ?? null,
+          dateCreated: service.date_created ?? null,
+          phoneNumbers: (numbersPayload.phone_numbers ?? []).map((row) => row.phone_number).filter(Boolean),
+        });
+      }
+      return NextResponse.json({
+        fromConfigured: auth.from,
+        messagingServiceConfigured: auth.messagingServiceSid,
+        services,
+      });
+    }
+
     const toRaw = url.searchParams.get("to")?.trim() ?? "";
     const to = firstValidE164(toRaw) ?? toE164(toRaw);
     if (!to) {
-      return NextResponse.json({ error: "Pass ?to=+1…" }, { status: 400 });
+      return NextResponse.json({ error: "Pass ?to=+1… or ?services=1" }, { status: 400 });
     }
 
     const params = new URLSearchParams({
@@ -36,7 +82,7 @@ export async function GET(request: Request) {
       `https://api.twilio.com/2010-04-01/Accounts/${auth.accountSid}/Messages.json?${params}`,
       {
         headers: {
-          Authorization: `Basic ${Buffer.from(`${auth.username}:${auth.password}`).toString("base64")}`,
+          Authorization: basic,
         },
         cache: "no-store",
       },
