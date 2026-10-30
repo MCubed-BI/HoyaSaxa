@@ -27,7 +27,7 @@ export type UpcomingEvent = {
   body: string;
   startsAt: string;
   location: string | null;
-  source: "events" | "newsflash" | "demo";
+  source: "events" | "newsflash";
   href: string;
 };
 
@@ -45,59 +45,6 @@ export type FeedTab = (typeof FEED_TABS)[number];
 export function isFeedTab(value: string | null | undefined): value is FeedTab {
   return Boolean(value && (FEED_TABS as readonly string[]).includes(value));
 }
-
-export const DEMO_UPCOMING_EVENT: UpcomingEvent = {
-  title: "Homecoming weekend at Cooper Field",
-  body: "Board gathering after kickoff. RSVP and details are on the event page.",
-  startsAt: "2026-10-17T16:00:00.000Z",
-  location: "Cooper Field · Georgetown",
-  source: "demo",
-  href: "/events",
-};
-
-export const DEMO_NEWSFLASH: NewsflashPost[] = [
-  {
-    id: "demo-newsflash-homecoming",
-    title: "Homecoming weekend at Cooper Field",
-    body: "Lars: board hosts a Legacy Locker gathering after the homecoming kick. Details land here first — bring a classmate.",
-    event_at: "2026-10-17T16:00:00.000Z",
-    author_label: "Lars",
-    created_at: "2026-09-18T12:00:00.000Z",
-  },
-  {
-    id: "demo-newsflash-live",
-    title: "Board notes are live",
-    body: "Board notes, game-week updates, and locker announcements now publish here. Alumni can read every post; only board can write.",
-    event_at: null,
-    author_label: "Lars",
-    created_at: "2026-09-18T11:00:00.000Z",
-  },
-];
-
-export const DEMO_FEED: FeedPost[] = [
-  {
-    id: "demo-feed-official",
-    author_label: "Georgetown Football",
-    author_role: "official",
-    audience: "for-you",
-    title: "Fall camp notes",
-    body: "Official: fall camp wraps this week. Watch From Your Board for the board’s homecoming plan.",
-    created_at: "2026-09-17T18:00:00.000Z",
-    source: "feed",
-    section: "board",
-  },
-  {
-    id: "demo-feed-alum",
-    author_label: "Pat Hoya ’15",
-    author_role: "alum",
-    audience: "alumni",
-    title: "Who’s in D.C. Friday?",
-    body: "In town for a client dinner. Anyone around Dupont want to grab a Hoya pint?",
-    created_at: "2026-09-16T21:00:00.000Z",
-    source: "feed",
-    section: "brothers",
-  },
-];
 
 export function contentKey(title: string | null | undefined, body: string) {
   return `${(title ?? "").trim().toLowerCase()}\n${body.trim().toLowerCase()}`;
