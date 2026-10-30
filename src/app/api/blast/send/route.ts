@@ -18,6 +18,8 @@ import {
   formatTwilioDeliveryError,
   sendTwilioMessage,
   settleTwilioMessages,
+  twilioA2pReady,
+  twilioAuth,
   twilioConfigured,
   twilioStatusToRecipientStatus,
 } from "@/lib/sms";
@@ -164,6 +166,32 @@ async function sendTextBlast({
       `INSERT INTO text_blast_recipients (blast_id, alumni_id, name, phone, status, error)
        VALUES ($1, $2, $3, $4, 'skipped', $5)`,
       [blastId, row.id, row.name, row.phone, "Likely office/landline — SMS not sent"],
+    );
+  }
+
+  // Bare From (+1 10DLC) without a Messaging Service / approved A2P campaign
+  // is accepted by Twilio then undelivered with error 30034 (Danielle, Mike, etc.).
+  if (twilioConfigured() && !twilioA2pReady()) {
+    const from = twilioAuth()?.from ?? "your From number";
+    for (const row of recipients) {
+      await sql.query(
+        `INSERT INTO text_blast_recipients (blast_id, alumni_id, name, phone, status, error)
+         VALUES ($1, $2, $3, $4, 'skipped', $5)`,
+        [
+          blastId,
+          row.id,
+          row.name,
+          row.phone,
+          "Blocked: TWILIO_MESSAGING_SERVICE_SID required (A2P 30034)",
+        ],
+      );
+    }
+    await sql.query(`UPDATE text_blasts SET status = $1 WHERE id = $2`, ["failed", blastId]);
+    return NextResponse.json(
+      {
+        error: `US text blasts need TWILIO_MESSAGING_SERVICE_SID. ${from} is not on an approved A2P 10DLC campaign, so carriers reject every message (Twilio 30034). In Twilio: create Brand + Campaign, add this number to a Messaging Service Sender Pool, then set the MG… SID on Vercel.`,
+      },
+      { status: 400 },
     );
   }
 

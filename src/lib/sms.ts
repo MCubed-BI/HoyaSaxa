@@ -202,6 +202,13 @@ export function formatTwilioDeliveryError(input: {
 }) {
   const code = input.errorCode != null ? String(input.errorCode) : "";
   const status = (input.status ?? "").toLowerCase();
+  if (code === "30034") {
+    const from = twilioAuth()?.from;
+    return (
+      input.error ||
+      `Twilio 30034: ${from ?? "From number"} is not on an approved US A2P 10DLC campaign. Set TWILIO_MESSAGING_SERVICE_SID to the Messaging Service that has this number in its Sender Pool.`
+    );
+  }
   if (input.error) {
     return code ? `${input.error} (Twilio ${code})` : input.error;
   }
@@ -214,6 +221,12 @@ export function formatTwilioDeliveryError(input: {
     return code ? `Twilio send failed (${code})` : "Twilio send failed";
   }
   return undefined;
+}
+
+/** True when US A2P-safe sending is configured (Messaging Service preferred). */
+export function twilioA2pReady() {
+  const auth = twilioAuth();
+  return Boolean(auth?.messagingServiceSid);
 }
 
 /**

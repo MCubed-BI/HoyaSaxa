@@ -24,6 +24,36 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const basic = `Basic ${Buffer.from(`${auth.username}:${auth.password}`).toString("base64")}`;
 
+    if (url.searchParams.get("numbers") === "1") {
+      const response = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${auth.accountSid}/IncomingPhoneNumbers.json?PageSize=50`,
+        { headers: { Authorization: basic }, cache: "no-store" },
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        incoming_phone_numbers?: Array<{
+          phone_number?: string;
+          friendly_name?: string;
+          capabilities?: { sms?: boolean; mms?: boolean; voice?: boolean };
+        }>;
+        message?: string;
+      };
+      if (!response.ok) {
+        return NextResponse.json(
+          { error: payload.message || `Twilio ${response.status}` },
+          { status: 502 },
+        );
+      }
+      return NextResponse.json({
+        fromConfigured: auth.from,
+        messagingServiceConfigured: auth.messagingServiceSid,
+        numbers: (payload.incoming_phone_numbers ?? []).map((row) => ({
+          phone: row.phone_number ?? null,
+          friendlyName: row.friendly_name ?? null,
+          sms: Boolean(row.capabilities?.sms),
+        })),
+      });
+    }
+
     if (url.searchParams.get("services") === "1") {
       const response = await fetch(
         `https://messaging.twilio.com/v1/Services?PageSize=20`,

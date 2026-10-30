@@ -32,6 +32,7 @@ type Preview = {
   missingPhone: number;
   missingEmail: number;
   twilio: boolean;
+  twilioA2pReady?: boolean;
   emailProvider: "gmail" | "resend" | "sendgrid" | null;
   phoneRecipients: Recipient[];
   landlineRecipients?: Recipient[];
@@ -163,7 +164,11 @@ export function BlastComposer({
 
   const readyCount = channel === "sms" ? (preview?.withPhone ?? 0) : (preview?.withEmail ?? 0);
   const list = channel === "sms" ? (preview?.phoneRecipients ?? []) : (preview?.emailRecipients ?? []);
-  const providerReady = channel === "sms" ? Boolean(preview?.twilio) : Boolean(preview?.emailProvider);
+  const providerReady =
+    channel === "sms"
+      ? Boolean(preview?.twilio && preview?.twilioA2pReady !== false)
+      : Boolean(preview?.emailProvider);
+  const a2pBlocked = channel === "sms" && Boolean(preview?.twilio) && preview?.twilioA2pReady === false;
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? null;
 
   async function copy(kind: "phones" | "emails" | "message") {
@@ -433,9 +438,11 @@ export function BlastComposer({
           {preview ? (
             <p className="text-sm text-muted-foreground">
               {channel === "sms"
-                ? preview.twilio
-                  ? "Twilio is configured. Send will deliver texts from the app."
-                  : "Twilio is not fully configured (need Account SID + Auth Token or API Key, plus From number). Send prepares Messages / copy instead."
+                ? a2pBlocked
+                  ? "Twilio credentials are present, but TWILIO_MESSAGING_SERVICE_SID is missing. US carriers reject From-only 10DLC texts (error 30034). Add an approved A2P Messaging Service SID on Vercel before Send will work."
+                  : preview.twilio
+                    ? "Twilio Messaging Service is configured. Send will deliver texts from the app."
+                    : "Twilio is not fully configured (need Account SID + Auth Token or API Key, plus Messaging Service or From). Send prepares Messages / copy instead."
                 : preview.emailProvider === "gmail"
                   ? "Gmail SMTP is configured (GMAIL_USER). Staff and alum send both use sendProviderEmail from that mailbox."
                   : preview.emailProvider

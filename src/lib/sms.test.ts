@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import {
   formatTwilioDeliveryError,
+  twilioA2pReady,
   twilioAuth,
   twilioConfigured,
   twilioStatusToRecipientStatus,
@@ -72,6 +73,17 @@ describe("twilio auth", () => {
     assert.equal(twilioConfigured(), true);
     assert.equal(twilioAuth()?.messagingServiceSid, "MGzzzzzzzz");
     assert.equal(twilioAuth()?.from, null);
+    assert.equal(twilioA2pReady(), true);
+  });
+
+  it("is not A2P-ready with From only (production 30034 shape)", () => {
+    clearTwilioEnv();
+    process.env.TWILIO_ACCOUNT_SID = "ACxxxxxxxx";
+    process.env.TWILIO_API_KEY_SID = "SKyyyyyyyy";
+    process.env.TWILIO_API_KEY_SECRET = "secret";
+    process.env.TWILIO_FROM_NUMBER = "+16624993526";
+    assert.equal(twilioConfigured(), true);
+    assert.equal(twilioA2pReady(), false);
   });
 
   it("prefers Auth Token when both token and API key are present", () => {
@@ -104,5 +116,6 @@ describe("twilio delivery status mapping", () => {
       formatTwilioDeliveryError({ status: "undelivered" }) ?? "",
       /landline|filtered|unreachable/i,
     );
+    assert.match(formatTwilioDeliveryError({ errorCode: 30034 }) ?? "", /A2P|Messaging Service/i);
   });
 });

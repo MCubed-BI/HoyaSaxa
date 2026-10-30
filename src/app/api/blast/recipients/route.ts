@@ -3,7 +3,7 @@ import { alumEmailBlastRejection, getBlastActor, normalizeBlastIds } from "@/lib
 import { emailProvider } from "@/lib/email";
 import { coerceAlumniFilters } from "@/lib/filters";
 import { getBlastRecipients } from "@/lib/queries";
-import { twilioConfigured } from "@/lib/sms";
+import { twilioA2pReady, twilioConfigured } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       missingPhone: rows.length - withAnyPhone.length,
       missingEmail: rows.length - emailRecipients.length,
       twilio: twilioConfigured(),
+      twilioA2pReady: twilioA2pReady(),
       emailProvider: emailProvider(),
       phoneRecipients: phoneRecipients.map((row) => ({
         id: row.id,
