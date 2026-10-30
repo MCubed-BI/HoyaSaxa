@@ -189,6 +189,8 @@ describe("portal paths", () => {
     assert.equal(canAccessAlumniClaimPath("/api/alumni/merge", { hasPortalAlumSession: false, isCoach: true }), true);
     assert.equal(canAccessAlumniClaimPath("/api/alumni/dismiss-duplicate", { hasPortalAlumSession: false, isCoach: true }), true);
     assert.equal(isPublicPath("/api/session"), true);
+    assert.equal(isPublicPath("/privacy"), true);
+    assert.equal(isPublicPath("/terms"), true);
     assert.equal(isAlumAllowedPath("/alum"), true);
     assert.equal(isAlumAllowedPath("/portal"), true);
     assert.equal(isAlumAllowedPath("/portal/directory"), true);

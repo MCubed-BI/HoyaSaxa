@@ -4,6 +4,8 @@ const PUBLIC_PATHS = [
   "/alumni-login",
   "/home/login",
   "/locker",
+  "/privacy",
+  "/terms",
   "/api/login",
   "/api/locker/login",
   "/api/locker/logout",

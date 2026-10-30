@@ -1,12 +1,48 @@
 import { NextResponse } from "next/server";
 import { getBlastActor } from "@/lib/blast-auth";
-import { twilioAuth } from "@/lib/sms";
+import { appBaseUrl, twilioAuth } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
+
+function a2pPublicUrls() {
+  const base = (appBaseUrl() || "https://georgetown-alum.vercel.app").replace(/\/$/, "");
+  return {
+    privacyPolicyUrl: `${base}/privacy`,
+    termsAndConditionsUrl: `${base}/terms`,
+  };
+}
+
+function buildUsa2pBody(brandSid: string, usecase: string) {
+  const { privacyPolicyUrl, termsAndConditionsUrl } = a2pPublicUrls();
+  const description =
+    "Georgetown Football Alum Network (HoyaSaxa) sends low-volume SMS to opted-in Georgetown Football alumni and staff about alumni events, program updates, and operational notices. This is first-party program messaging only — not affiliate or third-party marketing.";
+  const messageFlow =
+    `End users opt in by providing a mobile number on the Georgetown Football alumni roster and/or by using the HoyaSaxa alum portal at ${appBaseUrl() || "https://georgetown-alum.vercel.app"}. ` +
+    `Consent is collected directly for Georgetown Football Alum Network. ` +
+    `Privacy Policy: ${privacyPolicyUrl}. Terms: ${termsAndConditionsUrl}. ` +
+    `Mobile numbers and messaging consent are not shared, sold, or provided to third parties or affiliates for marketing or promotional purposes. ` +
+    `Users reply STOP to opt out and HELP for help. Message frequency varies; message and data rates may apply.`;
+  const samples = [
+    "HoyaSaxa (Georgetown Football Alum Network): Reminder — alum event this Saturday at 2pm. Reply STOP to opt out.",
+    "HoyaSaxa: Update from Coach Sgarlata for Georgetown Football alumni. Reply HELP for help, STOP to opt out.",
+  ];
+  const body = new URLSearchParams();
+  body.set("BrandRegistrationSid", brandSid);
+  body.set("Description", description);
+  body.set("MessageFlow", messageFlow);
+  for (const sample of samples) body.append("MessageSamples", sample);
+  body.set("UsAppToPersonUsecase", usecase);
+  body.set("HasEmbeddedLinks", "false");
+  body.set("HasEmbeddedPhone", "false");
+  body.set("PrivacyPolicyUrl", privacyPolicyUrl);
+  body.set("TermsAndConditionsUrl", termsAndConditionsUrl);
+  return { body, privacyPolicyUrl, termsAndConditionsUrl };
+}
 
 /**
  * Staff-only: ensure a Messaging Service exists, includes TWILIO_FROM_NUMBER,
  * and creates a Usa2p campaign under an approved Brand when none is linked yet.
+ * Failed campaigns (e.g. missing privacy/terms URLs) are deleted and resubmitted.
  */
 export async function POST() {
   try {
@@ -128,24 +164,43 @@ export async function POST() {
 
     let campaign: Record<string, unknown> | null = null;
     let campaignCreated = false;
+    let campaignDeleted = false;
     let campaignError: string | null = null;
+    const { privacyPolicyUrl, termsAndConditionsUrl } = a2pPublicUrls();
 
     const existingRes = await fetch(
       `https://messaging.twilio.com/v1/Services/${serviceSid}/Compliance/Usa2p?PageSize=20`,
       { headers: { Authorization: basic }, cache: "no-store" },
     );
     const existingPayload = (await existingRes.json().catch(() => ({}))) as {
-      compliance?: Array<Record<string, unknown>>;
+      compliance?: Array<Record<string, unknown> & { sid?: string; campaign_status?: string }>;
       message?: string;
     };
-    const existingCampaign = (existingPayload.compliance ?? [])[0] ?? null;
+    let existingCampaign = (existingPayload.compliance ?? [])[0] ?? null;
+    const existingStatus = String(existingCampaign?.campaign_status ?? "").toUpperCase();
+
+    // Failed campaigns missing PrivacyPolicyUrl / TermsAndConditionsUrl must be replaced.
+    if (existingCampaign?.sid && existingStatus === "FAILED") {
+      const delRes = await fetch(
+        `https://messaging.twilio.com/v1/Services/${serviceSid}/Compliance/Usa2p/${existingCampaign.sid}`,
+        { method: "DELETE", headers: { Authorization: basic } },
+      );
+      if (delRes.ok || delRes.status === 204) {
+        campaignDeleted = true;
+        existingCampaign = null;
+      } else {
+        const delPayload = (await delRes.json().catch(() => ({}))) as { message?: string };
+        campaignError = delPayload.message || `Could not delete failed campaign (${delRes.status})`;
+      }
+    }
 
     if (existingCampaign) {
       campaign = existingCampaign;
+    } else if (campaignError) {
+      // keep delete error
     } else if (!brand?.sid) {
       campaignError = "No A2P BrandRegistration found. Complete Brand registration in Twilio Console first.";
     } else {
-      // Prefer usecases Twilio allows for this Brand + Messaging Service.
       const usecasesRes = await fetch(
         `https://messaging.twilio.com/v1/Services/${serviceSid}/Compliance/Usa2p/Usecases?BrandRegistrationSid=${brand.sid}`,
         { headers: { Authorization: basic }, cache: "no-store" },
@@ -166,24 +221,7 @@ export async function POST() {
           usecasesPayload.message ||
           "No A2P usecases available for this Brand/Messaging Service. Check Twilio Console.";
       } else {
-        const description =
-          "Georgetown Football alumni CRM text blasts for events, updates, and program outreach to opted-in alumni and staff.";
-        const messageFlow =
-          "Recipients are Georgetown Football alumni and staff who provided mobile numbers to the program roster " +
-          "and/or opted in via the HoyaSaxa alum portal. They can reply STOP to opt out and HELP for help at any time.";
-        const samples = [
-          "HoyaSaxa: Reminder — Georgetown Football alum event this Saturday at 2pm. Reply STOP to opt out.",
-          "HoyaSaxa: Quick update from Coach Sgarlata for Georgetown Football alumni. Reply HELP for help, STOP to opt out.",
-        ];
-        const body = new URLSearchParams();
-        body.set("BrandRegistrationSid", brand.sid);
-        body.set("Description", description);
-        body.set("MessageFlow", messageFlow);
-        for (const sample of samples) body.append("MessageSamples", sample);
-        body.set("UsAppToPersonUsecase", usecase);
-        body.set("HasEmbeddedLinks", "false");
-        body.set("HasEmbeddedPhone", "false");
-
+        const { body } = buildUsa2pBody(brand.sid, usecase);
         const createCampaignRes = await fetch(
           `https://messaging.twilio.com/v1/Services/${serviceSid}/Compliance/Usa2p`,
           {
@@ -219,6 +257,9 @@ export async function POST() {
       brandSid: brand?.sid ?? null,
       brandStatus: brand?.status ?? null,
       brandType: brand?.brand_type ?? null,
+      privacyPolicyUrl,
+      termsAndConditionsUrl,
+      campaignDeleted,
       campaignCreated,
       campaign,
       campaignError,
