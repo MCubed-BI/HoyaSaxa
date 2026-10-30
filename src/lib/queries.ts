@@ -17,6 +17,7 @@ import {
 } from "@/lib/filter-normalize";
 import type { AlumniLocationRow } from "@/lib/geocode";
 import { ensurePersonColumns } from "@/lib/people-schema";
+import { pickSmsPhone } from "@/lib/phone";
 import type {
   AlumniDetail,
   AlumniEmail,
@@ -412,23 +413,52 @@ export async function getAlumniIds(input: RecipientQuery) {
 
 export async function getBlastRecipients(input: RecipientQuery): Promise<BlastRecipient[]> {
   const { whereSql, params } = await recipientWhere(input);
-  return query<BlastRecipient[]>(
+  type RawBlastRow = {
+    id: string;
+    name: string;
+    phone_primary: string | null;
+    email: string | null;
+    phones: Array<{ phone: string; label: string | null }> | null;
+  };
+  const rows = await query<RawBlastRow[]>(
     `
     SELECT
       a.id,
       COALESCE(NULLIF(btrim(a.full_name), ''), NULLIF(btrim(concat_ws(' ', a.first_name, a.last_name)), ''), a.last_name) AS name,
-      COALESCE(
-        NULLIF(btrim(a.phone_primary), ''),
-        (SELECT p.phone FROM alumni_phones p WHERE p.alumni_id = a.id ORDER BY p.id LIMIT 1)
-      ) AS phone,
+      NULLIF(btrim(a.phone_primary), '') AS phone_primary,
       COALESCE(
         NULLIF(btrim(a.email_primary), ''),
         (SELECT e.email FROM alumni_emails e WHERE e.alumni_id = a.id ORDER BY e.id LIMIT 1)
-      ) AS email
+      ) AS email,
+      (
+        SELECT COALESCE(
+          json_agg(json_build_object('phone', p.phone, 'label', p.label) ORDER BY p.id),
+          '[]'::json
+        )
+        FROM alumni_phones p
+        WHERE p.alumni_id = a.id
+      ) AS phones
     FROM alumni a
     ${whereSql}
     ORDER BY lower(a.last_name), lower(coalesce(a.first_name, ''))
     `,
     params,
   );
+
+  return rows.map((row) => {
+    const phones = Array.isArray(row.phones) ? row.phones : [];
+    const picked = pickSmsPhone([
+      ...phones,
+      ...(row.phone_primary ? [{ phone: row.phone_primary, label: null }] : []),
+    ]);
+    return {
+      id: row.id,
+      name: row.name,
+      phone: picked?.phone ?? null,
+      phoneLabel: picked?.label ?? null,
+      phoneKind: picked?.kind === "fax" ? null : (picked?.kind ?? null),
+      likelyLandline: picked?.likelyLandline ?? false,
+      email: row.email,
+    };
+  });
 }

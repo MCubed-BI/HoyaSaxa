@@ -236,6 +236,7 @@ describe("portal paths", () => {
     assert.equal(isPublicPath("/brand/hoya-bulldog.png"), true);
     assert.equal(isPublicPath("/api/logout"), true);
     assert.equal(isPublicPath("/api/locker/logout"), true);
+    assert.equal(isPublicPath("/api/blast/twilio-status"), true);
     assert.equal(loginPathFor("/portal"), "/alumni-login");
     assert.equal(loginPathFor("/home"), "/home/login");
     assert.equal(loginPathFor("/messages"), "/locker");
