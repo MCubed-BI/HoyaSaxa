@@ -261,4 +261,11 @@ describe("alum to Hoya profile DM", () => {
     const proxy = readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8");
     assert.match(proxy, /athletePathForAlumniProfile/);
   });
+
+  it("does not seed demo welcome posts into message channels", () => {
+    const schema = readFileSync(join(process.cwd(), "src/lib/messages-schema.ts"), "utf8");
+    assert.doesNotMatch(schema, /Official notes from Coach Sgarlata\. Staff can write/);
+    assert.doesNotMatch(schema, /INSERT INTO message_posts/);
+    assert.match(schema, /never seed demo\/welcome posts/i);
+  });
 });

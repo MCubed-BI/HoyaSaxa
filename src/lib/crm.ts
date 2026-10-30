@@ -7,6 +7,9 @@ export type CrmNoteKind = (typeof CRM_NOTE_KINDS)[number];
 export const CRM_OUTREACH_CHANNELS = ["sms", "email", "push"] as const;
 export type CrmOutreachChannel = (typeof CRM_OUTREACH_CHANNELS)[number];
 
+/** Recipient rows that actually left the app (Twilio / SMTP / push). Hide skipped, pending, failed. */
+export const CRM_OUTREACH_SENT_STATUS = "sent";
+
 export type CrmOutreachItem = {
   id: string;
   channel: CrmOutreachChannel;
@@ -19,6 +22,10 @@ export type CrmOutreachItem = {
   error: string | null;
   sentAt: string;
 };
+
+export function isOutgoingOutreachStatus(status: string) {
+  return status.trim().toLowerCase() === CRM_OUTREACH_SENT_STATUS;
+}
 
 export type CrmNote = {
   id: string;
@@ -79,6 +86,7 @@ export async function listCrmOutreach(alumniId: string, limit = 100): Promise<Cr
       FROM text_blast_recipients r
       JOIN text_blasts b ON b.id = r.blast_id
       WHERE r.alumni_id = $1::uuid
+        AND lower(r.status) = lower($2)
     )
     UNION ALL
     (
@@ -96,6 +104,7 @@ export async function listCrmOutreach(alumniId: string, limit = 100): Promise<Cr
       FROM email_blast_recipients r
       JOIN email_blasts b ON b.id = r.blast_id
       WHERE r.alumni_id = $1::uuid
+        AND lower(r.status) = lower($2)
     )
     UNION ALL
     (
@@ -113,11 +122,12 @@ export async function listCrmOutreach(alumniId: string, limit = 100): Promise<Cr
       FROM push_blast_recipients r
       JOIN push_blasts b ON b.id = r.blast_id
       WHERE r.alumni_id = $1::uuid
+        AND lower(r.status) = lower($2)
     )
     ORDER BY sent_at DESC
     LIMIT ${capped}
     `,
-    [alumniId],
+    [alumniId, CRM_OUTREACH_SENT_STATUS],
   );
 
   return rows.map((row) => ({
