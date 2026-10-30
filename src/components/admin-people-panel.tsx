@@ -13,6 +13,22 @@ function place(row: AdminPersonRow) {
   return current || hometown || "—";
 }
 
+function loginLabel(kind: PersonKind) {
+  if (kind === "alum") return "GTown NetID";
+  if (kind === "supporter") return "Username";
+  return "Username";
+}
+
+function loginHint(kind: PersonKind) {
+  if (kind === "alum") {
+    return "Players need a GTown NetID and password for Alum sign-in.";
+  }
+  if (kind === "supporter") {
+    return "Supporters need a username and password for Support sign-in.";
+  }
+  return "Development gets full admin access — set a username and password for Admin sign-in.";
+}
+
 export function AdminPeoplePanel({
   initialPeople,
   initialPending,
@@ -37,11 +53,14 @@ export function AdminPeoplePanel({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [verifiedOnCreate, setVerifiedOnCreate] = useState(true);
+  const [loginForId, setLoginForId] = useState<string | null>(null);
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
-  const isDevelopment = personKind === "development";
+  const needsPortalCreds = personKind === "alum" || personKind === "supporter" || personKind === "development";
   const canSubmit =
     Boolean(lastName.trim()) &&
-    (!isDevelopment || (Boolean(username.trim()) && password.length >= 8));
+    (!needsPortalCreds || (Boolean(username.trim()) && password.length >= 8));
 
   const visible = useMemo(
     () => (filter === "pending" ? people.filter((row) => !row.admin_verified) : people),
@@ -77,7 +96,8 @@ export function AdminPeoplePanel({
           currentCity,
           currentState,
           personKind,
-          ...(isDevelopment ? { username, password } : {}),
+          username,
+          password,
           verified: verifiedOnCreate,
         }),
       });
@@ -91,14 +111,17 @@ export function AdminPeoplePanel({
       setCurrentState("");
       setUsername("");
       setPassword("");
-      const loginHint =
-        data.person!.person_kind === "development" && data.person!.staff_username
-          ? ` Login: ${data.person!.staff_username} at Admin sign-in.`
-          : "";
+      const created = data.person!;
+      const portalUser = created.login_username || created.staff_username;
+      const loginHintText = portalUser
+        ? created.person_kind === "development"
+          ? ` Login: ${portalUser} at Admin sign-in.`
+          : ` Login: ${portalUser}.`
+        : "";
       setMessage(
-        `Added ${displayName(data.person!)} as ${personKindLabel(data.person!.person_kind)}${
-          data.person!.admin_verified ? " (verified)" : " — pending verification"
-        }.${loginHint}`,
+        `Added ${displayName(created)} as ${personKindLabel(created.person_kind)}${
+          created.admin_verified ? " (verified)" : " — pending verification"
+        }.${loginHintText}`,
       );
       await refresh();
     } catch (err) {
@@ -135,6 +158,20 @@ export function AdminPeoplePanel({
     }
   }
 
+  async function saveLogin(personId: string, nextUsername: string, nextPassword: string, emailHint?: string) {
+    const response = await fetch(`/api/admin/people/${personId}/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        username: nextUsername,
+        password: nextPassword,
+        email: emailHint || undefined,
+      }),
+    });
+    const data = (await response.json()) as { error?: string };
+    if (!response.ok) throw new Error(data.error || "Could not save login.");
+  }
+
   function onRoleChange(row: AdminPersonRow, next: PersonKind) {
     if (next === row.person_kind) return;
     if (next === "development") {
@@ -148,7 +185,57 @@ export function AdminPeoplePanel({
       void patchPerson(row.id, { personKind: next, username: nextUsername, password: nextPassword });
       return;
     }
+    if (next === "alum") {
+      const nextNetId = window.prompt(
+        `GTown NetID for ${displayName(row)}`,
+        row.login_username || "",
+      );
+      if (nextNetId == null) return;
+      const nextPassword = window.prompt("Password (min 8 characters)");
+      if (nextPassword == null) return;
+      void patchPerson(row.id, { personKind: next, username: nextNetId, password: nextPassword });
+      return;
+    }
+    if (next === "supporter") {
+      const nextUsername = window.prompt(
+        `Username for ${displayName(row)} (Support login)`,
+        row.login_username || "",
+      );
+      if (nextUsername == null) return;
+      const nextPassword = window.prompt("Password (min 8 characters)");
+      if (nextPassword == null) return;
+      void patchPerson(row.id, { personKind: next, username: nextUsername, password: nextPassword });
+      return;
+    }
     void patchPerson(row.id, { personKind: next });
+  }
+
+  function openLoginEditor(row: AdminPersonRow) {
+    setLoginForId(row.id);
+    setLoginUsername(row.login_username ?? "");
+    setLoginPassword("");
+    setError(null);
+    setMessage(null);
+  }
+
+  async function onSaveLogin(row: AdminPersonRow) {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await saveLogin(row.id, loginUsername, loginPassword, row.email_primary ?? undefined);
+      setLoginForId(null);
+      setLoginUsername("");
+      setLoginPassword("");
+      setMessage(
+        `Saved ${row.person_kind === "alum" ? "NetID" : "username"} login for ${displayName(row)}.`,
+      );
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save login.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -157,8 +244,8 @@ export function AdminPeoplePanel({
         <div>
           <h3 className="font-heading text-base text-navy">Add person</h3>
           <p className="text-sm text-muted-foreground">
-            Create a Player (Alum), Georgetown Supporter, or Development admin. Development gets full admin
-            access — set a username and password they will use at Admin sign-in.
+            Create a Player (Alum), Georgetown Supporter, or Development admin. Alum needs a NetID and password;
+            Support needs a username and password; Development uses Admin sign-in credentials.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -220,18 +307,22 @@ export function AdminPeoplePanel({
             <select
               className="block h-10 min-w-[12rem] rounded-lg border border-input bg-background px-3"
               value={personKind}
-              onChange={(event) => setPersonKind(event.target.value as PersonKind)}
+              onChange={(event) => {
+                setPersonKind(event.target.value as PersonKind);
+                setUsername("");
+                setPassword("");
+              }}
             >
               <option value="alum">{PERSON_KIND_ADMIN_LABELS.alum}</option>
               <option value="supporter">{PERSON_KIND_ADMIN_LABELS.supporter}</option>
               <option value="development">{PERSON_KIND_ADMIN_LABELS.development}</option>
             </select>
           </label>
-          {isDevelopment ? (
+          {needsPortalCreds ? (
             <>
               <label className="space-y-1 text-sm">
                 <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Username *
+                  {loginLabel(personKind)} *
                 </span>
                 <input
                   required
@@ -239,7 +330,9 @@ export function AdminPeoplePanel({
                   className="h-10 w-full min-w-[10rem] rounded-lg border border-input bg-background px-3"
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
-                  placeholder="dev.admin"
+                  placeholder={
+                    personKind === "alum" ? "mak264" : personKind === "supporter" ? "coachmike" : "dev.admin"
+                  }
                 />
               </label>
               <label className="space-y-1 text-sm">
@@ -272,6 +365,9 @@ export function AdminPeoplePanel({
             {busy ? "Saving…" : "Add person"}
           </Button>
         </div>
+        {needsPortalCreds ? (
+          <p className="text-xs text-muted-foreground">{loginHint(personKind)}</p>
+        ) : null}
       </form>
 
       <div className="space-y-3">
@@ -315,6 +411,10 @@ export function AdminPeoplePanel({
                       {row.person_kind === "development" && row.staff_username
                         ? ` · @${row.staff_username}`
                         : ""}
+                      {(row.person_kind === "alum" || row.person_kind === "supporter") &&
+                        (row.has_login
+                          ? ` · Login: ${row.login_username}`
+                          : " · No login yet")}
                       {row.admin_verified ? " · Verified" : " · Unverified"}
                       {" · "}
                       {place(row)}
@@ -335,6 +435,16 @@ export function AdminPeoplePanel({
                       <option value="supporter">{PERSON_KIND_ADMIN_LABELS.supporter}</option>
                       <option value="development">{PERSON_KIND_ADMIN_LABELS.development}</option>
                     </select>
+                    {row.person_kind === "alum" || row.person_kind === "supporter" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => openLoginEditor(row)}
+                      >
+                        {row.has_login ? "Reset login" : "Set login"}
+                      </Button>
+                    ) : null}
                     {row.admin_verified ? (
                       <Button
                         type="button"
@@ -355,6 +465,54 @@ export function AdminPeoplePanel({
                     )}
                   </div>
                 </div>
+                {loginForId === row.id ? (
+                  <div className="mt-3 flex flex-wrap items-end gap-3 border-t pt-3">
+                    <label className="space-y-1 text-sm">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {loginLabel(row.person_kind)} *
+                      </span>
+                      <input
+                        className="h-9 w-full min-w-[10rem] rounded-lg border border-input bg-background px-3"
+                        value={loginUsername}
+                        onChange={(event) => setLoginUsername(event.target.value)}
+                        placeholder={row.person_kind === "alum" ? "mak264" : "coachmike"}
+                      />
+                    </label>
+                    <label className="space-y-1 text-sm">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Password *
+                      </span>
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={8}
+                        className="h-9 w-full min-w-[10rem] rounded-lg border border-input bg-background px-3"
+                        value={loginPassword}
+                        onChange={(event) => setLoginPassword(event.target.value)}
+                        placeholder="Min 8 characters"
+                      />
+                    </label>
+                    <Button
+                      type="button"
+                      disabled={busy || !loginUsername.trim() || loginPassword.length < 8}
+                      onClick={() => void onSaveLogin(row)}
+                    >
+                      Save login
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => {
+                        setLoginForId(null);
+                        setLoginUsername("");
+                        setLoginPassword("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

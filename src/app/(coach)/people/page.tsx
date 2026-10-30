@@ -35,7 +35,7 @@ export default async function AdminPeoplePage() {
         <PageHeader
           eyebrow="Admin"
           title="People"
-          description="Add and verify Players (Alum), Georgetown Supporters, or Development admins. Development requires a username and password and gets full admin access. Use the Alum / Support filter on Directory, Find My Alum, Blast, and Reports."
+          description="Add and verify Players (Alum), Georgetown Supporters, or Development admins. Alum requires a NetID and password; Support requires a username and password; Development uses Admin sign-in credentials."
         />
         {errorMessage ? (
           <StatusCard title="People unavailable" body={errorMessage} />
