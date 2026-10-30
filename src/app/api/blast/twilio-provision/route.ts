@@ -176,7 +176,8 @@ export async function POST() {
       compliance?: Array<Record<string, unknown> & { sid?: string; campaign_status?: string }>;
       message?: string;
     };
-    let existingCampaign = (existingPayload.compliance ?? [])[0] ?? null;
+    let existingCampaign: (Record<string, unknown> & { sid?: string; campaign_status?: string }) | null =
+      (existingPayload.compliance ?? [])[0] ?? null;
     const existingStatus = String(existingCampaign?.campaign_status ?? "").toUpperCase();
 
     // Failed campaigns missing PrivacyPolicyUrl / TermsAndConditionsUrl must be replaced.
