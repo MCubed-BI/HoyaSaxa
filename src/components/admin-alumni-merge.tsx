@@ -6,14 +6,14 @@ import { DirectoryNameSearch } from "@/components/directory-name-search";
 import { Notice } from "@/components/page-chrome";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useSelection } from "@/components/selection-provider";
+import { useOptionalSelection, useSelection } from "@/components/selection-provider";
 import type { DirectoryPersonSuggestion } from "@/lib/directory-search";
 
 type Pick = { id: string; label: string };
 
 export function AdminMergeFromSelection({ labels = {} }: { labels?: Record<string, string> }) {
   const router = useRouter();
-  const { ids, clear } = useSelection();
+  const { ids, replaceAfterMerge } = useSelection();
   const selected = useMemo(() => [...ids], [ids]);
   const [keeperId, setKeeperId] = useState("");
   const [pending, setPending] = useState(false);
@@ -39,8 +39,8 @@ export function AdminMergeFromSelection({ labels = {} }: { labels?: Record<strin
         });
         const data = (await response.json()) as { error?: string };
         if (!response.ok) throw new Error(data.error ?? "Merge failed");
+        replaceAfterMerge(sourceId, keeper);
       }
-      clear();
       setMessage(`Merged ${sources.length} record${sources.length === 1 ? "" : "s"} into ${labelFor(keeper)}.`);
       router.refresh();
     } catch (err) {
@@ -79,6 +79,7 @@ export function AdminMergeFromSelection({ labels = {} }: { labels?: Record<strin
 
 export function AdminAlumniMergeCard() {
   const router = useRouter();
+  const selection = useOptionalSelection();
   const [keeper, setKeeper] = useState<Pick | null>(null);
   const [source, setSource] = useState<Pick | null>(null);
   const [pending, setPending] = useState(false);
@@ -106,6 +107,7 @@ export function AdminAlumniMergeCard() {
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Merge failed");
+      selection?.replaceAfterMerge(source.id, keeper.id);
       setMessage(`Merged ${source.label} into ${keeper.label}.`);
       setSource(null);
       router.refresh();

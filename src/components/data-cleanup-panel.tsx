@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Notice } from "@/components/page-chrome";
+import { useOptionalSelection } from "@/components/selection-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CleanupSuggestion } from "@/lib/data-cleanup";
@@ -38,6 +39,7 @@ function PersonCard({
 
 export function DataCleanupPanel({ initialSuggestions }: { initialSuggestions: CleanupSuggestion[] }) {
   const router = useRouter();
+  const selection = useOptionalSelection();
   const [suggestions, setSuggestions] = useState(initialSuggestions);
   const [filter, setFilter] = useState<"pending" | "all">("pending");
   const [busy, setBusy] = useState<"scan" | string | null>(null);
@@ -97,8 +99,16 @@ export function DataCleanupPanel({ initialSuggestions }: { initialSuggestions: C
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as {
+        error?: string;
+        action?: "approve" | "reject";
+        keeperId?: string;
+        sourceId?: string;
+      };
       if (!response.ok) throw new Error(data.error ?? "Could not update suggestion");
+      if (action === "approve" && data.keeperId && data.sourceId) {
+        selection?.replaceAfterMerge(data.sourceId, data.keeperId);
+      }
       setSuggestions((current) =>
         current.map((row) =>
           row.id === id

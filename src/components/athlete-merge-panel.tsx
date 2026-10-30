@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Notice } from "@/components/page-chrome";
+import { useOptionalSelection } from "@/components/selection-provider";
 import { displayName } from "@/lib/format";
 import type { AlumniListItem } from "@/lib/types";
 
@@ -20,6 +21,7 @@ export function AthleteMergePanel({
   candidates: MergeCandidate[];
 }) {
   const router = useRouter();
+  const selection = useOptionalSelection();
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const visible = useMemo(
     () => candidates.filter((row) => !hiddenIds.includes(row.id)),
@@ -46,6 +48,7 @@ export function AthleteMergePanel({
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Merge failed");
+      selection?.replaceAfterMerge(selectedId, keeperId);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Merge failed");
