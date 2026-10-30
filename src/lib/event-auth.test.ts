@@ -4,6 +4,7 @@ import { SEED_ADMIN_ALUMNI_ID } from "@/lib/platform-roles";
 import {
   canCreateEvents,
   canOverrideEventCheckIn,
+  canStaffCheckInOthers,
   parseUsernameList,
   platformRoleForEventActor,
   resolveEventRole,
@@ -35,9 +36,20 @@ test("Create Event is allowed for admin, board, and alum via Coder 5 helpers", (
   assert.equal(canCreateEvents({ role: "alum", username: "Pat Hoya" }), true);
   assert.equal(canCreateEvents({ role: "alum", platformRole: "alum" }), true);
   assert.equal(canCreateEvents(null), false);
-  assert.equal(canOverrideEventCheckIn("coach"), false);
+  assert.equal(canStaffCheckInOthers("coach"), true);
+  assert.equal(canOverrideEventCheckIn("coach"), true);
+  assert.equal(canStaffCheckInOthers("board"), false);
   assert.equal(canOverrideEventCheckIn("board"), false);
+  assert.equal(canStaffCheckInOthers("alum"), false);
   assert.equal(canOverrideEventCheckIn("alum"), false);
+  assert.equal(
+    canStaffCheckInOthers({ role: "alum", platformRole: "admin", username: "Mike" }),
+    true,
+  );
+  assert.equal(
+    canStaffCheckInOthers({ role: "alum", platformRole: "alum", username: "Pat" }),
+    false,
+  );
 });
 
 test("shared staff login (Hoyas) resolves to coach and can create", () => {

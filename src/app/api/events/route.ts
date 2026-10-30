@@ -37,6 +37,10 @@ export async function POST(request: Request) {
   const location = formString(form, "location");
   const thumbnailUrl = formString(form, "thumbnail_url");
   const description = formString(form, "description");
+  const selfCheckInAllowed =
+    form.get("self_check_in_allowed") === "on" ||
+    form.get("self_check_in_allowed") === "1" ||
+    form.get("self_check_in_allowed") === "true";
 
   if (!title || title.length > 120) {
     return redirectWithError(request, "/events/new", "title");
@@ -65,6 +69,7 @@ export async function POST(request: Request) {
     location: location || null,
     thumbnailUrl: thumbnailUrl || null,
     description: description || null,
+    selfCheckInAllowed,
     actor,
   });
 

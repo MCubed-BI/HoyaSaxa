@@ -326,6 +326,8 @@ export const events = pgTable("events", {
   description: text("description"),
   createdBy: text("created_by").notNull(),
   createdByRole: text("created_by_role").notNull(),
+  /** When false, alums present a QR and an admin must scan to check them in. */
+  selfCheckInAllowed: boolean("self_check_in_allowed").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

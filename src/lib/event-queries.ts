@@ -37,6 +37,7 @@ function mapEventRow(row: Record<string, unknown>, username: string): EventListI
     created_by_me: createdBy.toLowerCase() === username.toLowerCase(),
     rsvped: Boolean(row.rsvped),
     checked_in: Boolean(row.checked_in),
+    self_check_in_allowed: Boolean(row.self_check_in_allowed),
   };
 }
 
@@ -64,6 +65,7 @@ export async function listEvents(
           e.description,
           e.created_by,
           e.created_by_role,
+          e.self_check_in_allowed,
           EXISTS (
             SELECT 1 FROM event_rsvps r
             WHERE r.event_id = e.id AND lower(r.attendee_key) = lower($1)
@@ -128,15 +130,17 @@ export async function createEvent(input: {
   location: string | null;
   thumbnailUrl: string | null;
   description: string | null;
+  selfCheckInAllowed?: boolean;
   actor: EventActor;
 }) {
   await readyEventStore();
   const rows = await query<{ id: string }[]>(
     `
       INSERT INTO events (
-        title, category, starts_at, location, thumbnail_url, description, created_by, created_by_role
+        title, category, starts_at, location, thumbnail_url, description,
+        created_by, created_by_role, self_check_in_allowed
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING id
     `,
     [
@@ -148,6 +152,7 @@ export async function createEvent(input: {
       input.description,
       input.actor.username,
       input.actor.role,
+      Boolean(input.selfCheckInAllowed),
     ],
   );
   return rows[0]?.id ?? null;

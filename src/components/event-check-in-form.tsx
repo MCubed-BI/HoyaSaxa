@@ -1,3 +1,4 @@
+import { EventCheckInQr } from "@/components/event-check-in-qr";
 import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,9 @@ export function EventCheckInForm({
   percentile,
   checkedInAt,
   eventBadge = null,
+  qrToken = null,
+  selfCheckInAllowed = false,
+  canAdminSelfCheckIn = false,
 }: {
   eventId: string;
   actorName: string;
@@ -21,11 +25,20 @@ export function EventCheckInForm({
   percentile: number | null;
   checkedInAt: string | null;
   eventBadge?: PublicBadge | null;
+  qrToken?: string | null;
+  selfCheckInAllowed?: boolean;
+  canAdminSelfCheckIn?: boolean;
 }) {
+  const title = alreadyCheckedIn
+    ? "You are checked in"
+    : selfCheckInAllowed
+      ? "Check in"
+      : "Your check-in code";
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{alreadyCheckedIn ? "You are checked in" : "Check in"}</CardTitle>
+        <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {alreadyCheckedIn ? (
@@ -40,19 +53,44 @@ export function EventCheckInForm({
             </p>
             {eventBadge ? <HoyaBadgeRow badges={[eventBadge]} /> : null}
           </div>
+        ) : selfCheckInAllowed ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Checking in as <span className="font-medium text-foreground">{actorName}</span>. This
+              event allows self check-in — tap below, or show your QR if an admin is scanning at the
+              door.
+            </p>
+            <form action={`/api/events/${eventId}/check-in`} method="post">
+              <input type="hidden" name="next" value={`/events/${eventId}/check-in`} />
+              <Button type="submit">Check in</Button>
+            </form>
+            {qrToken ? <EventCheckInQr token={qrToken} label={actorName} /> : null}
+          </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Checking in as <span className="font-medium text-foreground">{actorName}</span>. You can only check
-            yourself in — one record per person per event.
-          </p>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Checking in as <span className="font-medium text-foreground">{actorName}</span>. An admin
+              must scan this code to mark you checked in — that keeps Hoyas opening the app at
+              events.
+            </p>
+            {qrToken ? <EventCheckInQr token={qrToken} label={actorName} /> : null}
+            {canAdminSelfCheckIn ? (
+              <form
+                action={`/api/events/${eventId}/check-in`}
+                method="post"
+                className="space-y-2 border-t pt-4"
+              >
+                <input type="hidden" name="next" value={`/events/${eventId}/check-in`} />
+                <p className="text-xs text-muted-foreground">
+                  Admin only — check yourself in without a scan.
+                </p>
+                <Button type="submit" variant="outline" size="sm">
+                  Check myself in
+                </Button>
+              </form>
+            ) : null}
+          </div>
         )}
-
-        <form action={`/api/events/${eventId}/check-in`} method="post" className="space-y-4">
-          <input type="hidden" name="next" value={`/events/${eventId}/check-in`} />
-          <Button type="submit" disabled={alreadyCheckedIn}>
-            {alreadyCheckedIn ? "Already checked in" : "Check in"}
-          </Button>
-        </form>
       </CardContent>
     </Card>
   );

@@ -16,6 +16,8 @@ import {
   listEventAttendance,
 } from "@/lib/event-attendance";
 import { getEventActor } from "@/lib/event-actor";
+import { canStaffCheckInOthers } from "@/lib/event-auth";
+import { createCheckInQrToken } from "@/lib/event-check-in-qr";
 import { formatEventWhen } from "@/lib/event-datetime";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { getLockerViewer } from "@/lib/locker-viewer";
@@ -58,8 +60,14 @@ export default async function EventCheckInPage({
     const myRank = leaders.find((row) => row.personKey === person.personKey);
     const when = formatEventWhen(event.startsAt);
     const status = Array.isArray(query.status) ? query.status[0] : query.status;
+    const isAdminChecker = canStaffCheckInOthers(actor);
+    const selfCheckInAllowed = Boolean(event.selfCheckInAllowed);
+    const qrToken = mine ? null : createCheckInQrToken({ eventId: id, person });
     const profileBase =
       locker && (locker.platformRole === "admin" || locker.role === "coach") ? "/alumni" : "/athletes";
+    const checkInBlurb = selfCheckInAllowed
+      ? "Self check-in is on for this event — or show your QR if an admin is scanning."
+      : "Show your QR to an admin — they scan to check you in.";
 
     return (
       <EventsChrome locker={locker}>
@@ -67,9 +75,14 @@ export default async function EventCheckInPage({
           <PageHeader
             eyebrow="Check in"
             title={event.title}
-            description={`${when.label}${event.location ? ` · ${event.location}` : ""}. Check in for yourself only — one durable record per person.`}
+            description={`${when.label}${event.location ? ` · ${event.location}` : ""}. ${checkInBlurb}`}
             actions={
               <div className="flex flex-wrap gap-2">
+                {isAdminChecker ? (
+                  <Button asChild>
+                    <Link href={`/events/${id}/scan`}>Check you in</Link>
+                  </Button>
+                ) : null}
                 <Button asChild variant="outline">
                   <Link href="/events/check-in">All events</Link>
                 </Button>
@@ -82,8 +95,11 @@ export default async function EventCheckInPage({
 
           {status === "checked" ? <Notice tone="success">You are checked in.</Notice> : null}
           {status === "already" ? <Notice>Already checked in for this event.</Notice> : null}
+          {status === "show-qr" ? (
+            <Notice>An admin must scan your QR code to check you in.</Notice>
+          ) : null}
           {status === "forbidden" ? (
-            <Notice tone="danger">You can only check yourself in, and only once per event.</Notice>
+            <Notice tone="danger">Only an admin can complete check-in by scanning your QR.</Notice>
           ) : null}
 
           <EventCheckInForm
@@ -95,6 +111,9 @@ export default async function EventCheckInPage({
             percentile={myRank?.percentile ?? null}
             checkedInAt={mine?.checkedInAt ?? null}
             eventBadge={myRank ? eventBadgeFromAttendanceLeader(myRank) : null}
+            qrToken={qrToken}
+            selfCheckInAllowed={selfCheckInAllowed}
+            canAdminSelfCheckIn={isAdminChecker}
           />
 
           <section className="space-y-3">

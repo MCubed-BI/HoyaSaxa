@@ -775,191 +775,222 @@ export async function mergeAlumniPair(input: {
     throw new Error("You can only merge rows that share the same roster last name.");
   }
 
-  if (accountId && !source.claimed_by_me) {
-    await query(`INSERT INTO alumni_claims (account_id, alumni_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [
-      accountId,
-      sourceId,
-    ]);
-  }
+  // HTTP transaction: pass query promises without awaiting so Neon runs them atomically.
+  // $1/$2 are uuids; $3 repeats keeperId as text for attendee_key (cannot reuse one
+  // param as both uuid and text — Postgres raises "inconsistent types deduced").
+  const sql = getSql();
+  const q = (text: string, params: unknown[] = []) => sql.query(text, params);
 
-  await query(
-    `
-    UPDATE alumni SET
-      first_name = COALESCE(NULLIF(btrim(first_name), ''), $2),
-      preferred_name = COALESCE(NULLIF(btrim(preferred_name), ''), $3),
-      full_name = COALESCE(NULLIF(btrim(full_name), ''), $4),
-      position = COALESCE(NULLIF(btrim(position), ''), $5),
-      seasons = COALESCE(NULLIF(btrim(seasons), ''), $6),
-      class_year = COALESCE(NULLIF(btrim(class_year), ''), $7),
-      hometown_city = COALESCE(NULLIF(btrim(hometown_city), ''), $8),
-      hometown_state = COALESCE(NULLIF(btrim(hometown_state), ''), $9),
-      current_city = COALESCE(NULLIF(btrim(current_city), ''), $10),
-      current_state = COALESCE(NULLIF(btrim(current_state), ''), $11),
-      company_name = COALESCE(NULLIF(btrim(company_name), ''), $12),
-      job_title = COALESCE(NULLIF(btrim(job_title), ''), $13),
-      industry = COALESCE(NULLIF(btrim(industry), ''), $14),
-      linkedin_url = COALESCE(NULLIF(btrim(linkedin_url), ''), $15),
-      headline = COALESCE(NULLIF(btrim(headline), ''), $16),
-      email_primary = COALESCE(NULLIF(btrim(email_primary), ''), $17),
-      phone_primary = COALESCE(NULLIF(btrim(phone_primary), ''), $18),
-      address_primary = COALESCE(NULLIF(btrim(address_primary), ''), $19),
-      football_photo_url = COALESCE(NULLIF(btrim(football_photo_url), ''), $20),
-      linkedin_photo_url = COALESCE(NULLIF(btrim(linkedin_photo_url), ''), $21),
-      source_flags = COALESCE(source_flags, '{}'::jsonb) || jsonb_build_object('merged_from', $22::text),
-      updated_at = now()
-    WHERE id = $1
-    `,
-    [
-      keeperId,
-      pickFilled(keeper.first_name, source.first_name),
-      pickFilled(keeper.preferred_name, source.preferred_name),
-      pickFilled(keeper.full_name, source.full_name),
-      pickFilled(keeper.position, source.position),
-      pickFilled(keeper.seasons, source.seasons),
-      pickFilled(keeper.class_year, source.class_year),
-      pickFilled(keeper.hometown_city, source.hometown_city),
-      pickFilled(keeper.hometown_state, source.hometown_state),
-      pickFilled(keeper.current_city, source.current_city),
-      pickFilled(keeper.current_state, source.current_state),
-      pickFilled(keeper.company_name, source.company_name),
-      pickFilled(keeper.job_title, source.job_title),
-      pickFilled(keeper.industry, source.industry),
-      pickFilled(keeper.linkedin_url, source.linkedin_url),
-      pickFilled(keeper.headline, source.headline),
-      pickFilled(keeper.email_primary, source.email_primary),
-      pickFilled(keeper.phone_primary, source.phone_primary),
-      pickFilled(keeper.address_primary, source.address_primary),
-      pickFilled(keeper.football_photo_url ?? null, source.football_photo_url ?? null),
-      pickFilled(keeper.linkedin_photo_url ?? null, source.linkedin_photo_url ?? null),
-      sourceId,
-    ],
-  );
-
-  await query(
-    `
-    INSERT INTO alumni_emails (alumni_id, email, label)
-    SELECT $1, e.email, e.label
-    FROM alumni_emails e
-    WHERE e.alumni_id = $2
-      AND NOT EXISTS (
+  await sql.transaction([
+    ...(accountId && !source.claimed_by_me
+      ? [
+          q(`INSERT INTO alumni_claims (account_id, alumni_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [
+            accountId,
+            sourceId,
+          ]),
+        ]
+      : []),
+    q(
+      `
+      UPDATE alumni SET
+        first_name = COALESCE(NULLIF(btrim(first_name), ''), $2),
+        preferred_name = COALESCE(NULLIF(btrim(preferred_name), ''), $3),
+        full_name = COALESCE(NULLIF(btrim(full_name), ''), $4),
+        position = COALESCE(NULLIF(btrim(position), ''), $5),
+        seasons = COALESCE(NULLIF(btrim(seasons), ''), $6),
+        class_year = COALESCE(NULLIF(btrim(class_year), ''), $7),
+        hometown_city = COALESCE(NULLIF(btrim(hometown_city), ''), $8),
+        hometown_state = COALESCE(NULLIF(btrim(hometown_state), ''), $9),
+        current_city = COALESCE(NULLIF(btrim(current_city), ''), $10),
+        current_state = COALESCE(NULLIF(btrim(current_state), ''), $11),
+        company_name = COALESCE(NULLIF(btrim(company_name), ''), $12),
+        job_title = COALESCE(NULLIF(btrim(job_title), ''), $13),
+        industry = COALESCE(NULLIF(btrim(industry), ''), $14),
+        linkedin_url = COALESCE(NULLIF(btrim(linkedin_url), ''), $15),
+        headline = COALESCE(NULLIF(btrim(headline), ''), $16),
+        email_primary = COALESCE(NULLIF(btrim(email_primary), ''), $17),
+        phone_primary = COALESCE(NULLIF(btrim(phone_primary), ''), $18),
+        address_primary = COALESCE(NULLIF(btrim(address_primary), ''), $19),
+        football_photo_url = COALESCE(NULLIF(btrim(football_photo_url), ''), $20),
+        linkedin_photo_url = COALESCE(NULLIF(btrim(linkedin_photo_url), ''), $21),
+        source_flags = COALESCE(source_flags, '{}'::jsonb) || jsonb_build_object('merged_from', $22::text),
+        updated_at = now()
+      WHERE id = $1
+      `,
+      [
+        keeperId,
+        pickFilled(keeper.first_name, source.first_name),
+        pickFilled(keeper.preferred_name, source.preferred_name),
+        pickFilled(keeper.full_name, source.full_name),
+        pickFilled(keeper.position, source.position),
+        pickFilled(keeper.seasons, source.seasons),
+        pickFilled(keeper.class_year, source.class_year),
+        pickFilled(keeper.hometown_city, source.hometown_city),
+        pickFilled(keeper.hometown_state, source.hometown_state),
+        pickFilled(keeper.current_city, source.current_city),
+        pickFilled(keeper.current_state, source.current_state),
+        pickFilled(keeper.company_name, source.company_name),
+        pickFilled(keeper.job_title, source.job_title),
+        pickFilled(keeper.industry, source.industry),
+        pickFilled(keeper.linkedin_url, source.linkedin_url),
+        pickFilled(keeper.headline, source.headline),
+        pickFilled(keeper.email_primary, source.email_primary),
+        pickFilled(keeper.phone_primary, source.phone_primary),
+        pickFilled(keeper.address_primary, source.address_primary),
+        pickFilled(keeper.football_photo_url ?? null, source.football_photo_url ?? null),
+        pickFilled(keeper.linkedin_photo_url ?? null, source.linkedin_photo_url ?? null),
+        sourceId,
+      ],
+    ),
+    q(
+      `
+      INSERT INTO alumni_emails (alumni_id, email, label)
+      SELECT alumni_id, email, label
+      FROM (
+        SELECT DISTINCT ON (lower(email))
+          alumni_id, email, label
+        FROM (
+          SELECT $1::uuid AS alumni_id, e.email, e.label, 1 AS priority
+          FROM alumni_emails e
+          WHERE e.alumni_id = $2::uuid
+          UNION ALL
+          SELECT $1::uuid, btrim(a.email_primary), 'merged', 2
+          FROM alumni a
+          WHERE a.id = $2::uuid
+            AND a.email_primary IS NOT NULL AND btrim(a.email_primary) <> ''
+        ) candidates
+        ORDER BY lower(email), priority
+      ) deduped
+      WHERE NOT EXISTS (
         SELECT 1 FROM alumni_emails k
-        WHERE k.alumni_id = $1 AND lower(k.email) = lower(e.email)
+        WHERE k.alumni_id = deduped.alumni_id AND lower(k.email) = lower(deduped.email)
       )
-    UNION
-    SELECT $1, btrim(a.email_primary), 'merged'
-    FROM alumni a
-    WHERE a.id = $2
-      AND a.email_primary IS NOT NULL AND btrim(a.email_primary) <> ''
-      AND NOT EXISTS (
-        SELECT 1 FROM alumni_emails k
-        WHERE k.alumni_id = $1 AND lower(k.email) = lower(btrim(a.email_primary))
-      )
-      AND lower(btrim(COALESCE((SELECT email_primary FROM alumni k WHERE k.id = $1), ''))) <> lower(btrim(a.email_primary))
-    `,
-    [keeperId, sourceId],
-  );
-  await query(
-    `
-    INSERT INTO alumni_phones (alumni_id, phone, label)
-    SELECT $1, p.phone, p.label
-    FROM alumni_phones p
-    WHERE p.alumni_id = $2
-      AND NOT EXISTS (
+      ON CONFLICT (alumni_id, lower(email)) DO NOTHING
+      `,
+      [keeperId, sourceId],
+    ),
+    q(
+      `
+      INSERT INTO alumni_phones (alumni_id, phone, label)
+      SELECT alumni_id, phone, label
+      FROM (
+        SELECT DISTINCT ON (phone)
+          alumni_id, phone, label
+        FROM (
+          SELECT $1::uuid AS alumni_id, p.phone, p.label, 1 AS priority
+          FROM alumni_phones p
+          WHERE p.alumni_id = $2::uuid
+          UNION ALL
+          SELECT $1::uuid, btrim(a.phone_primary), 'merged', 2
+          FROM alumni a
+          WHERE a.id = $2::uuid
+            AND a.phone_primary IS NOT NULL AND btrim(a.phone_primary) <> ''
+        ) candidates
+        ORDER BY phone, priority
+      ) deduped
+      WHERE NOT EXISTS (
         SELECT 1 FROM alumni_phones k
-        WHERE k.alumni_id = $1 AND k.phone = p.phone
+        WHERE k.alumni_id = deduped.alumni_id AND k.phone = deduped.phone
       )
-    UNION
-    SELECT $1, btrim(a.phone_primary), 'merged'
-    FROM alumni a
-    WHERE a.id = $2
-      AND a.phone_primary IS NOT NULL AND btrim(a.phone_primary) <> ''
-      AND NOT EXISTS (
-        SELECT 1 FROM alumni_phones k
-        WHERE k.alumni_id = $1 AND k.phone = btrim(a.phone_primary)
-      )
-      AND btrim(COALESCE((SELECT phone_primary FROM alumni k WHERE k.id = $1), '')) <> btrim(a.phone_primary)
-    `,
-    [keeperId, sourceId],
-  );
-  await query(
-    `
-    INSERT INTO alumni_roster_years (alumni_id, year, position, class)
-    SELECT $1, r.year, r.position, r.class
-    FROM alumni_roster_years r
-    WHERE r.alumni_id = $2
-      AND NOT EXISTS (
-        SELECT 1 FROM alumni_roster_years k
-        WHERE k.alumni_id = $1 AND k.year = r.year
-      )
-    `,
-    [keeperId, sourceId],
-  );
-  await query(`UPDATE text_blast_recipients SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]);
-  await query(`UPDATE email_blast_recipients SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]);
-  await query(
-    `
-    UPDATE alumni_group_members AS source
-    SET alumni_id = $1
-    WHERE alumni_id = $2
-      AND NOT EXISTS (
-        SELECT 1 FROM alumni_group_members keeper
-        WHERE keeper.group_id = source.group_id AND keeper.alumni_id = $1
-      )
-    `,
-    [keeperId, sourceId],
-  );
-  await query(`DELETE FROM alumni_group_members WHERE alumni_id = $1`, [sourceId]);
-  await query(
-    `
-    UPDATE alum_badges AS source
-    SET alumni_id = $1
-    WHERE alumni_id = $2
-      AND NOT EXISTS (
-        SELECT 1 FROM alum_badges keeper
-        WHERE keeper.alumni_id = $1 AND keeper.badge_type = source.badge_type
-      )
-    `,
-    [keeperId, sourceId],
-  );
-  await query(`DELETE FROM alum_badges WHERE alumni_id = $1`, [sourceId]);
-  await query(
-    `
-    DELETE FROM event_checkins AS source
-    WHERE source.alumni_id = $2
-      AND EXISTS (
-        SELECT 1 FROM event_checkins AS keeper
-        WHERE keeper.event_id = source.event_id
-          AND (
-            keeper.alumni_id = $1
-            OR keeper.attendee_key = 'alum:' || $1::text
-          )
-      )
-    `,
-    [keeperId, sourceId],
-  );
-  await query(
-    `
-    UPDATE event_checkins
-    SET alumni_id = $1,
-        attendee_key = 'alum:' || $1::text
-    WHERE alumni_id = $2
-    `,
-    [keeperId, sourceId],
-  );
-  await query(
-    `INSERT INTO alumni_record_merges (account_id, keeper_alumni_id, merged_alumni_id) VALUES ($1, $2, $3)`,
-    [accountId, keeperId, sourceId],
-  );
-  await query(
-    `
-    UPDATE alumni_claims SET alumni_id = $1
-    WHERE alumni_id = $2
-      AND NOT EXISTS (
-        SELECT 1 FROM alumni_claims k WHERE k.account_id = alumni_claims.account_id AND k.alumni_id = $1
-      )
-    `,
-    [keeperId, sourceId],
-  );
-  await query(`DELETE FROM alumni_claims WHERE alumni_id = $1`, [sourceId]);
-  await query(`DELETE FROM alumni WHERE id = $1`, [sourceId]);
+      `,
+      [keeperId, sourceId],
+    ),
+    q(
+      `
+      INSERT INTO alumni_roster_years (alumni_id, year, position, class)
+      SELECT $1, r.year, r.position, r.class
+      FROM alumni_roster_years r
+      WHERE r.alumni_id = $2
+        AND NOT EXISTS (
+          SELECT 1 FROM alumni_roster_years k
+          WHERE k.alumni_id = $1 AND k.year = r.year
+        )
+      `,
+      [keeperId, sourceId],
+    ),
+    q(`UPDATE text_blast_recipients SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]),
+    q(`UPDATE email_blast_recipients SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]),
+    q(`UPDATE push_blast_recipients SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]),
+    q(`UPDATE fundraising_pledges SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]),
+    q(`UPDATE giving_pledges SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]),
+    q(`UPDATE staff_roles SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]),
+    q(
+      `
+      UPDATE alumni_group_members AS source
+      SET alumni_id = $1
+      WHERE alumni_id = $2
+        AND NOT EXISTS (
+          SELECT 1 FROM alumni_group_members keeper
+          WHERE keeper.group_id = source.group_id AND keeper.alumni_id = $1
+        )
+      `,
+      [keeperId, sourceId],
+    ),
+    q(`DELETE FROM alumni_group_members WHERE alumni_id = $1`, [sourceId]),
+    q(
+      `
+      UPDATE alum_badges AS source
+      SET alumni_id = $1
+      WHERE alumni_id = $2
+        AND NOT EXISTS (
+          SELECT 1 FROM alum_badges keeper
+          WHERE keeper.alumni_id = $1 AND keeper.badge_type = source.badge_type
+        )
+      `,
+      [keeperId, sourceId],
+    ),
+    q(`DELETE FROM alum_badges WHERE alumni_id = $1`, [sourceId]),
+    q(`UPDATE alumni_crm_notes SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]),
+    q(`UPDATE contact_notes SET alumni_id = $1 WHERE alumni_id = $2`, [keeperId, sourceId]),
+    q(
+      `
+      DELETE FROM event_checkins AS source
+      WHERE source.alumni_id = $2::uuid
+        AND EXISTS (
+          SELECT 1 FROM event_checkins AS keeper
+          WHERE keeper.event_id = source.event_id
+            AND (
+              keeper.alumni_id = $1::uuid
+              OR keeper.attendee_key = 'alum:' || $3
+            )
+        )
+      `,
+      [keeperId, sourceId, keeperId],
+    ),
+    q(
+      `
+      UPDATE event_checkins
+      SET alumni_id = $1::uuid,
+          attendee_key = 'alum:' || $3
+      WHERE alumni_id = $2::uuid
+      `,
+      [keeperId, sourceId, keeperId],
+    ),
+    q(
+      `INSERT INTO alumni_record_merges (account_id, keeper_alumni_id, merged_alumni_id) VALUES ($1, $2, $3)`,
+      [accountId, keeperId, sourceId],
+    ),
+    // alumni_claims.alumni_id is globally unique — drop source claim if keeper is already claimed.
+    q(
+      `
+      DELETE FROM alumni_claims src
+      WHERE src.alumni_id = $2
+        AND EXISTS (SELECT 1 FROM alumni_claims k WHERE k.alumni_id = $1)
+      `,
+      [keeperId, sourceId],
+    ),
+    q(
+      `
+      UPDATE alumni_claims SET alumni_id = $1
+      WHERE alumni_id = $2
+        AND NOT EXISTS (SELECT 1 FROM alumni_claims k WHERE k.alumni_id = $1)
+      `,
+      [keeperId, sourceId],
+    ),
+    q(`DELETE FROM alumni_claims WHERE alumni_id = $1`, [sourceId]),
+    q(`DELETE FROM alumni_emails WHERE alumni_id = $1`, [sourceId]),
+    q(`DELETE FROM alumni_phones WHERE alumni_id = $1`, [sourceId]),
+    q(`DELETE FROM alumni_roster_years WHERE alumni_id = $1`, [sourceId]),
+    q(`DELETE FROM alumni WHERE id = $1`, [sourceId]),
+  ]);
 }

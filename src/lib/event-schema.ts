@@ -39,6 +39,10 @@ export async function ensureEventTables() {
   await sql.query(`ALTER TABLE event_checkins ADD COLUMN IF NOT EXISTS display_name text`);
   await sql.query(`ALTER TABLE event_checkins ADD COLUMN IF NOT EXISTS checked_in_by text`);
   await sql.query(`ALTER TABLE event_checkins ADD COLUMN IF NOT EXISTS source text`);
+  // When false (default), alums show a QR and an admin must scan to check them in.
+  await sql.query(
+    `ALTER TABLE events ADD COLUMN IF NOT EXISTS self_check_in_allowed boolean NOT NULL DEFAULT false`,
+  );
   await sql.query(`CREATE INDEX IF NOT EXISTS idx_events_starts_at ON events (starts_at)`);
   await sql.query(`CREATE INDEX IF NOT EXISTS idx_events_created_by ON events (created_by)`);
   await sql.query(`CREATE INDEX IF NOT EXISTS idx_event_rsvps_attendee ON event_rsvps (attendee_key)`);
