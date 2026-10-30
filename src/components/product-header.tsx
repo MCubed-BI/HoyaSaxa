@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { NavIcon } from "@/components/icons";
@@ -10,6 +11,8 @@ import { DESKTOP_PRIMARY_NAV_CLASS, HEADER_BRAND_SLOT_CLASS } from "@/lib/header
 import { headerShowsUpdateMe, navKeyMatches, type NavItem, type NavKey } from "@/lib/nav";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 import { cn } from "cn";
+
+const MOBILE_TABBAR_OFFSET = "calc(4rem + env(safe-area-inset-bottom))";
 
 function shortLabel(item: NavItem) {
   if (item.key === "find-my-alum") return "Map";
@@ -54,6 +57,16 @@ export function ProductHeader({
   const tabItems = items.slice(0, 5);
   const showUpdateMe = headerShowsUpdateMe(verifiedHoya, current);
   const hasIdentity = Boolean(roleLabel || viewerLabel || verifiedHoya || trailing || showUpdateMe || tools.length > 0);
+  const showMobileTabs = mobileNav === "tabs";
+
+  useEffect(() => {
+    if (!showMobileTabs) return;
+    const root = document.documentElement;
+    root.style.setProperty("--mobile-tabbar-offset", MOBILE_TABBAR_OFFSET);
+    return () => {
+      root.style.removeProperty("--mobile-tabbar-offset");
+    };
+  }, [showMobileTabs]);
 
   return (
     <>
@@ -122,7 +135,7 @@ export function ProductHeader({
           ) : null}
         </div>
       </header>
-      {mobileNav === "tabs" ? (
+      {showMobileTabs ? (
         <>
           <nav
             className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-card)] md:hidden"
