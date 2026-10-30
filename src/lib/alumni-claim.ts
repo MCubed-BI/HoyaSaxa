@@ -838,46 +838,53 @@ export async function mergeAlumniPair(input: {
   await query(
     `
     INSERT INTO alumni_emails (alumni_id, email, label)
-    SELECT $1, e.email, e.label
-    FROM alumni_emails e
-    WHERE e.alumni_id = $2
-      AND NOT EXISTS (
-        SELECT 1 FROM alumni_emails k
-        WHERE k.alumni_id = $1 AND lower(k.email) = lower(e.email)
-      )
-    UNION
-    SELECT $1, btrim(a.email_primary), 'merged'
-    FROM alumni a
-    WHERE a.id = $2
-      AND a.email_primary IS NOT NULL AND btrim(a.email_primary) <> ''
-      AND NOT EXISTS (
-        SELECT 1 FROM alumni_emails k
-        WHERE k.alumni_id = $1 AND lower(k.email) = lower(btrim(a.email_primary))
-      )
-      AND lower(btrim(COALESCE((SELECT email_primary FROM alumni k WHERE k.id = $1), ''))) <> lower(btrim(a.email_primary))
+    SELECT alumni_id, email, label
+    FROM (
+      SELECT DISTINCT ON (lower(email))
+        alumni_id, email, label
+      FROM (
+        SELECT $1::uuid AS alumni_id, e.email, e.label, 1 AS priority
+        FROM alumni_emails e
+        WHERE e.alumni_id = $2::uuid
+        UNION ALL
+        SELECT $1::uuid, btrim(a.email_primary), 'merged', 2
+        FROM alumni a
+        WHERE a.id = $2::uuid
+          AND a.email_primary IS NOT NULL AND btrim(a.email_primary) <> ''
+      ) candidates
+      ORDER BY lower(email), priority
+    ) deduped
+    WHERE NOT EXISTS (
+      SELECT 1 FROM alumni_emails k
+      WHERE k.alumni_id = deduped.alumni_id AND lower(k.email) = lower(deduped.email)
+    )
+    ON CONFLICT (alumni_id, lower(email)) DO NOTHING
     `,
     [keeperId, sourceId],
   );
   await query(
     `
     INSERT INTO alumni_phones (alumni_id, phone, label)
-    SELECT $1, p.phone, p.label
-    FROM alumni_phones p
-    WHERE p.alumni_id = $2
-      AND NOT EXISTS (
-        SELECT 1 FROM alumni_phones k
-        WHERE k.alumni_id = $1 AND k.phone = p.phone
-      )
-    UNION
-    SELECT $1, btrim(a.phone_primary), 'merged'
-    FROM alumni a
-    WHERE a.id = $2
-      AND a.phone_primary IS NOT NULL AND btrim(a.phone_primary) <> ''
-      AND NOT EXISTS (
-        SELECT 1 FROM alumni_phones k
-        WHERE k.alumni_id = $1 AND k.phone = btrim(a.phone_primary)
-      )
-      AND btrim(COALESCE((SELECT phone_primary FROM alumni k WHERE k.id = $1), '')) <> btrim(a.phone_primary)
+    SELECT alumni_id, phone, label
+    FROM (
+      SELECT DISTINCT ON (phone)
+        alumni_id, phone, label
+      FROM (
+        SELECT $1::uuid AS alumni_id, p.phone, p.label, 1 AS priority
+        FROM alumni_phones p
+        WHERE p.alumni_id = $2::uuid
+        UNION ALL
+        SELECT $1::uuid, btrim(a.phone_primary), 'merged', 2
+        FROM alumni a
+        WHERE a.id = $2::uuid
+          AND a.phone_primary IS NOT NULL AND btrim(a.phone_primary) <> ''
+      ) candidates
+      ORDER BY phone, priority
+    ) deduped
+    WHERE NOT EXISTS (
+      SELECT 1 FROM alumni_phones k
+      WHERE k.alumni_id = deduped.alumni_id AND k.phone = deduped.phone
+    )
     `,
     [keeperId, sourceId],
   );
@@ -922,29 +929,32 @@ export async function mergeAlumniPair(input: {
     [keeperId, sourceId],
   );
   await query(`DELETE FROM alum_badges WHERE alumni_id = $1`, [sourceId]);
+  // $1 is uuid (alumni_id); $3 is the same id as text for attendee_key.
+  // Reusing one param as both uuid and text makes Postgres raise
+  // "inconsistent types deduced for parameter $1".
   await query(
     `
     DELETE FROM event_checkins AS source
-    WHERE source.alumni_id = $2
+    WHERE source.alumni_id = $2::uuid
       AND EXISTS (
         SELECT 1 FROM event_checkins AS keeper
         WHERE keeper.event_id = source.event_id
           AND (
-            keeper.alumni_id = $1
-            OR keeper.attendee_key = 'alum:' || $1::text
+            keeper.alumni_id = $1::uuid
+            OR keeper.attendee_key = 'alum:' || $3
           )
       )
     `,
-    [keeperId, sourceId],
+    [keeperId, sourceId, keeperId],
   );
   await query(
     `
     UPDATE event_checkins
-    SET alumni_id = $1,
-        attendee_key = 'alum:' || $1::text
-    WHERE alumni_id = $2
+    SET alumni_id = $1::uuid,
+        attendee_key = 'alum:' || $3
+    WHERE alumni_id = $2::uuid
     `,
-    [keeperId, sourceId],
+    [keeperId, sourceId, keeperId],
   );
   await query(
     `INSERT INTO alumni_record_merges (account_id, keeper_alumni_id, merged_alumni_id) VALUES ($1, $2, $3)`,
