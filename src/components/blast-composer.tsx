@@ -25,6 +25,7 @@ type Preview = {
   missingEmail: number;
   twilio: boolean;
   emailProvider: "gmail" | "resend" | "sendgrid" | null;
+  emailFrom?: string | null;
   phoneRecipients: Recipient[];
   emailRecipients: Recipient[];
 };
@@ -393,7 +394,7 @@ export function BlastComposer({
                   ? "Twilio is configured. Send will deliver texts from the app."
                   : "Twilio is not fully configured (need Account SID + Auth Token or API Key, plus From number). Send prepares Messages / copy instead."
                 : preview.emailProvider === "gmail"
-                  ? "Gmail SMTP is configured (GMAIL_USER). Staff and alum send both use sendProviderEmail from that mailbox."
+                  ? `Send will deliver from ${preview.emailFrom || "GMAIL_USER"} via Gmail SMTP.`
                   : preview.emailProvider
                     ? `${preview.emailProvider === "resend" ? "Resend" : "SendGrid"} is configured as a leftover fallback.`
                     : "GMAIL_USER + GMAIL_APP_PASSWORD are not set. Send prepares a Gmail or mailto draft."}
