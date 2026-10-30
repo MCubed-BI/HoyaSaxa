@@ -103,31 +103,7 @@ export async function ensureMessagesTables() {
     );
   }
 
-  const welcome = await sql.query(
-    `
-    SELECT p.id
-    FROM message_posts p
-    JOIN message_channels c ON c.id = p.channel_id
-    WHERE c.slug = $1
-    LIMIT 1
-    `,
-    [SGARLATA_CHANNEL_SLUG],
-  );
-  if ((welcome as unknown[]).length === 0) {
-    await sql.query(
-      `
-      INSERT INTO message_posts (channel_id, title, body, author_role, author_label)
-      SELECT id, $1, $2, 'coach', 'Coach Sgarlata'
-      FROM message_channels
-      WHERE slug = $3
-      `,
-      [
-        "Welcome",
-        "Official notes from Coach Sgarlata. Staff can write; alumni read along.",
-        SGARLATA_CHANNEL_SLUG,
-      ],
-    );
-  }
+  // Channels only — never seed demo/welcome posts into an empty DB.
 
   ensured = true;
 }
