@@ -24,13 +24,6 @@ function channelLabel(channel: CrmOutreachChannel) {
   return "Push";
 }
 
-function statusTone(status: string) {
-  const raw = status.toLowerCase();
-  if (raw === "sent") return "text-navy";
-  if (raw === "failed" || raw === "error") return "text-destructive";
-  return "text-muted-foreground";
-}
-
 function toDatetimeLocalValue(date = new Date()) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
@@ -141,7 +134,7 @@ export function AdminCrmPanel({
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Admin CRM</p>
           <h3 className="font-heading text-xl text-navy">Outreach & donation calls</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Blast history and fundraising call notes for {personName}.
+            Messages that went out and fundraising call notes for {personName}.
           </p>
         </div>
         <div className="rounded-lg border bg-background px-4 py-3 text-center">
@@ -212,7 +205,12 @@ export function AdminCrmPanel({
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h4 className="font-medium text-navy">Blast & notifications</h4>
+          <div>
+            <h4 className="font-medium text-navy">Sent blasts</h4>
+            <p className="text-xs text-muted-foreground">
+              Only deliveries that actually went out (skipped, failed, and drafts stay hidden).
+            </p>
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {(
               [
@@ -237,10 +235,10 @@ export function AdminCrmPanel({
         {outreach.length === 0 ? (
           <p className="rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground">
             {channelFilter === "push"
-              ? "No push notifications yet. When push blasts are sent, they will show here."
+              ? "No push notifications have gone out to this person yet."
               : channelFilter === "all"
-                ? "No text, email, or push blasts have been sent to this person yet."
-                : `No ${channelLabel(channelFilter).toLowerCase()} blasts on file for this person.`}
+                ? "No text, email, or push messages have gone out to this person yet."
+                : `No ${channelLabel(channelFilter).toLowerCase()} messages have gone out to this person yet.`}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -279,7 +277,6 @@ function OutreachRow({ item }: { item: CrmOutreachItem }) {
         <span className="rounded-md bg-navy/10 px-1.5 py-0.5 font-semibold text-navy">
           {channelLabel(item.channel)}
         </span>
-        <span className={statusTone(item.status)}>{item.status}</span>
         {item.provider ? <span>{item.provider}</span> : null}
         <span className="ml-auto normal-case tracking-normal">{formatWhen(item.sentAt)} ET</span>
       </div>
@@ -288,7 +285,6 @@ function OutreachRow({ item }: { item: CrmOutreachItem }) {
       {item.address ? (
         <p className="mt-1 truncate text-xs text-muted-foreground">To {item.address}</p>
       ) : null}
-      {item.error ? <p className="mt-1 text-xs text-destructive">{item.error}</p> : null}
     </li>
   );
 }
