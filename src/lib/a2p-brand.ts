@@ -419,6 +419,8 @@ export async function ensureGeorgetownBrandRegistration(basic: TwilioBasic, acco
       error: createProfile.response.ok ? null : createProfile.payload.message,
     });
     if (!createProfile.response.ok || !createProfile.payload.sid) {
+      const msg = String(createProfile.payload.message || "Secondary Customer Profile create failed");
+      const consoleOnly = /only be created through Twilio console/i.test(msg);
       return {
         ok: false,
         ready: false,
@@ -427,7 +429,35 @@ export async function ensureGeorgetownBrandRegistration(basic: TwilioBasic, acco
         brand: null,
         secondaryProfileSid: null,
         trustProductSid: null,
-        error: String(createProfile.payload.message || "Secondary Customer Profile create failed"),
+        error: msg,
+        consoleRequired: consoleOnly
+          ? {
+              reason:
+                "This Twilio account is a direct_customer. Secondary Customer Profiles (and Primary EndUser edits while approved) must be done in Twilio Console or via Twilio A2P Onboarding.",
+              primaryProfileSid: primarySid,
+              existingBrandSid: null as string | null,
+              emailSentHint:
+                "A correction request was sent to 10dlc-onboarding@twilio.com for Brand BN639351… → Georgetown Football Alum Network + https://georgetown-alum.vercel.app/",
+              consoleSteps: [
+                "Open https://console.twilio.com/ → Trust Hub → Customer Profiles",
+                `Create Secondary Customer Profile: ${A2P_BRAND_FRIENDLY_NAME}`,
+                `Business name: ${A2P_BRAND_BUSINESS_NAME}`,
+                `Website: ${website}/`,
+                "Industry: EDUCATION; keep EIN 99-4019340; rep Mike Kasten / mike@nipseytech.com",
+                "Register a new Standard A2P Brand on that Georgetown Secondary profile",
+                "OR ask Twilio to set Primary business identity to ISV Reseller/Partner, then re-run POST /api/blast/twilio-provision",
+                "OR edit Primary profile (if Console allows) to Georgetown name + website, then resubmit Brand",
+              ],
+              fields: {
+                businessName: A2P_BRAND_BUSINESS_NAME,
+                website: `${website}/`,
+                privacyPolicyUrl: a2pPublicUrls().privacyPolicyUrl,
+                termsAndConditionsUrl: a2pPublicUrls().termsAndConditionsUrl,
+                industry: "EDUCATION",
+                ein: String(seed.business.business_registration_number || "99-4019340"),
+              },
+            }
+          : null,
       };
     }
     secondary = {

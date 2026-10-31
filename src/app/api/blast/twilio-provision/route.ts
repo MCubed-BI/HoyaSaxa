@@ -235,6 +235,7 @@ export async function POST() {
       brandType: brand?.brand_type ?? null,
       brandIsGeorgetown,
       georgetownBrand,
+      consoleRequired: (georgetownBrand as { consoleRequired?: unknown }).consoleRequired ?? null,
       privacyPolicyUrl,
       termsAndConditionsUrl,
       campaignDeleted,
@@ -243,7 +244,7 @@ export async function POST() {
       campaignError,
       vercelHint:
         "A2P Brand must be Georgetown Football Alum Network (Secondary Customer Profile + BrandRegistration) with website https://georgetown-alum.vercel.app. " +
-        "Primary Nipsey Tech profile stays as the account Primary; campaigns use the Georgetown Brand to avoid 30907.",
+        "Primary Nipsey Tech profile is API-immutable for direct_customer accounts; Secondary create requires Twilio Console or A2P Onboarding.",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Provision failed";
