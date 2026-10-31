@@ -87,14 +87,23 @@ export async function GET(request: Request) {
         }
       }
 
-      // Pull Trust Hub customer profile / end-user website so campaign URLs can match Brand.
+      // Pull Trust Hub profiles (all CustomerProfiles + brand-linked) so Georgetown Secondary is visible.
       const brandRows = brandsPayload.data ?? [];
+      const allProfilesRes = await fetch("https://trusthub.twilio.com/v1/CustomerProfiles?PageSize=50", {
+        headers: { Authorization: basic },
+        cache: "no-store",
+      });
+      const allProfilesPayload = (await allProfilesRes.json().catch(() => ({}))) as {
+        results?: Array<{ sid?: string; friendly_name?: string; email?: string; status?: string; policy_sid?: string }>;
+        message?: string;
+      };
       const profileBundles = [
-        ...new Set(
-          brandRows
+        ...new Set([
+          ...(allProfilesPayload.results ?? []).map((row) => row.sid).filter((sid): sid is string => Boolean(sid)),
+          ...brandRows
             .map((row) => (row as { customer_profile_bundle_sid?: string }).customer_profile_bundle_sid)
             .filter((sid): sid is string => Boolean(sid)),
-        ),
+        ]),
       ];
       const profiles = [];
       for (const profileSid of profileBundles) {
@@ -111,31 +120,52 @@ export async function GET(request: Request) {
           results?: Array<{ object_sid?: string }>;
         };
         const endUsers = [];
+        const supportingDocuments = [];
         for (const row of assignsPayload.results ?? []) {
           const objectSid = row.object_sid ?? "";
-          if (!objectSid.startsWith("IT")) continue;
-          const endUserRes = await fetch(`https://trusthub.twilio.com/v1/EndUsers/${objectSid}`, {
-            headers: { Authorization: basic },
-            cache: "no-store",
-          });
-          const endUser = (await endUserRes.json().catch(() => ({}))) as {
-            sid?: string;
-            friendly_name?: string;
-            type?: string;
-            attributes?: Record<string, unknown>;
-          };
-          if (endUserRes.ok) {
-            endUsers.push({
-              sid: endUser.sid,
-              friendlyName: endUser.friendly_name,
-              type: endUser.type,
-              attributes: endUser.attributes ?? {},
-              website:
-                (endUser.attributes?.website_url as string | undefined) ||
-                (endUser.attributes?.website as string | undefined) ||
-                null,
-              businessName: (endUser.attributes?.business_name as string | undefined) || null,
+          if (objectSid.startsWith("IT")) {
+            const endUserRes = await fetch(`https://trusthub.twilio.com/v1/EndUsers/${objectSid}`, {
+              headers: { Authorization: basic },
+              cache: "no-store",
             });
+            const endUser = (await endUserRes.json().catch(() => ({}))) as {
+              sid?: string;
+              friendly_name?: string;
+              type?: string;
+              attributes?: Record<string, unknown>;
+            };
+            if (endUserRes.ok) {
+              endUsers.push({
+                sid: endUser.sid,
+                friendlyName: endUser.friendly_name,
+                type: endUser.type,
+                attributes: endUser.attributes ?? {},
+                website:
+                  (endUser.attributes?.website_url as string | undefined) ||
+                  (endUser.attributes?.website as string | undefined) ||
+                  null,
+                businessName: (endUser.attributes?.business_name as string | undefined) || null,
+              });
+            }
+          } else if (objectSid.startsWith("RD")) {
+            const docRes = await fetch(`https://trusthub.twilio.com/v1/SupportingDocuments/${objectSid}`, {
+              headers: { Authorization: basic },
+              cache: "no-store",
+            });
+            const doc = (await docRes.json().catch(() => ({}))) as {
+              sid?: string;
+              friendly_name?: string;
+              type?: string;
+              attributes?: Record<string, unknown>;
+            };
+            if (docRes.ok) {
+              supportingDocuments.push({
+                sid: doc.sid,
+                friendlyName: doc.friendly_name,
+                type: doc.type,
+                attributes: doc.attributes ?? {},
+              });
+            }
           }
         }
         profiles.push({
@@ -144,9 +174,38 @@ export async function GET(request: Request) {
           friendlyName: profile.friendly_name ?? null,
           email: profile.email ?? null,
           status: profile.status ?? null,
+          policySid: profile.policy_sid ?? null,
           endUsers,
+          supportingDocuments,
         });
       }
+
+      const trustsRes = await fetch("https://trusthub.twilio.com/v1/TrustProducts?PageSize=50", {
+        headers: { Authorization: basic },
+        cache: "no-store",
+      });
+      const trustsPayload = (await trustsRes.json().catch(() => ({}))) as {
+        results?: Array<{ sid?: string; friendly_name?: string; status?: string; policy_sid?: string; email?: string }>;
+        message?: string;
+      };
+
+      const addressesRes = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${auth.accountSid}/Addresses.json?PageSize=20`,
+        { headers: { Authorization: basic }, cache: "no-store" },
+      );
+      const addressesPayload = (await addressesRes.json().catch(() => ({}))) as {
+        addresses?: Array<{
+          sid?: string;
+          friendly_name?: string;
+          customer_name?: string;
+          street?: string;
+          city?: string;
+          region?: string;
+          postal_code?: string;
+          iso_country?: string;
+        }>;
+        message?: string;
+      };
 
       return NextResponse.json({
         fromConfigured: auth.from,
@@ -154,11 +213,28 @@ export async function GET(request: Request) {
         brandsOk: brandsRes.ok,
         brandsError: brandsRes.ok ? null : brandsPayload.message || `Brands ${brandsRes.status}`,
         brands: brandRows,
+        profilesOk: allProfilesRes.ok,
+        profilesError: allProfilesRes.ok ? null : allProfilesPayload.message || `Profiles ${allProfilesRes.status}`,
         profiles,
+        trustProductsOk: trustsRes.ok,
+        trustProductsError: trustsRes.ok ? null : trustsPayload.message || `TrustProducts ${trustsRes.status}`,
+        trustProducts: trustsPayload.results ?? [],
+        addressesOk: addressesRes.ok,
+        addressesError: addressesRes.ok ? null : addressesPayload.message || `Addresses ${addressesRes.status}`,
+        addresses: (addressesPayload.addresses ?? []).map((row) => ({
+          sid: row.sid ?? null,
+          friendlyName: row.friendly_name ?? null,
+          customerName: row.customer_name ?? null,
+          street: row.street ?? null,
+          city: row.city ?? null,
+          region: row.region ?? null,
+          postalCode: row.postal_code ?? null,
+          isoCountry: row.iso_country ?? null,
+        })),
         usa2p,
         usa2pError,
         hint: messagingServiceSid
-          ? "If brands/usa2p are empty, finish Brand + Campaign registration in Twilio Console and link this Messaging Service."
+          ? "Brand must be Georgetown Football Alum Network (Secondary profile + BrandRegistration) with website georgetown-alum.vercel.app."
           : "Set TWILIO_MESSAGING_SERVICE_SID first, then register Brand + Campaign.",
       });
     }

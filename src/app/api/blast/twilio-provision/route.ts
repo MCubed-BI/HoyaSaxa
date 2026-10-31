@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import {
   a2pPublicUrls,
   buildUsa2pBody,
-  resubmitBrandRegistration,
-  syncGeorgetownBrandProfile,
+  ensureGeorgetownBrandRegistration,
+  isGeorgetownBrand,
 } from "@/lib/a2p-brand";
 import { getBlastActor } from "@/lib/blast-auth";
 import { twilioAuth } from "@/lib/sms";
@@ -11,8 +11,9 @@ import { twilioAuth } from "@/lib/sms";
 export const dynamic = "force-dynamic";
 
 /**
- * Staff-only: Messaging Service + Georgetown Brand sync + Usa2p campaign.
- * Failed campaigns are deleted and resubmitted with Privacy/Terms on the app site.
+ * Staff-only: Messaging Service + Georgetown Secondary Brand + Usa2p campaign.
+ * Primary Nipsey Trust Hub profile is API-immutable; we create/reuse a Georgetown
+ * Secondary Customer Profile + BrandRegistration so campaign website matches Brand.
  */
 export async function POST() {
   try {
@@ -118,51 +119,42 @@ export async function POST() {
       }
     }
 
-    const brandsRes = await fetch("https://messaging.twilio.com/v1/a2p/BrandRegistrations?PageSize=20", {
-      headers: { Authorization: basic },
-      cache: "no-store",
-    });
-    const brandsPayload = (await brandsRes.json().catch(() => ({}))) as {
-      data?: Array<{
-        sid?: string;
-        status?: string;
-        brand_type?: string;
-        customer_profile_bundle_sid?: string;
-      }>;
-    };
-    const brand =
-      (brandsPayload.data ?? []).find((row) => (row.status ?? "").toUpperCase() === "APPROVED") ||
-      (brandsPayload.data ?? [])[0] ||
-      null;
+    const { privacyPolicyUrl, termsAndConditionsUrl } = a2pPublicUrls();
+
+    // 1) Georgetown Secondary Customer Profile + Brand (Primary Nipsey profile is immutable).
+    const georgetownBrand = await ensureGeorgetownBrandRegistration(basic, auth.accountSid);
 
     let campaign: Record<string, unknown> | null = null;
     let campaignCreated = false;
     let campaignDeleted = false;
     let campaignError: string | null = null;
-    const { privacyPolicyUrl, termsAndConditionsUrl } = a2pPublicUrls();
 
-    let brandSync: Awaited<ReturnType<typeof syncGeorgetownBrandProfile>> | null = null;
-    let brandResubmit: Awaited<ReturnType<typeof resubmitBrandRegistration>> | null = null;
-
-    // 1) Point Brand Customer Profile at Georgetown + app website (fixes 30907 mismatch).
-    if (brand?.customer_profile_bundle_sid) {
-      brandSync = await syncGeorgetownBrandProfile(basic, brand.customer_profile_bundle_sid);
-    }
+    const brand = georgetownBrand.brand;
+    const brandSid = brand?.sid ?? null;
+    const brandIsGeorgetown = isGeorgetownBrand(brand, georgetownBrand.secondaryProfileSid);
 
     const existingRes = await fetch(
       `https://messaging.twilio.com/v1/Services/${serviceSid}/Compliance/Usa2p?PageSize=20`,
       { headers: { Authorization: basic }, cache: "no-store" },
     );
     const existingPayload = (await existingRes.json().catch(() => ({}))) as {
-      compliance?: Array<Record<string, unknown> & { sid?: string; campaign_status?: string }>;
+      compliance?: Array<Record<string, unknown> & { sid?: string; campaign_status?: string; brand_registration_sid?: string }>;
       message?: string;
     };
-    let existingCampaign: (Record<string, unknown> & { sid?: string; campaign_status?: string }) | null =
-      (existingPayload.compliance ?? [])[0] ?? null;
+    let existingCampaign:
+      | (Record<string, unknown> & { sid?: string; campaign_status?: string; brand_registration_sid?: string })
+      | null = (existingPayload.compliance ?? [])[0] ?? null;
     const existingStatus = String(existingCampaign?.campaign_status ?? "").toUpperCase();
+    const existingBrandSid = String(existingCampaign?.brand_registration_sid ?? "");
 
-    // 2) Remove failed campaigns before Brand re-vet / new Usa2p create.
-    if (existingCampaign?.sid && existingStatus === "FAILED") {
+    // 2) Drop FAILED campaigns, and IN_PROGRESS campaigns not on the Georgetown Brand
+    // (those re-reject with 30907 website mismatch against Nipsey Primary).
+    const onGeorgetownBrand = Boolean(brandSid) && existingBrandSid === brandSid;
+    const shouldDelete =
+      Boolean(existingCampaign?.sid) &&
+      (existingStatus === "FAILED" || (existingStatus === "IN_PROGRESS" && !onGeorgetownBrand));
+
+    if (shouldDelete && existingCampaign?.sid) {
       const delRes = await fetch(
         `https://messaging.twilio.com/v1/Services/${serviceSid}/Compliance/Usa2p/${existingCampaign.sid}`,
         { method: "DELETE", headers: { Authorization: basic } },
@@ -172,24 +164,21 @@ export async function POST() {
         existingCampaign = null;
       } else {
         const delPayload = (await delRes.json().catch(() => ({}))) as { message?: string };
-        campaignError = delPayload.message || `Could not delete failed campaign (${delRes.status})`;
+        campaignError = delPayload.message || `Could not delete campaign (${delRes.status})`;
       }
-    }
-
-    // 3) Ask TCR to re-read Brand after profile edits (no-op body). Safe to try on APPROVED brands.
-    if (brand?.sid && !campaignError) {
-      brandResubmit = await resubmitBrandRegistration(basic, brand.sid);
     }
 
     if (existingCampaign) {
       campaign = existingCampaign;
     } else if (campaignError) {
       // keep delete error
-    } else if (!brand?.sid) {
-      campaignError = "No A2P BrandRegistration found. Complete Brand registration in Twilio Console first.";
+    } else if (!georgetownBrand.ready || !brandSid || !brandIsGeorgetown) {
+      campaignError =
+        georgetownBrand.error ||
+        "Georgetown BrandRegistration is not APPROVED yet. Secondary profile / Brand review must finish before Usa2p create.";
     } else {
       const usecasesRes = await fetch(
-        `https://messaging.twilio.com/v1/Services/${serviceSid}/Compliance/Usa2p/Usecases?BrandRegistrationSid=${brand.sid}`,
+        `https://messaging.twilio.com/v1/Services/${serviceSid}/Compliance/Usa2p/Usecases?BrandRegistrationSid=${brandSid}`,
         { headers: { Authorization: basic }, cache: "no-store" },
       );
       const usecasesPayload = (await usecasesRes.json().catch(() => ({}))) as {
@@ -208,7 +197,7 @@ export async function POST() {
           usecasesPayload.message ||
           "No A2P usecases available for this Brand/Messaging Service. Check Twilio Console.";
       } else {
-        const { body } = buildUsa2pBody(brand.sid, usecase);
+        const { body } = buildUsa2pBody(brandSid, usecase);
         const createCampaignRes = await fetch(
           `https://messaging.twilio.com/v1/Services/${serviceSid}/Compliance/Usa2p`,
           {
@@ -233,7 +222,7 @@ export async function POST() {
       }
     }
 
-    const ok = attached && Boolean(campaign) && !campaignError;
+    const ok = attached && Boolean(campaign) && !campaignError && georgetownBrand.ready;
     return NextResponse.json({
       ok,
       created,
@@ -241,11 +230,11 @@ export async function POST() {
       from: auth.from,
       attached,
       attachError,
-      brandSid: brand?.sid ?? null,
+      brandSid,
       brandStatus: brand?.status ?? null,
       brandType: brand?.brand_type ?? null,
-      brandSync,
-      brandResubmit,
+      brandIsGeorgetown,
+      georgetownBrand,
       privacyPolicyUrl,
       termsAndConditionsUrl,
       campaignDeleted,
@@ -253,8 +242,8 @@ export async function POST() {
       campaign,
       campaignError,
       vercelHint:
-        "Brand Customer Profile is synced to Georgetown Football Alum Network + https://georgetown-alum.vercel.app. " +
-        "Campaign review can take time; carriers stop 30034 after Usa2p is VERIFIED.",
+        "A2P Brand must be Georgetown Football Alum Network (Secondary Customer Profile + BrandRegistration) with website https://georgetown-alum.vercel.app. " +
+        "Primary Nipsey Tech profile stays as the account Primary; campaigns use the Georgetown Brand to avoid 30907.",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Provision failed";
