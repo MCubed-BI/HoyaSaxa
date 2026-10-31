@@ -1,25 +1,26 @@
-import { BoardMemberToggle } from "@/components/board-member-toggle";
+import { AdminMasterPanel } from "@/components/admin-master-panel";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader, PageMain, PageShell } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { listBoardMembers } from "@/lib/staff-roles";
+import { listAdminMembers, listBoardMembers } from "@/lib/staff-roles";
 import { requirePlatformRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminBoardPage() {
+export default async function AdminMasterPage() {
   const viewer = await requirePlatformRole(["admin"]);
-  let members: Awaited<ReturnType<typeof listBoardMembers>> = [];
+  let admins: Awaited<ReturnType<typeof listAdminMembers>> = [];
+  let board: Awaited<ReturnType<typeof listBoardMembers>> = [];
   let loadError: string | null = null;
   try {
-    members = await listBoardMembers();
+    [admins, board] = await Promise.all([listAdminMembers(), listBoardMembers()]);
   } catch (error) {
     loadError = isMissingDatabaseConfig(error)
       ? "DATABASE_URL is not set."
       : error instanceof Error
         ? error.message
-        : "Board grants could not be loaded.";
+        : "Admin grants could not be loaded.";
   }
 
   return (
@@ -28,34 +29,17 @@ export default async function AdminBoardPage() {
       <PageMain>
         <PageHeader
           eyebrow="Admin"
-          title="Board grants"
-          description="Toggle Board member on a claimed roster row. Board gets Alum Mode plus Message from the Board. From Sgarlata stays Admin only."
+          title="Admin master"
+          description="One central login for everyone. Grant Admin here so other users get full admin rights when they sign in with username/Net ID and password."
         />
         <StatusCard
-          title="How Admin grants Board"
-          body="Open a directory / athlete profile and use Board member, or toggle a current grant below. The grant is stored on staff_roles (alumni_id + role=board), not env-only. It applies on the next page load via the platform role overlay. Sign-out is not required. Admin accounts cannot be demoted here."
+          title="How Admin works"
+          body="Sign-in is username or GTown Net ID plus password at /login. Only the preset coach Admin (and usernames in HOYA_ADMIN_USERNAMES) start as Admin. Use the search below to grant Admin to other roster people — they get admin rights on their next sign-in. Board grants remain available for Message from the Board without full Admin."
         />
-        {loadError ? <StatusCard title="Board list unavailable" body={loadError} /> : null}
-        {members.length === 0 && !loadError ? (
-          <StatusCard title="No Board members yet" body="Open an athlete profile from the directory and grant Board member." />
+        {loadError ? (
+          <StatusCard title="Admin list unavailable" body={loadError} />
         ) : (
-          <div className="space-y-3">
-            {members.map((row) =>
-              row.alumni_id ? (
-                <BoardMemberToggle
-                  key={row.id}
-                  alumniId={row.alumni_id}
-                  name={row.username || row.email || row.alumni_id}
-                  email={row.email ?? undefined}
-                  granted
-                />
-              ) : (
-                <p key={row.id} className="rounded-xl border px-4 py-3 text-sm text-muted-foreground">
-                  {row.username || row.email || "Board"} — env/username grant (no roster id).
-                </p>
-              ),
-            )}
-          </div>
+          <AdminMasterPanel initialAdmins={admins} initialBoard={board} />
         )}
       </PageMain>
     </PageShell>

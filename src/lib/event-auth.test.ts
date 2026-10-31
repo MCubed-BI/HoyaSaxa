@@ -72,14 +72,14 @@ test("HOYA_ALUM_USERNAMES maps to alum and can create events", () => {
   assert.equal(canCreateEvents(resolveEventRole("Alum", "Hoyas")), true);
 });
 
-test("claimed Mike seed alum is platform admin and can create", () => {
+test("claimed Mike roster alum is not Admin until granted", () => {
   assert.equal(
     platformRoleForEventActor({
       role: "alum",
       alumId: SEED_ADMIN_ALUMNI_ID,
       username: "Michael Kasten",
     }),
-    "admin",
+    "alum",
   );
   assert.equal(canCreateEvents({ role: "alum", alumId: SEED_ADMIN_ALUMNI_ID }), true);
 });

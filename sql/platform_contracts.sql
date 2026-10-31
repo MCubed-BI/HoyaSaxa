@@ -21,10 +21,20 @@ CREATE TABLE IF NOT EXISTS event_checkins (
   checked_in_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Only the coach preset is seeded as Admin. Grant others via /admin or HOYA_ADMIN_USERNAMES.
 INSERT INTO staff_roles (username, role)
-SELECT seed.username, 'admin'
-FROM (VALUES ('Lars'), ('Sgarlata'), ('Hoyas'), ('Mike')) AS seed(username)
+SELECT seed.username, 'owner'
+FROM (VALUES ('Hoyas')) AS seed(username)
 WHERE NOT EXISTS (
   SELECT 1 FROM staff_roles existing
   WHERE lower(existing.username) = lower(seed.username)
 );
+
+-- Remove legacy silent seed Admins that were never explicitly granted.
+DELETE FROM staff_roles
+WHERE role IN ('admin', 'owner')
+  AND alumni_id IS NULL
+  AND (password_hash IS NULL OR btrim(password_hash) = '')
+  AND username IS NOT NULL
+  AND lower(username) IN ('lars', 'sgarlata', 'mike', 'michael', 'michael kasten')
+  AND lower(username) <> lower('Hoyas');

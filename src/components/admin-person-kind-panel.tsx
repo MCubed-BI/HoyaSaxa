@@ -58,7 +58,7 @@ export function AdminPersonKindPanel({
   function onKindChange(next: PersonKind) {
     if (next === kind) return;
     if (next === "development") {
-      const nextUsername = window.prompt("Username for Admin login", staffUsername || "");
+      const nextUsername = window.prompt("Username for central login", staffUsername || "");
       if (nextUsername == null) return;
       const nextPassword = window.prompt("Password (min 8 characters)");
       if (nextPassword == null) return;
@@ -75,7 +75,7 @@ export function AdminPersonKindPanel({
           <p className="font-medium text-navy">Directory role</p>
           <p className="text-muted-foreground">
             Player (Alum), Georgetown Supporter, or Development. Development gets full admin access with a
-            username and password for Admin sign-in.
+            username and password for central sign-in.
           </p>
           <p className="flex flex-wrap items-center gap-2 pt-1">
             {kind === "supporter" ? (

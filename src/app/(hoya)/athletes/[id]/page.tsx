@@ -49,7 +49,7 @@ export default async function AthleteProfilePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireLockerViewer("/home/login");
+  await requireLockerViewer("/login");
   const { id } = await params;
   const query = await searchParams;
   const person = await getLockerPersonById(id);

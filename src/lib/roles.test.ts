@@ -33,7 +33,7 @@ afterEach(() => {
 });
 
 describe("roles", () => {
-  it("maps default staff usernames", () => {
+  it("maps default staff usernames to the coach preset only", () => {
     delete process.env.HOYA_ADMIN_USERNAMES;
     delete process.env.HOYA_OWNER_USERNAMES;
     delete process.env.HOYA_COACH_USERNAMES;
@@ -41,24 +41,25 @@ describe("roles", () => {
     delete process.env.HOYA_ALUM_USERNAMES;
     const lists = staffUsernamesFromEnv("Hoyas");
     assert.deepEqual(lists.owner, ["Hoyas", ...DEFAULT_ADMIN_USERNAMES]);
+    assert.deepEqual(lists.owner, ["Hoyas"]);
     assert.deepEqual(lists.board, ["Board"]);
     assert.deepEqual(lists.alum, ["Alum"]);
   });
 
-  it("resolves seeded admins and keeps a distinct Board preview", () => {
+  it("keeps only the coach preset as Admin unless env grants more", () => {
     delete process.env.HOYA_ADMIN_USERNAMES;
     delete process.env.HOYA_OWNER_USERNAMES;
     process.env.HOYA_BOARD_USERNAMES = "Board";
     assert.equal(resolveRoleFromEnv("Hoyas", "Hoyas"), "owner");
-    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "owner");
-    assert.equal(resolveRoleFromEnv("Sgarlata", "Hoyas"), "owner");
-    assert.equal(resolveRoleFromEnv("Mike", "Hoyas"), "owner");
-    assert.equal(resolveRoleFromEnv("Michael Kasten", "Hoyas"), "owner");
+    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "coach");
+    assert.equal(resolveRoleFromEnv("Sgarlata", "Hoyas"), "coach");
+    assert.equal(resolveRoleFromEnv("Mike", "Hoyas"), "coach");
+    assert.equal(resolveRoleFromEnv("Michael Kasten", "Hoyas"), "coach");
     assert.equal(resolveRoleFromEnv("Board", "Hoyas"), "board");
     assert.equal(resolveRoleFromEnv("Alum", "Hoyas"), "alum");
   });
 
-  it("lets HOYA_ADMIN_USERNAMES replace the seed list", () => {
+  it("lets HOYA_ADMIN_USERNAMES add Admins beyond the coach preset", () => {
     process.env.HOYA_ADMIN_USERNAMES = "Pat";
     delete process.env.HOYA_OWNER_USERNAMES;
     process.env.HOYA_BOARD_USERNAMES = "Lars";
@@ -66,7 +67,7 @@ describe("roles", () => {
     assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "board");
     assert.equal(resolveRoleFromEnv("Hoyas", "Hoyas"), "owner");
     process.env.HOYA_ADMIN_USERNAMES = "";
-    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "owner");
+    assert.equal(resolveRoleFromEnv("Lars", "Hoyas"), "board");
   });
 
   it("maps product modes and compose rights", () => {
@@ -200,11 +201,11 @@ describe("portal paths", () => {
     assert.equal(isPublicPath("/athletes/demo"), false);
     assert.equal(isAlumAllowedPath("/alumni/898108b1-e486-4fe3-9e13-9d8b64397bb8"), true);
     assert.equal(isAlumAllowedPath("/alumni-login"), false);
-    assert.equal(loginPathFor("/alumni/898108b1-e486-4fe3-9e13-9d8b64397bb8"), "/home/login");
-    assert.equal(loginPathFor("/athletes/898108b1-e486-4fe3-9e13-9d8b64397bb8"), "/home/login");
+    assert.equal(loginPathFor("/alumni/898108b1-e486-4fe3-9e13-9d8b64397bb8"), "/login");
+    assert.equal(loginPathFor("/athletes/898108b1-e486-4fe3-9e13-9d8b64397bb8"), "/login");
     assert.equal(isAlumAllowedPath("/api/blast"), true);
     assert.equal(isAlumAllowedPath("/api/directory/people"), true);
-    assert.equal(loginPathFor("/directory"), "/home/login");
+    assert.equal(loginPathFor("/directory"), "/login");
     assert.equal(isAlumAllowedPath("/home"), true);
     assert.equal(isAlumAllowedPath("/feed"), true);
     assert.equal(isAlumAllowedPath("/messages"), true);
@@ -221,7 +222,7 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/api/admin"), true);
     assert.equal(isAlumAllowedPath("/data-cleanup"), true);
     assert.equal(isAlumAllowedPath("/people"), true);
-    assert.equal(loginPathFor("/board"), "/home/login");
+    assert.equal(loginPathFor("/board"), "/login");
     assert.equal(isAlumAllowedPath("/events"), true);
     assert.equal(isAlumAllowedPath("/events/check-in"), true);
     assert.equal(isAlumAllowedPath("/api/events/attendance/feed"), true);
@@ -230,16 +231,16 @@ describe("portal paths", () => {
     assert.equal(isAlumAllowedPath("/api/giving/pledges"), true);
     assert.equal(isAlumAllowedPath("/sync"), false);
     assert.equal(isAlumAllowedPath("/blast"), false);
-    assert.equal(loginPathFor("/giving"), "/home/login");
+    assert.equal(loginPathFor("/giving"), "/login");
     assert.equal(isPublicPath("/home/login"), true);
     assert.equal(isPublicPath("/manifest.webmanifest"), true);
     assert.equal(isPublicPath("/brand/hoya-bulldog.png"), true);
     assert.equal(isPublicPath("/api/logout"), true);
     assert.equal(isPublicPath("/api/locker/logout"), true);
-    assert.equal(loginPathFor("/portal"), "/alumni-login");
-    assert.equal(loginPathFor("/home"), "/home/login");
-    assert.equal(loginPathFor("/messages"), "/locker");
-    assert.equal(loginPathFor("/alum"), "/alumni-login");
+    assert.equal(loginPathFor("/portal"), "/login");
+    assert.equal(loginPathFor("/home"), "/login");
+    assert.equal(loginPathFor("/messages"), "/login");
+    assert.equal(loginPathFor("/alum"), "/login");
     assert.equal(loginPathFor("/reports"), "/login");
   });
 });

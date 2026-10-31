@@ -7,7 +7,12 @@ export type AccessMode = (typeof ACCESS_MODES)[number];
 export const DEFAULT_BOARD_USERNAME = "Lars";
 export const DEFAULT_BOARD_PREVIEW_USERNAME = "Board";
 export const DEFAULT_ALUM_PREVIEW_USERNAME = "Alum";
-export const DEFAULT_ADMIN_USERNAMES = ["Lars", "Sgarlata", "Mike", "Michael", "Michael Kasten"] as const;
+/**
+ * Extra Admin usernames beyond `COACH_USERNAME`.
+ * Empty by default — only the coach preset is Admin until you set
+ * `HOYA_ADMIN_USERNAMES` or grant Admin on `/admin`.
+ */
+export const DEFAULT_ADMIN_USERNAMES = [] as const;
 
 const ROLE_PRECEDENCE: Role[] = ["owner", "coach", "board", "alum"];
 

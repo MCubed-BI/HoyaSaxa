@@ -23,7 +23,6 @@ import { isCoachLoggedIn } from "@/lib/session";
 // from these same cookies — no new cookie names.
 
 function loginPathFor(pathname: string) {
-  if (isAlumniClaimPath(pathname)) return "/alumni-login";
   return portalLoginPathFor(pathname);
 }
 
@@ -66,7 +65,7 @@ export function proxy(request: NextRequest) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const loginUrl = new URL("/alumni-login", request.url);
+    const loginUrl = new URL(loginPathFor(pathname), request.url);
     const next = `${pathname}${search}`;
     if (next && next !== "/") loginUrl.searchParams.set("next", next);
     return NextResponse.redirect(loginUrl);

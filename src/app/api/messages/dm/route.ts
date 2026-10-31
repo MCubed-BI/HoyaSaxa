@@ -26,7 +26,7 @@ function profilePath(alumniId: string, request: Request) {
 export async function POST(request: Request) {
   const viewer = await getMessageViewer();
   if (!viewer) {
-    return NextResponse.redirect(new URL("/alumni-login", request.url), { status: 303 });
+    return NextResponse.redirect(new URL("/login", request.url), { status: 303 });
   }
 
   const form = await request.formData();

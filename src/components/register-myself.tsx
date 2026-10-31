@@ -285,8 +285,8 @@ export function RegisterMyself({
         </Button>
         <p className="text-center text-sm text-muted-foreground">
           {forgotPassword ? "Remembered it? " : "Already registered? "}
-          <Link href="/home/login" className="text-navy underline-offset-4 hover:underline">
-            {forgotPassword ? "Back to sign in" : "Alumni login"}
+          <Link href="/login" className="text-navy underline-offset-4 hover:underline">
+            {forgotPassword ? "Back to sign in" : "Sign in"}
           </Link>
         </p>
       </form>

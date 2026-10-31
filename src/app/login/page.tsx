@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { LoginGate, type LoginGateMode } from "@/components/login-gate";
+import { LoginGate } from "@/components/login-gate";
 import { SESSION_COOKIE, getCoachCredentials, getSessionUsername } from "@/lib/auth";
+import { isAlumLoggedIn } from "@/lib/alum-session";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 import { homePathForRole, resolveRoleFromEnv } from "@/lib/roles";
 
@@ -13,32 +14,27 @@ export const metadata: Metadata = {
 
 function safeNextPath(value: string | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "";
+  if (value === "/login" || value === "/home/login" || value === "/alumni-login") return "";
+  if (value.startsWith("/api/")) return "";
   return value;
-}
-
-function parseGate(value: string | undefined): LoginGateMode {
-  return value === "alum" ? "alum" : "admin";
 }
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; next?: string; gate?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const params = await searchParams;
   const jar = await cookies();
+  const next = safeNextPath(params.next);
   const staffUsername = getSessionUsername(jar.get(SESSION_COOKIE)?.value);
   if (staffUsername) {
     const role = resolveRoleFromEnv(staffUsername, getCoachCredentials().username);
-    redirect(safeNextPath(params.next) || homePathForRole(role));
+    redirect(next || homePathForRole(role));
+  }
+  if (isAlumLoggedIn(jar)) {
+    redirect(next || "/home");
   }
 
-  return (
-    <LoginGate
-      pathname="/login"
-      mode={parseGate(params.gate)}
-      next={safeNextPath(params.next) || undefined}
-      error={Boolean(params.error)}
-    />
-  );
+  return <LoginGate next={next || undefined} error={Boolean(params.error)} />;
 }

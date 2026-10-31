@@ -32,7 +32,7 @@ export default async function MePage() {
     }
     throw error;
   }
-  if (!state) redirect("/alumni-login?next=/me");
+  if (!state) redirect("/login?next=/me");
 
   const { identity, account, records, mergeCandidates } = state;
   const email = account?.email || identity.email || identity.name || "Alumnus";

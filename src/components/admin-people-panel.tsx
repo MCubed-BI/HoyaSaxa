@@ -93,7 +93,7 @@ export function AdminPeoplePanel({
       setPassword("");
       const loginHint =
         data.person!.person_kind === "development" && data.person!.staff_username
-          ? ` Login: ${data.person!.staff_username} at Admin sign-in.`
+          ? ` Login: ${data.person!.staff_username} at central sign-in.`
           : "";
       setMessage(
         `Added ${displayName(data.person!)} as ${personKindLabel(data.person!.person_kind)}${
@@ -139,7 +139,7 @@ export function AdminPeoplePanel({
     if (next === row.person_kind) return;
     if (next === "development") {
       const nextUsername = window.prompt(
-        `Username for ${displayName(row)} (Admin login)`,
+        `Username for ${displayName(row)} (central login)`,
         row.staff_username || "",
       );
       if (nextUsername == null) return;
@@ -158,7 +158,7 @@ export function AdminPeoplePanel({
           <h3 className="font-heading text-base text-navy">Add person</h3>
           <p className="text-sm text-muted-foreground">
             Create a Player (Alum), Georgetown Supporter, or Development admin. Development gets full admin
-            access — set a username and password they will use at Admin sign-in.
+            access — set a username and password they will use at central sign-in.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">

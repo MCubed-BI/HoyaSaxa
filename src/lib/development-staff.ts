@@ -1,6 +1,6 @@
 /**
  * Development People role: roster row + staff_roles admin with username/password.
- * Signs in at Admin login (`ga_session`) with full admin access.
+ * Signs in at central login (`ga_session`) with full admin access.
  */
 import { hashAlumniPassword, verifyAlumniPassword } from "@/lib/alumni-auth";
 import { getCoachCredentials } from "@/lib/auth";
