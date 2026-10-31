@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { alumEmailBlastRejection, getBlastActor, normalizeBlastIds } from "@/lib/blast-auth";
-import { emailProvider } from "@/lib/email";
+import { gmailAuthMode, gmailUser, resolveEmailProvider } from "@/lib/email";
 import { coerceAlumniFilters } from "@/lib/filters";
+import { gmailOAuthClientConfigured } from "@/lib/gmail-oauth";
 import { toE164 } from "@/lib/phone";
 import { getBlastRecipients } from "@/lib/queries";
 import { twilioConfigured } from "@/lib/sms";
@@ -46,6 +47,9 @@ export async function POST(request: Request) {
 
     const phoneRecipients = rows.filter((row) => toE164(row.phone ?? ""));
     const emailRecipients = rows.filter((row) => isEmail(row.email));
+    const provider = await resolveEmailProvider();
+    const mode = await gmailAuthMode();
+    const oauthClient = gmailOAuthClientConfigured();
 
     return NextResponse.json({
       count: rows.length,
@@ -54,7 +58,11 @@ export async function POST(request: Request) {
       missingPhone: rows.length - phoneRecipients.length,
       missingEmail: rows.length - emailRecipients.length,
       twilio: twilioConfigured(),
-      emailProvider: emailProvider(),
+      emailProvider: provider,
+      emailReady: provider === "gmail" || provider === "resend" || provider === "sendgrid",
+      gmailAuthMode: mode,
+      gmailConnectAvailable: actor.kind === "staff" && oauthClient && mode !== "oauth",
+      emailFrom: gmailUser() || null,
       phoneRecipients: phoneRecipients.map((row) => ({
         id: row.id,
         name: row.name,
