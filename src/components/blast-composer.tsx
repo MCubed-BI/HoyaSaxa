@@ -430,7 +430,7 @@ export function BlastComposer({
                   : "Twilio is not fully configured (need Account SID + Auth Token or API Key, plus From number). Send prepares Messages / copy instead."
                 : preview.emailProvider === "gmail"
                   ? preview.gmailAuthMode === "oauth"
-                    ? `Send will deliver from ${preview.emailFrom || "the connected Gmail"} via Gmail OAuth.`
+                    ? `Send will deliver from ${preview.emailFrom || "the connected Gmail"} via Gmail API (OAuth).`
                     : `Send will deliver from ${preview.emailFrom || "GMAIL_USER"} via Gmail App Password.`
                   : preview.gmailConnectAvailable
                     ? `Connect Gmail once as ${preview.emailFrom || "GMAIL_USER"} (OAuth — no App Password / 2-Step). Until then, Send prepares a draft.`

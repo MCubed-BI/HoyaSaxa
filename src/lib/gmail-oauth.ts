@@ -226,3 +226,60 @@ export async function gmailOAuthLinked() {
   const token = await resolveGmailRefreshToken();
   return Boolean(token?.refreshToken);
 }
+
+/**
+ * Return a usable access token for Gmail API calls. Refreshes when missing/expired
+ * and persists the new access token when the refresh token lives in Neon.
+ */
+export async function getValidGmailAccessToken(): Promise<
+  { ok: true; accessToken: string; email: string } | { ok: false; error: string }
+> {
+  if (!gmailOAuthClientConfigured()) {
+    return { ok: false, error: "Gmail OAuth client is not configured" };
+  }
+
+  let stored: StoredGmailOAuth | null = null;
+  try {
+    stored = await readStoredGmailOAuth();
+  } catch {
+    stored = null;
+  }
+
+  const refreshToken = stored?.refreshToken || gmailRefreshTokenFromEnv();
+  if (!refreshToken) {
+    return { ok: false, error: "Gmail is not linked. Click Connect Gmail on /blast." };
+  }
+
+  const email = (stored?.email || process.env.GMAIL_USER?.trim().toLowerCase() || "").trim();
+  const freshEnough =
+    stored?.accessToken &&
+    stored.expiryAt &&
+    stored.expiryAt.getTime() - Date.now() > 60_000;
+
+  if (freshEnough && stored?.accessToken) {
+    return { ok: true, accessToken: stored.accessToken, email };
+  }
+
+  const refreshed = await refreshGmailAccessToken(refreshToken);
+  if (!refreshed.access_token) {
+    return {
+      ok: false,
+      error: refreshed.error_description || refreshed.error || "Could not refresh Gmail access token",
+    };
+  }
+
+  if (stored?.refreshToken && email) {
+    try {
+      await saveGmailOAuthTokens({
+        email,
+        refreshToken: stored.refreshToken,
+        accessToken: refreshed.access_token,
+        expiresIn: refreshed.expires_in,
+      });
+    } catch {
+      // Sending can still proceed with the in-memory access token.
+    }
+  }
+
+  return { ok: true, accessToken: refreshed.access_token, email };
+}
