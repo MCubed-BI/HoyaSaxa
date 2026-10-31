@@ -72,6 +72,7 @@ export const textBlastRecipients = pgTable("text_blast_recipients", {
   phone: text("phone").notNull(),
   status: text("status").notNull().default("pending"),
   error: text("error"),
+  providerSid: text("provider_sid"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

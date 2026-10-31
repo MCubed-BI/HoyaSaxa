@@ -4,6 +4,8 @@ const PUBLIC_PATHS = [
   "/alumni-login",
   "/home/login",
   "/locker",
+  "/privacy",
+  "/terms",
   "/api/login",
   "/api/locker/login",
   "/api/locker/logout",
@@ -14,6 +16,7 @@ const PUBLIC_PATHS = [
   "/api/alum/session",
   "/api/session",
   "/api/logout",
+  "/api/blast/twilio-status",
   "/giving",
   "/api/giving",
 ];

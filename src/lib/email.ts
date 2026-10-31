@@ -14,7 +14,7 @@ export const RESEND_ENV_VARS = ["RESEND_API_KEY", "EMAIL_FROM"] as const;
 export type EmailProvider = "gmail" | "resend" | "sendgrid";
 
 export function gmailUser() {
-  return process.env.GMAIL_USER?.trim() || "";
+  return process.env.GMAIL_USER?.trim().toLowerCase() || "";
 }
 
 export function gmailAppPassword() {
@@ -45,12 +45,43 @@ export function emailConfigured() {
   return emailProvider() !== null;
 }
 
+function resendConfigured() {
+  return Boolean(process.env.RESEND_API_KEY?.trim() && emailFromAddress());
+}
+
+function sendgridConfigured() {
+  return Boolean(process.env.SENDGRID_API_KEY?.trim() && emailFromAddress());
+}
+
 /** Live blast uses Gmail SMTP. Resend/SendGrid remain optional leftovers. */
 export function emailProvider(): EmailProvider | null {
   if (gmailConfigured()) return "gmail";
-  if (process.env.RESEND_API_KEY?.trim() && emailFromAddress()) return "resend";
-  if (process.env.SENDGRID_API_KEY?.trim() && emailFromAddress()) return "sendgrid";
+  if (resendConfigured()) return "resend";
+  if (sendgridConfigured()) return "sendgrid";
   return null;
+}
+
+/**
+ * Prefer Gmail when SMTP auth works; otherwise fall back to Resend/SendGrid so a
+ * stale GMAIL_APP_PASSWORD does not hard-block every blast.
+ */
+export async function resolveBlastEmailProvider(): Promise<{
+  provider: EmailProvider | null;
+  gmailError?: string;
+  fellBackFromGmail?: boolean;
+}> {
+  if (gmailConfigured()) {
+    const verified = await verifyGmailSmtp();
+    if (verified.ok) return { provider: "gmail" };
+    if (resendConfigured()) {
+      return { provider: "resend", gmailError: verified.error, fellBackFromGmail: true };
+    }
+    if (sendgridConfigured()) {
+      return { provider: "sendgrid", gmailError: verified.error, fellBackFromGmail: true };
+    }
+    return { provider: null, gmailError: verified.error };
+  }
+  return { provider: emailProvider() };
 }
 
 export function buildMailtoLink(emails: string[], subject: string, body: string) {
@@ -87,19 +118,75 @@ function normalizeEmail(value: string) {
 }
 
 let cachedGmailTransporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+let cachedGmailAuthKey: string | null = null;
+
+function gmailAuthKey() {
+  return `${gmailUser()}\0${gmailAppPassword()}`;
+}
 
 function gmailTransporter() {
   if (!gmailConfigured()) return null;
-  if (!cachedGmailTransporter) {
+  const key = gmailAuthKey();
+  if (!cachedGmailTransporter || cachedGmailAuthKey !== key) {
     cachedGmailTransporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
         user: gmailUser(),
         pass: gmailAppPassword(),
       },
     });
+    cachedGmailAuthKey = key;
   }
   return cachedGmailTransporter;
+}
+
+/** True when Google rejected the SMTP username/app password (raw SMTP or remapped). */
+export function isGmailAuthError(message: string | undefined) {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("invalid login") ||
+    lower.includes("badcredentials") ||
+    lower.includes("username and password not accepted") ||
+    lower.includes("535-5.7.8") ||
+    lower.includes("535 5.7.8") ||
+    lower.includes("application-specific password required") ||
+    lower.includes("please log in with your web browser") ||
+    // sendGmailEmail / verifyGmailSmtp remap auth failures to gmailAuthErrorMessage()
+    lower.includes("gmail rejected login") ||
+    (lower.includes("google app password") && lower.includes("gmail_app_password"))
+  );
+}
+
+export function gmailAuthErrorMessage() {
+  const user = gmailUser() || "GMAIL_USER";
+  return (
+    `Gmail rejected login for ${user}. Create a Google App Password for that exact mailbox ` +
+    `(Google Account → Security → 2-Step Verification → App passwords), then set GMAIL_APP_PASSWORD on Vercel and redeploy.`
+  );
+}
+
+/**
+ * Verify SMTP credentials once before a blast. Avoids hammering Google with the same
+ * BadCredentials error for every recipient.
+ */
+export async function verifyGmailSmtp(): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!gmailConfigured()) {
+    return { ok: false, error: "Gmail SMTP is not configured (GMAIL_USER + GMAIL_APP_PASSWORD)" };
+  }
+  const transporter = gmailTransporter();
+  if (!transporter) {
+    return { ok: false, error: "Gmail SMTP is not configured" };
+  }
+  try {
+    await transporter.verify();
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Gmail SMTP verify failed";
+    return { ok: false, error: isGmailAuthError(message) ? gmailAuthErrorMessage() : message };
+  }
 }
 
 async function sendGmailEmail(email: string, subject: string, text: string): Promise<EmailSendResult> {
@@ -118,10 +205,11 @@ async function sendGmailEmail(email: string, subject: string, text: string): Pro
     });
     return { email, status: "sent", id: typeof info.messageId === "string" ? info.messageId : undefined };
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Gmail SMTP send failed";
     return {
       email,
       status: "failed",
-      error: error instanceof Error ? error.message : "Gmail SMTP send failed",
+      error: isGmailAuthError(message) ? gmailAuthErrorMessage() : message,
     };
   }
 }
@@ -153,11 +241,16 @@ async function sendResendEmail(email: string, subject: string, text: string): Pr
 }
 
 /** Staff `/blast` and alum `/portal/blast` both call this. Gmail SMTP wins when env is set. */
-export async function sendProviderEmail(to: string, subject: string, text: string): Promise<EmailSendResult> {
+export async function sendProviderEmail(
+  to: string,
+  subject: string,
+  text: string,
+  providerOverride?: EmailProvider | null,
+): Promise<EmailSendResult> {
   const email = normalizeEmail(to);
   if (!email) return { email: to, status: "failed", error: "Invalid email" };
 
-  const provider = emailProvider();
+  const provider = providerOverride === undefined ? emailProvider() : providerOverride;
   if (provider === "gmail") return sendGmailEmail(email, subject, text);
   if (provider === "resend") return sendResendEmail(email, subject, text);
   return { email, status: "failed", error: "Gmail SMTP is not configured (GMAIL_USER + GMAIL_APP_PASSWORD)" };

@@ -78,6 +78,12 @@ export type BlastRecipient = {
   id: string;
   name: string;
   phone: string | null;
+  /** Label from alumni_phones when the SMS pick came from there. */
+  phoneLabel?: string | null;
+  /** mobile | home | work | unknown — used to warn about office/landline texts. */
+  phoneKind?: "mobile" | "home" | "work" | "unknown" | null;
+  /** True for Work labels and known campus office exchanges that rarely get SMS. */
+  likelyLandline?: boolean;
   email: string | null;
 };
 

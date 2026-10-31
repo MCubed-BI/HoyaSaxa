@@ -189,6 +189,8 @@ describe("portal paths", () => {
     assert.equal(canAccessAlumniClaimPath("/api/alumni/merge", { hasPortalAlumSession: false, isCoach: true }), true);
     assert.equal(canAccessAlumniClaimPath("/api/alumni/dismiss-duplicate", { hasPortalAlumSession: false, isCoach: true }), true);
     assert.equal(isPublicPath("/api/session"), true);
+    assert.equal(isPublicPath("/privacy"), true);
+    assert.equal(isPublicPath("/terms"), true);
     assert.equal(isAlumAllowedPath("/alum"), true);
     assert.equal(isAlumAllowedPath("/portal"), true);
     assert.equal(isAlumAllowedPath("/portal/directory"), true);
@@ -236,6 +238,7 @@ describe("portal paths", () => {
     assert.equal(isPublicPath("/brand/hoya-bulldog.png"), true);
     assert.equal(isPublicPath("/api/logout"), true);
     assert.equal(isPublicPath("/api/locker/logout"), true);
+    assert.equal(isPublicPath("/api/blast/twilio-status"), true);
     assert.equal(loginPathFor("/portal"), "/alumni-login");
     assert.equal(loginPathFor("/home"), "/home/login");
     assert.equal(loginPathFor("/messages"), "/locker");
