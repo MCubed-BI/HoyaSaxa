@@ -87,12 +87,73 @@ export async function GET(request: Request) {
         }
       }
 
+      // Pull Trust Hub customer profile / end-user website so campaign URLs can match Brand.
+      const brandRows = brandsPayload.data ?? [];
+      const profileBundles = [
+        ...new Set(
+          brandRows
+            .map((row) => (row as { customer_profile_bundle_sid?: string }).customer_profile_bundle_sid)
+            .filter((sid): sid is string => Boolean(sid)),
+        ),
+      ];
+      const profiles = [];
+      for (const profileSid of profileBundles) {
+        const profileRes = await fetch(`https://trusthub.twilio.com/v1/CustomerProfiles/${profileSid}`, {
+          headers: { Authorization: basic },
+          cache: "no-store",
+        });
+        const profile = (await profileRes.json().catch(() => ({}))) as Record<string, unknown>;
+        const assignsRes = await fetch(
+          `https://trusthub.twilio.com/v1/CustomerProfiles/${profileSid}/EntityAssignments?PageSize=50`,
+          { headers: { Authorization: basic }, cache: "no-store" },
+        );
+        const assignsPayload = (await assignsRes.json().catch(() => ({}))) as {
+          results?: Array<{ object_sid?: string }>;
+        };
+        const endUsers = [];
+        for (const row of assignsPayload.results ?? []) {
+          const objectSid = row.object_sid ?? "";
+          if (!objectSid.startsWith("IT")) continue;
+          const endUserRes = await fetch(`https://trusthub.twilio.com/v1/EndUsers/${objectSid}`, {
+            headers: { Authorization: basic },
+            cache: "no-store",
+          });
+          const endUser = (await endUserRes.json().catch(() => ({}))) as {
+            sid?: string;
+            friendly_name?: string;
+            type?: string;
+            attributes?: Record<string, unknown>;
+          };
+          if (endUserRes.ok) {
+            endUsers.push({
+              sid: endUser.sid,
+              friendlyName: endUser.friendly_name,
+              type: endUser.type,
+              attributes: endUser.attributes ?? {},
+              website:
+                (endUser.attributes?.website as string | undefined) ||
+                (endUser.attributes?.business_identity as string | undefined) ||
+                null,
+            });
+          }
+        }
+        profiles.push({
+          sid: profileSid,
+          ok: profileRes.ok,
+          friendlyName: profile.friendly_name ?? null,
+          email: profile.email ?? null,
+          status: profile.status ?? null,
+          endUsers,
+        });
+      }
+
       return NextResponse.json({
         fromConfigured: auth.from,
         messagingServiceConfigured: messagingServiceSid,
         brandsOk: brandsRes.ok,
         brandsError: brandsRes.ok ? null : brandsPayload.message || `Brands ${brandsRes.status}`,
-        brands: brandsPayload.data ?? [],
+        brands: brandRows,
+        profiles,
         usa2p,
         usa2pError,
         hint: messagingServiceSid
