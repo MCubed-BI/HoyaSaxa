@@ -7,9 +7,9 @@ import {
   EMAIL_SEND_LIMIT,
   buildGmailComposeLink,
   buildMailtoLink,
-  emailProvider,
   gmailUser,
   isGmailAuthError,
+  resolveEmailProvider,
   sendProviderEmail,
   verifyGmailSmtp,
 } from "@/lib/email";
@@ -229,7 +229,7 @@ async function sendEmailBlast({
     );
   }
 
-  const provider = emailProvider();
+  const provider = await resolveEmailProvider();
   if (provider === "gmail") {
     const verified = await verifyGmailSmtp();
     if (!verified.ok) {

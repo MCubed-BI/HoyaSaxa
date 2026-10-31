@@ -41,7 +41,7 @@ export default async function BlastPage({
           <PageHeader
             eyebrow="Outreach"
             title="Blast"
-            description="Build recipients from filters, directory picks, and/or a saved group — then compose a text or email. Twilio and Gmail SMTP deliver when configured; otherwise the app prepares Messages, mailto, or copy."
+            description="Build recipients from filters, directory picks, and/or a saved group — then compose a text or email. Twilio and Gmail (OAuth Connect or App Password) deliver when configured; otherwise the app prepares Messages, mailto, or copy."
           />
           <AlumniFiltersForm
             filters={filters}

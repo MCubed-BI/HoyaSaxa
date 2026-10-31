@@ -25,10 +25,36 @@ type Preview = {
   missingEmail: number;
   twilio: boolean;
   emailProvider: "gmail" | "resend" | "sendgrid" | null;
+  emailReady?: boolean;
+  gmailAuthMode?: "oauth" | "app_password" | null;
+  gmailConnectAvailable?: boolean;
   emailFrom?: string | null;
   phoneRecipients: Recipient[];
   emailRecipients: Recipient[];
 };
+
+function gmailConnectStatusMessage() {
+  if (typeof window === "undefined") return null;
+  const gmail = new URLSearchParams(window.location.search).get("gmail");
+  if (!gmail) return null;
+  const detail = new URLSearchParams(window.location.search).get("detail");
+  const expected = new URLSearchParams(window.location.search).get("expected");
+  const from = new URLSearchParams(window.location.search).get("from");
+  switch (gmail) {
+    case "connected":
+      return `Gmail connected${from ? ` as ${from}` : ""}. Email blasts will send from that mailbox.`;
+    case "wrong_mailbox":
+      return `Signed in as ${detail || "another account"}, but GMAIL_USER is ${expected || "a different mailbox"}. Sign in as the blast mailbox.`;
+    case "missing_refresh":
+      return "Google did not return a refresh token. Revoke prior access at myaccount.google.com/permissions, then Connect Gmail again.";
+    case "denied":
+      return `Google denied access${detail ? ` (${detail})` : ""}.`;
+    case "missing_client":
+      return "Set GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET on Vercel before connecting Gmail.";
+    default:
+      return `Gmail connect failed (${gmail}${detail ? `: ${detail}` : ""}).`;
+  }
+}
 
 export function BlastComposer({
   filters,
@@ -68,10 +94,18 @@ export function BlastComposer({
     gmail: string | null;
     emails: string[];
   } | null>(null);
+  const [oauthNotice, setOauthNotice] = useState<string | null>(null);
 
   useEffect(() => {
     setChannel(alumMode ? "email" : initialChannel);
   }, [alumMode, initialChannel]);
+
+  useEffect(() => {
+    const notice = gmailConnectStatusMessage();
+    if (!notice) return;
+    setOauthNotice(notice);
+    setChannel("email");
+  }, []);
 
   useEffect(() => {
     if (filtered && !selectedGroupId) setIncludeFilters(true);
@@ -155,7 +189,8 @@ export function BlastComposer({
 
   const readyCount = channel === "sms" ? (preview?.withPhone ?? 0) : (preview?.withEmail ?? 0);
   const list = channel === "sms" ? (preview?.phoneRecipients ?? []) : (preview?.emailRecipients ?? []);
-  const providerReady = channel === "sms" ? Boolean(preview?.twilio) : Boolean(preview?.emailProvider);
+  const providerReady =
+    channel === "sms" ? Boolean(preview?.twilio) : Boolean(preview?.emailReady ?? preview?.emailProvider);
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? null;
 
   async function copy(kind: "phones" | "emails" | "message") {
@@ -394,17 +429,27 @@ export function BlastComposer({
                   ? "Twilio is configured. Send will deliver texts from the app."
                   : "Twilio is not fully configured (need Account SID + Auth Token or API Key, plus From number). Send prepares Messages / copy instead."
                 : preview.emailProvider === "gmail"
-                  ? `Send will deliver from ${preview.emailFrom || "GMAIL_USER"} via Gmail SMTP.`
-                  : preview.emailProvider
-                    ? `${preview.emailProvider === "resend" ? "Resend" : "SendGrid"} is configured as a leftover fallback.`
-                    : "GMAIL_USER + GMAIL_APP_PASSWORD are not set. Send prepares a Gmail or mailto draft."}
+                  ? preview.gmailAuthMode === "oauth"
+                    ? `Send will deliver from ${preview.emailFrom || "the connected Gmail"} via Gmail OAuth.`
+                    : `Send will deliver from ${preview.emailFrom || "GMAIL_USER"} via Gmail App Password.`
+                  : preview.gmailConnectAvailable
+                    ? `Connect Gmail once as ${preview.emailFrom || "GMAIL_USER"} (OAuth — no App Password / 2-Step). Until then, Send prepares a draft.`
+                    : preview.emailProvider
+                      ? `${preview.emailProvider === "resend" ? "Resend" : "SendGrid"} is configured as a leftover fallback.`
+                      : "Gmail is not linked. Staff can Connect Gmail (OAuth) or set an App Password. Send prepares a draft."}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
               {busy === "preview" ? "Counting recipients…" : "Choose a source to build the list."}
             </p>
           )}
+          {oauthNotice ? <p className="text-sm text-muted-foreground">{oauthNotice}</p> : null}
           <div className="flex flex-wrap gap-2">
+            {!alumMode && channel === "email" && preview?.gmailConnectAvailable ? (
+              <Button asChild variant={providerReady ? "outline" : "default"}>
+                <a href="/api/gmail/oauth/start">Connect Gmail</a>
+              </Button>
+            ) : null}
             <Button
               type="button"
               onClick={sendBlast}
