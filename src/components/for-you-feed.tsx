@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ForYouCard } from "@/components/for-you-card";
 import { ForYouComposer } from "@/components/for-you-composer";
@@ -15,6 +16,42 @@ import {
   type ForYouIdentity,
 } from "@/lib/for-you";
 import type { LockerViewer } from "@/lib/locker-viewer";
+import { BRAND_MARK_HEIGHT, BRAND_MARK_SRC, BRAND_MARK_WIDTH, PRODUCT_DISPLAY_NAME } from "@/lib/product";
+
+function ForYouIdentityMark({ identity }: { identity: ForYouIdentity }) {
+  if (identity.photoUrl) {
+    return (
+      <HoyaAvatar
+        person={{
+          preferredName: identity.preferredName,
+          firstName: identity.firstName,
+          lastName: identity.lastName,
+          fullName: identity.fullName,
+          photoUrl: identity.photoUrl,
+        }}
+        size="lg"
+      />
+    );
+  }
+
+  return (
+    <span
+      aria-hidden
+      className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-1.5 ring-1 ring-white/25"
+      title={PRODUCT_DISPLAY_NAME}
+    >
+      <Image
+        src={BRAND_MARK_SRC}
+        alt=""
+        width={BRAND_MARK_WIDTH}
+        height={BRAND_MARK_HEIGHT}
+        sizes="64px"
+        className="h-full w-full object-contain"
+        priority
+      />
+    </span>
+  );
+}
 
 function sectionClass(section: FeedSection) {
   if (section === "brothers") return "for-you__brothers";
@@ -73,16 +110,7 @@ export function ForYouFeed({
       </header>
     <div className="for-you">
       <aside className="for-you__identity">
-        <HoyaAvatar
-          person={{
-            preferredName: identity.preferredName,
-            firstName: identity.firstName,
-            lastName: identity.lastName,
-            fullName: identity.fullName,
-            photoUrl: identity.photoUrl,
-          }}
-          size="lg"
-        />
+        <ForYouIdentityMark identity={identity} />
         <div className="for-you__identity-copy">
           <p className="for-you__identity-name">{identity.name}</p>
           {identity.classYear ? <p className="for-you__identity-class">{identity.classYear}</p> : null}
