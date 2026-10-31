@@ -444,20 +444,30 @@ export function BlastComposer({
             </p>
           )}
           {oauthNotice ? <p className="text-sm text-muted-foreground">{oauthNotice}</p> : null}
+          {!alumMode && channel === "email" && preview?.gmailConnectAvailable ? (
+            <p className="text-sm font-medium text-navy">
+              Step 1: click <span className="underline">Connect Gmail</span> and allow access as{" "}
+              {preview.emailFrom || "GMAIL_USER"}. Do not Send until it says connected.
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             {!alumMode && channel === "email" && preview?.gmailConnectAvailable ? (
-              <Button asChild variant={providerReady ? "outline" : "default"}>
+              <Button asChild variant="default">
                 <a href="/api/gmail/oauth/start">Connect Gmail</a>
               </Button>
             ) : null}
             <Button
               type="button"
+              variant={
+                !alumMode && channel === "email" && preview?.gmailConnectAvailable ? "outline" : "default"
+              }
               onClick={sendBlast}
               disabled={
                 busy !== null ||
                 !message.trim() ||
                 readyCount === 0 ||
-                (channel === "email" && !subject.trim())
+                (channel === "email" && !subject.trim()) ||
+                (channel === "email" && Boolean(preview?.gmailConnectAvailable))
               }
             >
               {busy === "send"

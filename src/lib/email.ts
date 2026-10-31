@@ -120,6 +120,8 @@ type GmailTransportAuth =
 
 async function resolveGmailTransportAuth(): Promise<GmailTransportAuth | null> {
   const user = gmailUser();
+  // Prefer OAuth. If the OAuth client is configured but not linked yet, do not
+  // fall through to a stale App Password — that produces a confusing Send path.
   if (gmailOAuthClientConfigured()) {
     const token = await resolveGmailRefreshToken();
     if (token?.refreshToken) {
@@ -129,6 +131,7 @@ async function resolveGmailTransportAuth(): Promise<GmailTransportAuth | null> {
         email: (token.email || user).toLowerCase(),
       };
     }
+    return null;
   }
   if (gmailAppPasswordConfigured() && user) {
     return { mode: "app_password", password: gmailAppPassword(), email: user };

@@ -67,6 +67,16 @@ describe("Gmail SMTP blast path", () => {
     assert.equal(await resolveEmailProvider(), "gmail");
   });
 
+  it("does not fall back to App Password when OAuth client exists but is unlinked", async () => {
+    clearEmailEnv();
+    process.env.GMAIL_USER = "georgetownfootball35@gmail.com";
+    process.env.GMAIL_CLIENT_ID = "client.apps.googleusercontent.com";
+    process.env.GMAIL_CLIENT_SECRET = "secret";
+    process.env.GMAIL_APP_PASSWORD = "stale-rejected-password";
+    assert.equal(await gmailAuthMode(), null);
+    assert.equal(await resolveEmailProvider(), null);
+  });
+
   it("normalizes GMAIL_USER to lowercase", () => {
     clearEmailEnv();
     process.env.GMAIL_USER = "GeorgetownFootball35@Gmail.com";
