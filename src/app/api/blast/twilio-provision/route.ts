@@ -1,48 +1,18 @@
 import { NextResponse } from "next/server";
+import {
+  a2pPublicUrls,
+  buildUsa2pBody,
+  resubmitBrandRegistration,
+  syncGeorgetownBrandProfile,
+} from "@/lib/a2p-brand";
 import { getBlastActor } from "@/lib/blast-auth";
-import { appBaseUrl, twilioAuth } from "@/lib/sms";
+import { twilioAuth } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 
-function a2pPublicUrls() {
-  const base = (appBaseUrl() || "https://georgetown-alum.vercel.app").replace(/\/$/, "");
-  return {
-    privacyPolicyUrl: `${base}/privacy`,
-    termsAndConditionsUrl: `${base}/terms`,
-  };
-}
-
-function buildUsa2pBody(brandSid: string, usecase: string) {
-  const { privacyPolicyUrl, termsAndConditionsUrl } = a2pPublicUrls();
-  const description =
-    "Georgetown Football Alum Network (HoyaSaxa) sends low-volume SMS to opted-in Georgetown Football alumni and staff about alumni events, program updates, and operational notices. This is first-party program messaging only — not affiliate or third-party marketing.";
-  const messageFlow =
-    `End users opt in by providing a mobile number on the Georgetown Football alumni roster and/or by using the HoyaSaxa alum portal at ${appBaseUrl() || "https://georgetown-alum.vercel.app"}. ` +
-    `Consent is collected directly for Georgetown Football Alum Network. ` +
-    `Privacy Policy: ${privacyPolicyUrl}. Terms: ${termsAndConditionsUrl}. ` +
-    `Mobile numbers and messaging consent are not shared, sold, or provided to third parties or affiliates for marketing or promotional purposes. ` +
-    `Users reply STOP to opt out and HELP for help. Message frequency varies; message and data rates may apply.`;
-  const samples = [
-    "HoyaSaxa (Georgetown Football Alum Network): Reminder — alum event this Saturday at 2pm. Reply STOP to opt out.",
-    "HoyaSaxa: Update from Coach Sgarlata for Georgetown Football alumni. Reply HELP for help, STOP to opt out.",
-  ];
-  const body = new URLSearchParams();
-  body.set("BrandRegistrationSid", brandSid);
-  body.set("Description", description);
-  body.set("MessageFlow", messageFlow);
-  for (const sample of samples) body.append("MessageSamples", sample);
-  body.set("UsAppToPersonUsecase", usecase);
-  body.set("HasEmbeddedLinks", "false");
-  body.set("HasEmbeddedPhone", "false");
-  body.set("PrivacyPolicyUrl", privacyPolicyUrl);
-  body.set("TermsAndConditionsUrl", termsAndConditionsUrl);
-  return { body, privacyPolicyUrl, termsAndConditionsUrl };
-}
-
 /**
- * Staff-only: ensure a Messaging Service exists, includes TWILIO_FROM_NUMBER,
- * and creates a Usa2p campaign under an approved Brand when none is linked yet.
- * Failed campaigns (e.g. missing privacy/terms URLs) are deleted and resubmitted.
+ * Staff-only: Messaging Service + Georgetown Brand sync + Usa2p campaign.
+ * Failed campaigns are deleted and resubmitted with Privacy/Terms on the app site.
  */
 export async function POST() {
   try {
@@ -117,7 +87,6 @@ export async function POST() {
     let attached = alreadyAttached;
     let attachError: string | null = null;
     if (!alreadyAttached) {
-      // Resolve Incoming Phone Number SID for From
       const incomingRes = await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${auth.accountSid}/IncomingPhoneNumbers.json?PhoneNumber=${encodeURIComponent(auth.from)}`,
         { headers: { Authorization: basic }, cache: "no-store" },
@@ -149,13 +118,17 @@ export async function POST() {
       }
     }
 
-    // Brand is often already approved; campaign must be linked to THIS Messaging Service.
     const brandsRes = await fetch("https://messaging.twilio.com/v1/a2p/BrandRegistrations?PageSize=20", {
       headers: { Authorization: basic },
       cache: "no-store",
     });
     const brandsPayload = (await brandsRes.json().catch(() => ({}))) as {
-      data?: Array<{ sid?: string; status?: string; brand_type?: string }>;
+      data?: Array<{
+        sid?: string;
+        status?: string;
+        brand_type?: string;
+        customer_profile_bundle_sid?: string;
+      }>;
     };
     const brand =
       (brandsPayload.data ?? []).find((row) => (row.status ?? "").toUpperCase() === "APPROVED") ||
@@ -167,6 +140,14 @@ export async function POST() {
     let campaignDeleted = false;
     let campaignError: string | null = null;
     const { privacyPolicyUrl, termsAndConditionsUrl } = a2pPublicUrls();
+
+    let brandSync: Awaited<ReturnType<typeof syncGeorgetownBrandProfile>> | null = null;
+    let brandResubmit: Awaited<ReturnType<typeof resubmitBrandRegistration>> | null = null;
+
+    // 1) Point Brand Customer Profile at Georgetown + app website (fixes 30907 mismatch).
+    if (brand?.customer_profile_bundle_sid) {
+      brandSync = await syncGeorgetownBrandProfile(basic, brand.customer_profile_bundle_sid);
+    }
 
     const existingRes = await fetch(
       `https://messaging.twilio.com/v1/Services/${serviceSid}/Compliance/Usa2p?PageSize=20`,
@@ -180,7 +161,7 @@ export async function POST() {
       (existingPayload.compliance ?? [])[0] ?? null;
     const existingStatus = String(existingCampaign?.campaign_status ?? "").toUpperCase();
 
-    // Failed campaigns missing PrivacyPolicyUrl / TermsAndConditionsUrl must be replaced.
+    // 2) Remove failed campaigns before Brand re-vet / new Usa2p create.
     if (existingCampaign?.sid && existingStatus === "FAILED") {
       const delRes = await fetch(
         `https://messaging.twilio.com/v1/Services/${serviceSid}/Compliance/Usa2p/${existingCampaign.sid}`,
@@ -193,6 +174,11 @@ export async function POST() {
         const delPayload = (await delRes.json().catch(() => ({}))) as { message?: string };
         campaignError = delPayload.message || `Could not delete failed campaign (${delRes.status})`;
       }
+    }
+
+    // 3) Ask TCR to re-read Brand after profile edits (no-op body). Safe to try on APPROVED brands.
+    if (brand?.sid && !campaignError) {
+      brandResubmit = await resubmitBrandRegistration(basic, brand.sid);
     }
 
     if (existingCampaign) {
@@ -258,13 +244,17 @@ export async function POST() {
       brandSid: brand?.sid ?? null,
       brandStatus: brand?.status ?? null,
       brandType: brand?.brand_type ?? null,
+      brandSync,
+      brandResubmit,
       privacyPolicyUrl,
       termsAndConditionsUrl,
       campaignDeleted,
       campaignCreated,
       campaign,
       campaignError,
-      vercelHint: `TWILIO_MESSAGING_SERVICE_SID=${serviceSid} should already be set. Campaign review can take time; carriers stop 30034 after the Usa2p campaign is VERIFIED/APPROVED.`,
+      vercelHint:
+        "Brand Customer Profile is synced to Georgetown Football Alum Network + https://georgetown-alum.vercel.app. " +
+        "Campaign review can take time; carriers stop 30034 after Usa2p is VERIFIED.",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Provision failed";

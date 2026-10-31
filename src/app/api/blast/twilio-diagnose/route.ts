@@ -131,9 +131,10 @@ export async function GET(request: Request) {
               type: endUser.type,
               attributes: endUser.attributes ?? {},
               website:
+                (endUser.attributes?.website_url as string | undefined) ||
                 (endUser.attributes?.website as string | undefined) ||
-                (endUser.attributes?.business_identity as string | undefined) ||
                 null,
+              businessName: (endUser.attributes?.business_name as string | undefined) || null,
             });
           }
         }

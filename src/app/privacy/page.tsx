@@ -18,8 +18,8 @@ export default function PrivacyPage() {
 
       <section className="mt-8 space-y-4">
         <p>
-          This Privacy Policy explains how {PRODUCT_DISPLAY_NAME} (“we,” “us”) collects and uses information when you
-          use our alumni CRM website and related SMS program for Georgetown Football alumni and staff.
+          This Privacy Policy explains how {PRODUCT_DISPLAY_NAME} (“we,” “us”) — the Georgetown Football alumni CRM
+          and SMS program — collects and uses information for Georgetown Football alumni and staff.
         </p>
 
         <h2 className="pt-2 text-lg font-semibold text-[#041e42]">Information we collect</h2>
