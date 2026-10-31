@@ -13,6 +13,7 @@ import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { Kpi, KpiGrid } from "@/components/kpi";
 import { NetIdForm } from "@/components/net-id-form";
 import { Notice } from "@/components/page-chrome";
+import { useOptionalSelection } from "@/components/selection-provider";
 import { Timestamp } from "@/components/timestamp";
 import { overviewFormValues, overviewPatchFromForm } from "@/lib/alumni-overview";
 import type { PublicBadge } from "@/lib/badges";
@@ -40,6 +41,7 @@ export function AlumniMePanel({
   badgesById?: Record<string, PublicBadge[]>;
 }) {
   const router = useRouter();
+  const selection = useOptionalSelection();
   const [activeId, setActiveId] = useState(records[0]?.id ?? "");
   const active = useMemo(() => records.find((row) => row.id === activeId) ?? records[0], [activeId, records]);
   const [pending, setPending] = useState(false);
@@ -139,6 +141,9 @@ export function AlumniMePanel({
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Merge failed");
+      if (action === "merge" && active) {
+        selection?.replaceAfterMerge(selectedSourceId, active.id);
+      }
       setMessage(action === "claim" ? "Added that roster row to your login." : "Merged the duplicate into this record.");
       router.refresh();
     } catch (err) {

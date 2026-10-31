@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { applyMergeToSelectedIds, normalizeSelectionIds } from "@/lib/selection";
 
 const STORAGE_KEY = "ga_blast_ids";
 
@@ -11,6 +12,7 @@ type SelectionContextValue = {
   toggle: (id: string) => void;
   addMany: (ids: string[]) => void;
   removeMany: (ids: string[]) => void;
+  replaceAfterMerge: (sourceId: string, keeperId: string) => void;
   clear: () => void;
   count: number;
 };
@@ -22,16 +24,48 @@ export function SelectionProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? (JSON.parse(raw) as unknown) : [];
-      if (Array.isArray(parsed)) {
-        setIds(parsed.filter((value): value is string => typeof value === "string"));
+    let cancelled = false;
+
+    async function hydrate() {
+      let loaded: string[] = [];
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+        if (Array.isArray(parsed)) {
+          loaded = normalizeSelectionIds(parsed);
+        }
+      } catch {
+        loaded = [];
       }
-    } catch {
-      setIds([]);
+
+      if (loaded.length > 0) {
+        try {
+          const response = await fetch("/api/blast/selection", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ ids: loaded }),
+          });
+          if (response.ok) {
+            const data = (await response.json()) as { ids?: unknown };
+            if (Array.isArray(data.ids)) {
+              loaded = normalizeSelectionIds(data.ids);
+            }
+          }
+        } catch {
+          // Keep local picks if reconcile is unavailable.
+        }
+      }
+
+      if (!cancelled) {
+        setIds(loaded);
+        setReady(true);
+      }
     }
-    setReady(true);
+
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -53,6 +87,9 @@ export function SelectionProvider({ children }: { children: React.ReactNode }) {
         const drop = new Set(incoming);
         setIds((current) => current.filter((id) => !drop.has(id)));
       },
+      replaceAfterMerge: (sourceId, keeperId) => {
+        setIds((current) => applyMergeToSelectedIds(current, sourceId, keeperId));
+      },
       clear: () => setIds([]),
     }),
     [ids, ready],
@@ -71,4 +108,8 @@ export function useSelection() {
 
 export function useOptionalSelectionCount() {
   return useContext(SelectionContext)?.count ?? 0;
+}
+
+export function useOptionalSelection() {
+  return useContext(SelectionContext);
 }
