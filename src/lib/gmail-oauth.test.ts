@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import {
+  GMAIL_OAUTH_SCOPES,
+  GMAIL_SEND_SCOPE,
   createGmailOAuthState,
   gmailOAuthClientConfigured,
   gmailOAuthRedirectUri,
+  hasGmailSendScope,
   verifyGmailOAuthState,
 } from "./gmail-oauth";
 
@@ -43,5 +46,13 @@ describe("gmail oauth helpers", () => {
     );
     process.env.GMAIL_OAUTH_REDIRECT_URI = "https://example.com/custom/callback";
     assert.equal(gmailOAuthRedirectUri("https://ignored.example"), "https://example.com/custom/callback");
+  });
+
+  it("requests gmail.send (not restricted full-mail) and detects send-capable scopes", () => {
+    assert.match(GMAIL_OAUTH_SCOPES, new RegExp(GMAIL_SEND_SCOPE.replace(/\./g, "\\.")));
+    assert.doesNotMatch(GMAIL_OAUTH_SCOPES, /mail\.google\.com/);
+    assert.equal(hasGmailSendScope("openid email"), false);
+    assert.equal(hasGmailSendScope(`openid ${GMAIL_SEND_SCOPE} email`), true);
+    assert.equal(hasGmailSendScope("https://mail.google.com/"), true);
   });
 });

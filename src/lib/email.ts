@@ -1,5 +1,7 @@
 import nodemailer from "nodemailer";
 import {
+  GMAIL_SCOPE_RECONNECT_MESSAGE,
+  clearStoredGmailOAuth,
   getValidGmailAccessToken,
   gmailClientId,
   gmailOAuthClientConfigured,
@@ -200,9 +202,22 @@ async function gmailAppPasswordTransporter() {
   return cachedGmailTransporter;
 }
 
+/** True when the linked OAuth token cannot call Gmail messages.send. */
+export function isGmailScopeError(message: string | undefined) {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("insufficient authentication scopes") ||
+    lower.includes("insufficientpermissions") ||
+    lower.includes("access_denied") ||
+    lower.includes("without send permission")
+  );
+}
+
 /** True when Google rejected the username/app password / OAuth token. */
 export function isGmailAuthError(message: string | undefined) {
   if (!message) return false;
+  if (isGmailScopeError(message)) return true;
   const lower = message.toLowerCase();
   return (
     lower.includes("invalid login") ||
@@ -219,7 +234,10 @@ export function isGmailAuthError(message: string | undefined) {
   );
 }
 
-export function gmailAuthErrorMessage() {
+export function gmailAuthErrorMessage(raw?: string) {
+  if (isGmailScopeError(raw) || (raw && raw.includes("Send permission"))) {
+    return GMAIL_SCOPE_RECONNECT_MESSAGE;
+  }
   const user = gmailUser() || "GMAIL_USER";
   if (gmailOAuthClientConfigured()) {
     return (
@@ -231,6 +249,18 @@ export function gmailAuthErrorMessage() {
     `Gmail rejected login for ${user}. Prefer Connect Gmail (OAuth): set GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET, ` +
     `then sign in once as that mailbox. App Passwords also work if 2-Step Verification is enabled.`
   );
+}
+
+async function remapGmailSendError(message: string) {
+  if (isGmailScopeError(message)) {
+    try {
+      await clearStoredGmailOAuth();
+    } catch {
+      // Best-effort; still return the reconnect prompt.
+    }
+    return GMAIL_SCOPE_RECONNECT_MESSAGE;
+  }
+  return isGmailAuthError(message) ? gmailAuthErrorMessage(message) : message;
 }
 
 /**
@@ -248,11 +278,11 @@ export async function verifyGmailSmtp(): Promise<{ ok: true; mode: GmailAuthMode
   }
 
   if (auth.mode === "oauth") {
-    const token = await getValidGmailAccessToken();
+    const token = await getValidGmailAccessToken({ validateScopes: true });
     if (!token.ok) {
       return {
         ok: false,
-        error: isGmailAuthError(token.error) ? gmailAuthErrorMessage() : token.error,
+        error: isGmailAuthError(token.error) ? gmailAuthErrorMessage(token.error) : token.error,
       };
     }
     return { ok: true, mode: "oauth" };
@@ -282,7 +312,7 @@ async function sendGmailApiEmail(
     return {
       email: to,
       status: "failed",
-      error: isGmailAuthError(token.error) ? gmailAuthErrorMessage() : token.error,
+      error: await remapGmailSendError(token.error),
     };
   }
 
@@ -311,7 +341,7 @@ async function sendGmailApiEmail(
     return {
       email: to,
       status: "failed",
-      error: isGmailAuthError(message) ? gmailAuthErrorMessage() : message,
+      error: await remapGmailSendError(message),
     };
   }
   return { email: to, status: "sent", id: payload.id };

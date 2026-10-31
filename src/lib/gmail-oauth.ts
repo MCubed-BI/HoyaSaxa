@@ -1,13 +1,30 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { getSql } from "@/lib/db";
 
-export const GMAIL_OAUTH_SCOPES = [
-  "https://mail.google.com/",
-  "openid",
-  "email",
-].join(" ");
+/** Sensitive (not restricted) scope required by gmail.users.messages.send. */
+export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
+
+/**
+ * Prefer gmail.send over the restricted https://mail.google.com/ scope.
+ * Restricted full-mail access often lands as openid+email only in Testing apps,
+ * which then fails sends with "insufficient authentication scopes".
+ */
+export const GMAIL_OAUTH_SCOPES = [GMAIL_SEND_SCOPE, "openid", "email"].join(" ");
 
 export const GMAIL_OAUTH_STATE_COOKIE = "gmail_oauth_state";
+
+/** True when a Google token scope string can call Gmail messages.send. */
+export function hasGmailSendScope(scope: string | null | undefined) {
+  if (!scope) return false;
+  const parts = scope.split(/[\s,]+/).map((part) => part.trim()).filter(Boolean);
+  return parts.some(
+    (part) =>
+      part === GMAIL_SEND_SCOPE ||
+      part === "https://mail.google.com/" ||
+      part === "https://www.googleapis.com/auth/gmail.modify" ||
+      part === "https://www.googleapis.com/auth/gmail.compose",
+  );
+}
 
 export function gmailClientId() {
   return process.env.GMAIL_CLIENT_ID?.trim() || "";
@@ -227,13 +244,26 @@ export async function gmailOAuthLinked() {
   return Boolean(token?.refreshToken);
 }
 
+export const GMAIL_SCOPE_RECONNECT_MESSAGE =
+  "Gmail is linked without Send permission. Click Connect Gmail again and allow “Send email on your behalf”.";
+
+async function clearStoredGmailOAuthQuietly() {
+  try {
+    await clearStoredGmailOAuth();
+  } catch {
+    // DATABASE_URL may be missing in unit tests.
+  }
+}
+
 /**
  * Return a usable access token for Gmail API calls. Refreshes when missing/expired
  * and persists the new access token when the refresh token lives in Neon.
+ * When Google returns scopes on refresh, reject tokens that cannot send mail.
  */
-export async function getValidGmailAccessToken(): Promise<
-  { ok: true; accessToken: string; email: string } | { ok: false; error: string }
-> {
+export async function getValidGmailAccessToken(options?: {
+  /** Force a refresh so Google's scope list can be checked (used before blasts). */
+  validateScopes?: boolean;
+}): Promise<{ ok: true; accessToken: string; email: string } | { ok: false; error: string }> {
   if (!gmailOAuthClientConfigured()) {
     return { ok: false, error: "Gmail OAuth client is not configured" };
   }
@@ -252,6 +282,7 @@ export async function getValidGmailAccessToken(): Promise<
 
   const email = (stored?.email || process.env.GMAIL_USER?.trim().toLowerCase() || "").trim();
   const freshEnough =
+    !options?.validateScopes &&
     stored?.accessToken &&
     stored.expiryAt &&
     stored.expiryAt.getTime() - Date.now() > 60_000;
@@ -266,6 +297,12 @@ export async function getValidGmailAccessToken(): Promise<
       ok: false,
       error: refreshed.error_description || refreshed.error || "Could not refresh Gmail access token",
     };
+  }
+
+  // Refresh responses include the granted scope list. Reject tokens that cannot send.
+  if (refreshed.scope && !hasGmailSendScope(refreshed.scope)) {
+    if (stored?.refreshToken) await clearStoredGmailOAuthQuietly();
+    return { ok: false, error: GMAIL_SCOPE_RECONNECT_MESSAGE };
   }
 
   if (stored?.refreshToken && email) {

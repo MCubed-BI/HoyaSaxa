@@ -7,6 +7,7 @@ import {
   exchangeGmailOAuthCode,
   fetchGmailOAuthEmail,
   gmailOAuthClientConfigured,
+  hasGmailSendScope,
   saveGmailOAuthTokens,
   verifyGmailOAuthState,
 } from "@/lib/gmail-oauth";
@@ -82,6 +83,16 @@ export async function GET(request: Request) {
 
   if (!tokens.refresh_token) {
     return NextResponse.redirect(blastRedirect(origin, { gmail: "missing_refresh" }));
+  }
+
+  // Reject connects that only granted openid/email (common with restricted full-mail scope).
+  if (tokens.scope && !hasGmailSendScope(tokens.scope)) {
+    return NextResponse.redirect(
+      blastRedirect(origin, {
+        gmail: "missing_scope",
+        detail: "Allow “Send email on your behalf”, then Connect Gmail again.",
+      }),
+    );
   }
 
   await saveGmailOAuthTokens({

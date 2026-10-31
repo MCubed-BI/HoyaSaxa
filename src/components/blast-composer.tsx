@@ -47,6 +47,11 @@ function gmailConnectStatusMessage() {
       return `Signed in as ${detail || "another account"}, but GMAIL_USER is ${expected || "a different mailbox"}. Sign in as the blast mailbox.`;
     case "missing_refresh":
       return "Google did not return a refresh token. Revoke prior access at myaccount.google.com/permissions, then Connect Gmail again.";
+    case "missing_scope":
+      return (
+        detail ||
+        "Google did not grant Send email permission. On the consent screen, allow “Send email on your behalf”, then Connect Gmail again."
+      );
     case "denied":
       return `Google denied access${detail ? ` (${detail})` : ""}.`;
     case "missing_client":
@@ -242,7 +247,12 @@ export function BlastComposer({
           setStatus(`Twilio is not configured. ${data.count} numbers are ready — open Messages or copy the blast.`);
         }
       } else if (data.mode === "gmail" || data.mode === "resend" || data.mode === "sendgrid") {
+        const firstError =
+          Array.isArray(data.results) &&
+          data.results.find((row: { status?: string; error?: string }) => row?.status === "failed" && row?.error)
+            ?.error;
         setStatus(`Sent ${data.sent} of ${data.count} emails${data.failed ? `, ${data.failed} failed` : ""}.`);
+        if (data.failed && firstError) setError(String(firstError));
       } else {
         setEmailFallback({ mailto: data.mailto ?? null, gmail: data.gmail ?? null, emails: data.emails ?? [] });
         setStatus(
@@ -446,7 +456,8 @@ export function BlastComposer({
           {oauthNotice ? <p className="text-sm text-muted-foreground">{oauthNotice}</p> : null}
           {!alumMode && channel === "email" && preview?.gmailConnectAvailable ? (
             <p className="text-sm font-medium text-navy">
-              Step 1: click <span className="underline">Connect Gmail</span> and allow access as{" "}
+              Step 1: click <span className="underline">Connect Gmail</span> and allow{" "}
+              <span className="underline">Send email on your behalf</span> as{" "}
               {preview.emailFrom || "GMAIL_USER"}. Do not Send until it says connected.
             </p>
           ) : null}
@@ -454,6 +465,14 @@ export function BlastComposer({
             {!alumMode && channel === "email" && preview?.gmailConnectAvailable ? (
               <Button asChild variant="default">
                 <a href="/api/gmail/oauth/start">Connect Gmail</a>
+              </Button>
+            ) : null}
+            {!alumMode &&
+            channel === "email" &&
+            preview?.gmailAuthMode === "oauth" &&
+            !preview?.gmailConnectAvailable ? (
+              <Button asChild variant="outline">
+                <a href="/api/gmail/oauth/start">Reconnect Gmail</a>
               </Button>
             ) : null}
             <Button

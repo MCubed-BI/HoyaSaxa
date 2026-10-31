@@ -106,4 +106,16 @@ describe("Gmail SMTP blast path", () => {
     assert.equal(isGmailAuthError("Recipient address rejected"), false);
     assert.match(gmailAuthErrorMessage(), /Connect Gmail/);
   });
+
+  it("treats insufficient Gmail API scopes as a reconnect auth error", () => {
+    clearEmailEnv();
+    process.env.GMAIL_USER = "georgetownfootball35@gmail.com";
+    process.env.GMAIL_CLIENT_ID = "client";
+    process.env.GMAIL_CLIENT_SECRET = "secret";
+    assert.equal(isGmailAuthError("Request had insufficient authentication scopes."), true);
+    assert.match(
+      gmailAuthErrorMessage("Request had insufficient authentication scopes."),
+      /Send permission|Connect Gmail again/,
+    );
+  });
 });
