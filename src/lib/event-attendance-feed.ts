@@ -197,20 +197,31 @@ export const listEventCheckinFeed = listAttendanceBadgeFeed;
 
 /** Project a feed down to one alum. Coder 3 maps percentile → badge tier. */
 export function alumAttendanceTotalsFromFeed(alumId: string, feed: EventCheckinFeed): AlumAttendanceTotals {
-  const first = feed.rows[0];
+  const wanted = alumId.trim().toLowerCase();
   const leader =
-    feed.leaders.find((row) => row.alumId === alumId) ??
-    feed.leaders.find((row) => row.personKey === `alum:${alumId}`);
+    feed.leaders.find((row) => (row.alumId ?? "").trim().toLowerCase() === wanted) ??
+    feed.leaders.find((row) => {
+      const key = (row.personKey ?? "").trim().toLowerCase();
+      return key === `alum:${wanted}` || key === wanted;
+    });
+  // Only this alum's rows — never borrow another person's lifetime rank for Top Tailgate.
+  const ownRows = feed.rows.filter((row) => {
+    const rowAlum = (row.alumId ?? "").trim().toLowerCase();
+    const rowUser = (row.userId ?? "").trim().toLowerCase();
+    return rowAlum === wanted || rowUser === wanted || rowUser === `alum:${wanted}`;
+  });
+  const seed = ownRows[0];
+  const hasOwn = Boolean(leader) || ownRows.length > 0;
   return {
     alumId,
-    userId: first?.userId ?? alumId,
-    attendanceCount: leader?.attendanceCount ?? first?.attendanceCount ?? 0,
+    userId: leader?.userId ?? seed?.userId ?? alumId,
+    attendanceCount: leader?.attendanceCount ?? (hasOwn ? (seed?.attendanceCount ?? ownRows.length) : 0),
     attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
-    rank: leader?.rank ?? first?.rank ?? null,
-    percentile: leader?.percentile ?? first?.percentile ?? null,
-    cohortSize: leader?.cohortSize ?? first?.cohortSize ?? feed.leaders.length,
+    rank: leader?.rank ?? (hasOwn ? (seed?.rank ?? null) : null),
+    percentile: leader?.percentile ?? (hasOwn ? (seed?.percentile ?? null) : null),
+    cohortSize: leader?.cohortSize ?? seed?.cohortSize ?? feed.leaders.length,
     rankBasis: ATTENDANCE_RANK_BASIS,
-    events: feed.rows.map((row) => ({
+    events: ownRows.map((row) => ({
       eventId: row.eventId,
       eventSlug: row.eventSlug,
       eventTitle: row.eventTitle,

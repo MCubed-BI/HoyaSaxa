@@ -96,9 +96,17 @@ export async function listPublicBadgesFromFeed(alumniId: string) {
     const feed = await listEventCheckinFeed({ limit: 1000 });
     const alumni = await loadAlumniNameIndex().catch(() => [] as AlumniIdentity[]);
     const wanted = normalizeAlumniId(alumniId);
-    const totals =
-      attendanceLeadersFromLiveFeed(feed, alumni).find((row) => normalizeAlumniId(row.alumId) === wanted) ??
-      alumAttendanceTotalsFromFeed(alumniId, feed);
+    const matched = attendanceLeadersFromLiveFeed(feed, alumni).find(
+      (row) => normalizeAlumniId(row.alumId) === wanted,
+    );
+    if (matched) {
+      return listPublicBadges(alumniId, { attendanceTotals: matched });
+    }
+    const totals = alumAttendanceTotalsFromFeed(alumniId, feed);
+    // Zero-attendance alums must not inherit another leader's Top Tailgate band.
+    if (!totals.attendanceCount || (totals.rank == null && totals.percentile == null)) {
+      return listPublicBadges(alumniId);
+    }
     return listPublicBadges(alumniId, { attendanceTotals: totals });
   } catch {
     return listPublicBadges(alumniId);

@@ -13,7 +13,15 @@ import {
   resolveCheckInAction,
 } from "./event-attendance";
 import { canCreateEvents, canOverrideEventCheckIn, canStaffCheckInOthers } from "./event-auth";
-import { eventSlugFromTitle, type AlumAttendanceTotals, type EventCheckinFeedRow } from "./event-attendance-feed";
+import {
+  ATTENDANCE_BADGE_FEED_VERSION,
+  ATTENDANCE_BADGE_THRESHOLDS_NOTE,
+  ATTENDANCE_RANK_BASIS,
+  alumAttendanceTotalsFromFeed,
+  eventSlugFromTitle,
+  type AlumAttendanceTotals,
+  type EventCheckinFeedRow,
+} from "./event-attendance-feed";
 import { createHoyaAlumSessionToken } from "./hoya-alum-session";
 import { isAlumAllowedPath, isDataSyncPath } from "./portal-paths";
 import { isAlumAllowedPath as messagesAlumAllowed, isDataSyncPath as messagesDataSync } from "./messages-auth";
@@ -117,6 +125,51 @@ describe("event check-in rules", () => {
     assert.equal(alum.events.length, 1);
     assert.equal(JSON.stringify(row).includes("Platinum"), false);
     assert.equal(JSON.stringify(alum).includes("badge"), false);
+  });
+
+  it("does not borrow another attendee's Top Tailgate rank for a zero-check-in alum", () => {
+    const charlie = "b9bc9839-6f8a-4463-98dd-e826718b6e7f";
+    const feed = {
+      version: ATTENDANCE_BADGE_FEED_VERSION,
+      attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
+      rankBasis: ATTENDANCE_RANK_BASIS,
+      thresholdsNote: ATTENDANCE_BADGE_THRESHOLDS_NOTE,
+      rows: [
+        {
+          eventId: "f2d65e1d-98aa-43be-b7d5-de6a0995e192",
+          eventSlug: "holy-cross-tailgate",
+          eventTitle: "Holy Cross Tailgate 11/7 (SENIOR DAY)",
+          alumId: null,
+          userId: "user:siegfril",
+          checkedInAt: "2026-10-30T13:30:19.456Z",
+          attendanceCount: 3,
+          attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
+          rank: 1,
+          percentile: 100,
+          cohortSize: 1,
+          rankBasis: ATTENDANCE_RANK_BASIS,
+        },
+      ],
+      leaders: [
+        {
+          personKey: "user:siegfril",
+          alumId: null,
+          userId: "user:siegfril",
+          displayName: "siegfril",
+          attendanceCount: 3,
+          attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
+          lastCheckedInAt: "2026-10-30T13:30:19.456Z",
+          rank: 1,
+          percentile: 100,
+          cohortSize: 1,
+        },
+      ],
+    };
+    const totals = alumAttendanceTotalsFromFeed(charlie, feed);
+    assert.equal(totals.attendanceCount, 0);
+    assert.equal(totals.rank, null);
+    assert.equal(totals.percentile, null);
+    assert.deepEqual(totals.events, []);
   });
 });
 
