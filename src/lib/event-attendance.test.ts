@@ -20,6 +20,7 @@ import {
   alumAttendanceTotalsFromFeed,
   eventSlugFromTitle,
   type AlumAttendanceTotals,
+  type AttendanceBadgeFeed,
   type EventCheckinFeedRow,
 } from "./event-attendance-feed";
 import { createHoyaAlumSessionToken } from "./hoya-alum-session";
@@ -129,7 +130,7 @@ describe("event check-in rules", () => {
 
   it("does not borrow another attendee's Top Tailgate rank for a zero-check-in alum", () => {
     const charlie = "b9bc9839-6f8a-4463-98dd-e826718b6e7f";
-    const feed = {
+    const feed: AttendanceBadgeFeed = {
       version: ATTENDANCE_BADGE_FEED_VERSION,
       attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
       rankBasis: ATTENDANCE_RANK_BASIS,
