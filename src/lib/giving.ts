@@ -1,5 +1,12 @@
 import { attachDonorLeaderBadges, type PublicBadge } from "@/lib/badges";
 import { getSql } from "@/lib/db";
+import {
+  GIVING_DESIGNATIONS,
+  LETTERMAN_JACKET,
+  designationLabel,
+  type GivingDesignationId,
+  type LettermanJacketVariant,
+} from "@/lib/fundraising-plan";
 import { ensureGivingPledgesTable } from "@/lib/giving-schema";
 
 export const IMPACT_AMOUNT_DOLLARS = [25, 50, 100, 250] as const;
@@ -7,6 +14,15 @@ export const UNPAID_INTENT_STATUS = "unpaid_intent";
 export const MIN_PLEDGE_CENTS = 100;
 export const MAX_PLEDGE_CENTS = 10_000_000;
 export const MAX_DONOR_LABEL_LENGTH = 80;
+export const MAX_TAILGATE_THEME_LENGTH = 120;
+export const MAX_TAILGATE_GAME_LENGTH = 120;
+
+export type GivingPledgeDetails = {
+  jacketVariant?: LettermanJacketVariant;
+  suitSize?: string;
+  tailgateTheme?: string;
+  tailgateGame?: string;
+};
 
 export type GivingPledge = {
   id: string;
@@ -14,6 +30,8 @@ export type GivingPledge = {
   donor_label: string | null;
   status: string;
   created_at: string;
+  designation: GivingDesignationId | string;
+  details: GivingPledgeDetails;
 };
 
 export type GivingLeaderRow = {
@@ -59,19 +77,176 @@ export function normalizeDonorLabel(value: unknown): string | null {
   return label || null;
 }
 
+export function normalizeDesignation(value: unknown): GivingDesignationId {
+  if (typeof value !== "string") return "general";
+  const id = value.trim() as GivingDesignationId;
+  return GIVING_DESIGNATIONS.some((row) => row.id === id) ? id : "general";
+}
+
+function normalizeSuitSize(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const size = value.trim().toUpperCase();
+  return (LETTERMAN_JACKET.suitSizes as readonly string[]).includes(size) ? size : null;
+}
+
+function normalizeShortText(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.trim().replace(/\s+/g, " ").slice(0, max);
+  return text || null;
+}
+
+export function parseGivingDetails(raw: unknown): GivingPledgeDetails {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const row = raw as Record<string, unknown>;
+  const details: GivingPledgeDetails = {};
+  if (row.jacketVariant === "player_sponsor" || row.jacketVariant === "self") {
+    details.jacketVariant = row.jacketVariant;
+  }
+  const suitSize = normalizeSuitSize(row.suitSize);
+  if (suitSize) details.suitSize = suitSize;
+  const theme = normalizeShortText(row.tailgateTheme, MAX_TAILGATE_THEME_LENGTH);
+  if (theme) details.tailgateTheme = theme;
+  const game = normalizeShortText(row.tailgateGame, MAX_TAILGATE_GAME_LENGTH);
+  if (game) details.tailgateGame = game;
+  return details;
+}
+
+export type ParsedGivingPledgeInput =
+  | { ok: true; amountCents: number; designation: GivingDesignationId; details: GivingPledgeDetails }
+  | { ok: false; error: string };
+
+/**
+ * Resolve amount + designation rules for Letterman / Tailgate / subscription presets.
+ */
+export function resolveGivingPledgeInput(input: {
+  amountDollars?: unknown;
+  amountCents?: unknown;
+  designation?: unknown;
+  jacketVariant?: unknown;
+  suitSize?: unknown;
+  tailgateTheme?: unknown;
+  tailgateGame?: unknown;
+}): ParsedGivingPledgeInput {
+  const designation = normalizeDesignation(input.designation);
+  const details = parseGivingDetails({
+    jacketVariant: input.jacketVariant,
+    suitSize: input.suitSize,
+    tailgateTheme: input.tailgateTheme,
+    tailgateGame: input.tailgateGame,
+  });
+
+  if (designation === "letterman_jacket") {
+    const variant =
+      input.jacketVariant === "self" || input.jacketVariant === "player_sponsor"
+        ? input.jacketVariant
+        : details.jacketVariant;
+    if (!variant) {
+      return { ok: false, error: "Choose Player Sponsor or For Self for the letterman jacket." };
+    }
+    details.jacketVariant = variant;
+    const dollars =
+      variant === "self" ? LETTERMAN_JACKET.selfDollars : LETTERMAN_JACKET.playerSponsorDollars;
+    if (variant === "self") {
+      const suitSize = normalizeSuitSize(input.suitSize) ?? details.suitSize;
+      if (!suitSize) {
+        return { ok: false, error: "Add a suit size for a self letterman jacket." };
+      }
+      details.suitSize = suitSize;
+    } else {
+      delete details.suitSize;
+    }
+    return { ok: true, amountCents: dollars * 100, designation, details };
+  }
+
+  if (designation === "tailgate") {
+    const theme =
+      normalizeShortText(input.tailgateTheme, MAX_TAILGATE_THEME_LENGTH) ?? details.tailgateTheme;
+    if (!theme) {
+      return { ok: false, error: "Choose a tailgate theme or game." };
+    }
+    details.tailgateTheme = theme;
+    const game = normalizeShortText(input.tailgateGame, MAX_TAILGATE_GAME_LENGTH);
+    if (game) details.tailgateGame = game;
+    else delete details.tailgateGame;
+
+    const amountCents =
+      dollarsToCents(input.amountDollars) ??
+      (typeof input.amountCents === "number" && Number.isInteger(input.amountCents)
+        ? input.amountCents
+        : null);
+    if (
+      amountCents === null ||
+      amountCents < MIN_PLEDGE_CENTS ||
+      amountCents > MAX_PLEDGE_CENTS
+    ) {
+      return { ok: false, error: "Choose a valid tailgate sponsorship amount." };
+    }
+    return { ok: true, amountCents, designation, details };
+  }
+
+  let amountCents =
+    dollarsToCents(input.amountDollars) ??
+    (typeof input.amountCents === "number" && Number.isInteger(input.amountCents)
+      ? input.amountCents
+      : typeof input.amountCents === "string" && /^\d+$/.test(input.amountCents.trim())
+        ? Number(input.amountCents)
+        : null);
+
+  if (
+    amountCents === null ||
+    !Number.isInteger(amountCents) ||
+    amountCents < MIN_PLEDGE_CENTS ||
+    amountCents > MAX_PLEDGE_CENTS
+  ) {
+    return { ok: false, error: "Choose a valid impact amount of at least $1." };
+  }
+
+  return { ok: true, amountCents, designation, details: {} };
+}
+
+export function formatPledgePurpose(pledge: Pick<GivingPledge, "designation" | "details" | "amount_cents">) {
+  const label = designationLabel(pledge.designation);
+  if (pledge.designation === "letterman_jacket") {
+    const variant =
+      pledge.details.jacketVariant === "self"
+        ? `For Self${pledge.details.suitSize ? ` · size ${pledge.details.suitSize}` : ""}`
+        : "Player Sponsor";
+    return `${label} · ${variant}`;
+  }
+  if (pledge.designation === "tailgate") {
+    const theme = pledge.details.tailgateTheme || "Theme TBD";
+    const game = pledge.details.tailgateGame ? ` · ${pledge.details.tailgateGame}` : "";
+    return `${label} · ${theme}${game}`;
+  }
+  return label;
+}
+
 export { formatCurrency as formatPledgeDollars } from "@/lib/format";
+export { designationLabel };
 
 async function query<T>(text: string, params: unknown[] = []) {
   const sql = getSql();
   return (await sql.query(text, params)) as unknown as T;
 }
 
+function mapPledgeRow(row: Record<string, unknown>): GivingPledge {
+  return {
+    id: String(row.id),
+    amount_cents: Number(row.amount_cents) || 0,
+    donor_label: typeof row.donor_label === "string" ? row.donor_label : null,
+    status: String(row.status ?? UNPAID_INTENT_STATUS),
+    created_at: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at ?? ""),
+    designation: normalizeDesignation(row.designation),
+    details: parseGivingDetails(row.details),
+  };
+}
+
 export async function listGivingSummary(limit = 12): Promise<GivingSummary> {
   await ensureGivingPledgesTable();
-  const [pledges, leaders, totals] = await Promise.all([
-    query<GivingPledge[]>(
+  const [pledgeRows, leaders, totals] = await Promise.all([
+    query<Array<Record<string, unknown>>>(
       `
-      SELECT id, amount_cents, donor_label, status, created_at
+      SELECT id, amount_cents, donor_label, status, created_at, designation, details
       FROM giving_pledges
       ORDER BY created_at DESC
       LIMIT $1
@@ -99,7 +274,7 @@ export async function listGivingSummary(limit = 12): Promise<GivingSummary> {
   ]);
 
   return {
-    pledges,
+    pledges: pledgeRows.map(mapPledgeRow),
     leaders: await attachDonorLeaderBadges(leaders),
     totals: totals[0] ?? { count: 0, amount_cents: 0 },
   };
@@ -109,15 +284,26 @@ export async function createGivingPledge(input: {
   amountCents: number;
   donorLabel?: string | null;
   alumniId?: string | null;
+  designation?: GivingDesignationId | string;
+  details?: GivingPledgeDetails;
 }) {
   await ensureGivingPledgesTable();
-  const rows = await query<GivingPledge[]>(
+  const designation = normalizeDesignation(input.designation);
+  const details = parseGivingDetails(input.details ?? {});
+  const rows = await query<Array<Record<string, unknown>>>(
     `
-    INSERT INTO giving_pledges (amount_cents, donor_label, status, alumni_id)
-    VALUES ($1, $2, $3, $4)
-    RETURNING id, amount_cents, donor_label, status, created_at
+    INSERT INTO giving_pledges (amount_cents, donor_label, status, alumni_id, designation, details)
+    VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+    RETURNING id, amount_cents, donor_label, status, created_at, designation, details
     `,
-    [input.amountCents, input.donorLabel ?? null, UNPAID_INTENT_STATUS, input.alumniId ?? null],
+    [
+      input.amountCents,
+      input.donorLabel ?? null,
+      UNPAID_INTENT_STATUS,
+      input.alumniId ?? null,
+      designation,
+      JSON.stringify(details),
+    ],
   );
-  return rows[0];
+  return mapPledgeRow(rows[0] ?? {});
 }

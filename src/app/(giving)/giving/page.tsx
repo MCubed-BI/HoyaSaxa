@@ -49,7 +49,7 @@ export default async function GivingPage({
         <PageHeader
           eyebrow="Fundraising"
           title="Give"
-          description="Choose an impact amount and record an unpaid pledge intent. Stripe is not required for this MVP."
+          description="Choose what to support — subscription ranks, campaign funds, letterman jacket, or a tailgate — and record an unpaid pledge intent. Stripe is not required for this MVP."
         />
         {errorMessage ? (
           <StatusCard title="Giving unavailable" body={errorMessage} />
