@@ -10,6 +10,7 @@ import { parseAlumniPhotoPatch, updateAlumniPhotos } from "@/lib/alumni-photos";
 import { isMissingDatabaseConfig } from "@/lib/db";
 import { optionalStringField, refreshFromLinkedinFlag, syncLinkedinPhotoOnSave } from "@/lib/linkedin-photo-sync";
 import { canEditAlumniRecord } from "@/lib/platform-roles";
+import { isAdminRole } from "@/lib/roles";
 import { getCurrentViewer } from "@/lib/viewer";
 
 export async function POST(request: Request) {
@@ -27,8 +28,10 @@ export async function POST(request: Request) {
     };
     if (!body.alumniId) return NextResponse.json({ error: "Missing alumniId" }, { status: 400 });
 
-    const isAdmin = viewer?.platformRole === "admin";
+    const isStaffAdmin = Boolean(viewer && isAdminRole(viewer.role));
+    const isAdmin = viewer?.platformRole === "admin" || isStaffAdmin;
     const selfOrAdmin =
+      isStaffAdmin ||
       (viewer && canEditAlumniRecord(viewer.platformRole, viewer.alumniId, body.alumniId)) ||
       Boolean(identity.alumniId && identity.alumniId === body.alumniId);
 

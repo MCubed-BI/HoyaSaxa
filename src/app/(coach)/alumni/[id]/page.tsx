@@ -2,12 +2,12 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AdminCrmPanel } from "@/components/admin-crm-panel";
 import { AdminPersonKindPanel } from "@/components/admin-person-kind-panel";
-import { AthleteOverviewEditor } from "@/components/athlete-overview-editor";
 import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { HoyaBadgeRow } from "@/lib/badge-api";
 import { PageMain, PageShell } from "@/components/page-chrome";
 import { ProfileMessageCta } from "@/components/profile-message-cta";
 import { SiteHeader } from "@/components/site-header";
+import { StaffAlumniProfileEditor } from "@/components/staff-alumni-profile-editor";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAccountByAlumniId } from "@/lib/alumni-claim";
@@ -76,6 +76,8 @@ export default async function AlumniDetailPage({
     const claimedAccount = await getAccountByAlumniId(person.id).catch(() => null);
     const photos = athletePhotoSlots(person);
     const actor = await getAthleteActor(person.id);
+    // Staff owner/coach (Admin Mode) can edit any roster card; same gate as People kind panel.
+    const canEditProfile = actor.canEdit || isAdminRole(viewer.role);
     const showCrm = canManageFundraising(viewer.role);
     let crm = null;
     if (showCrm) {
@@ -183,150 +185,139 @@ export default async function AlumniDetailPage({
             </CardHeader>
             <CardContent className="space-y-4">
               <AthletePhotoPair slots={photos} size="lg" />
-              {actor.canEdit ? (
+              {canEditProfile ? (
                 <AthletePhotoEditor alumniId={person.id} slots={photos} linkedinUrl={person.linkedin_url} />
               ) : null}
             </CardContent>
           </Card>
 
-          {actor.canEdit ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  {actor.isAdmin ? "Admin edit profile" : "Edit profile"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <AthleteOverviewEditor
-                  alumniId={person.id}
-                  title="Save profile"
-                  defaults={overviewFormValues({
-                    headline: person.headline,
-                    position: person.position,
-                    current_city: person.current_city,
-                    current_state: person.current_state,
-                    email_primary: person.email_primary,
-                    emails: person.emails,
-                    linkedin_url: person.linkedin_url,
-                  })}
-                  contactDefaults={profileContactFormValues({
-                    first_name: person.first_name,
-                    preferred_name: person.preferred_name,
-                    phone_primary: person.phone_primary,
-                    company_name: person.company_name,
-                    job_title: person.job_title,
-                    industry: person.industry,
-                    address_primary: person.address_primary,
-                  })}
-                  adminRosterDefaults={
-                    actor.isAdmin
-                      ? adminRosterFormValues({
-                          last_name: person.last_name,
-                          full_name: person.full_name,
-                          class_year: person.class_year,
-                          seasons: person.seasons,
-                          hometown_city: person.hometown_city,
-                          hometown_state: person.hometown_state,
-                        })
-                      : undefined
-                  }
-                />
-              </CardContent>
-            </Card>
-          ) : null}
+          {canEditProfile ? (
+            <StaffAlumniProfileEditor
+              alumniId={person.id}
+              netId={claimedAccount?.netId}
+              overview={overviewFormValues({
+                headline: person.headline,
+                position: person.position,
+                current_city: person.current_city,
+                current_state: person.current_state,
+                email_primary: person.email_primary,
+                emails: person.emails,
+                linkedin_url: person.linkedin_url,
+              })}
+              contact={profileContactFormValues({
+                first_name: person.first_name,
+                preferred_name: person.preferred_name,
+                phone_primary: person.phone_primary,
+                company_name: person.company_name,
+                job_title: person.job_title,
+                industry: person.industry,
+                address_primary: person.address_primary,
+              })}
+              roster={adminRosterFormValues({
+                last_name: person.last_name,
+                full_name: person.full_name,
+                class_year: person.class_year,
+                seasons: person.seasons,
+                hometown_city: person.hometown_city,
+                hometown_state: person.hometown_state,
+              })}
+            />
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Player</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Field label="Preferred name" value={displayPersonName(person.preferred_name)} />
+                    <Field label="Full name" value={displayPersonName(person.full_name)} />
+                    <Field label="Position" value={positionLabel(person.position)} />
+                    <Field label="Seasons" value={person.seasons} />
+                    <Field label="Class year" value={classYearLabel(person.class_year)} />
+                    <Field label="GTown NetID" value={claimedAccount?.netId} />
+                    <Field
+                      label="Hometown"
+                      value={locationLabel(person.hometown_city, person.hometown_state)}
+                    />
+                  </CardContent>
+                </Card>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Player</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Field label="Preferred name" value={displayPersonName(person.preferred_name)} />
-                <Field label="Full name" value={displayPersonName(person.full_name)} />
-                <Field label="Position" value={positionLabel(person.position)} />
-                <Field label="Seasons" value={person.seasons} />
-                <Field label="Class year" value={classYearLabel(person.class_year)} />
-                <Field label="GTown NetID" value={claimedAccount?.netId} />
-                <Field
-                  label="Hometown"
-                  value={locationLabel(person.hometown_city, person.hometown_state)}
-                />
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Now</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Field
+                      label="Current location"
+                      value={locationLabel(person.current_city, person.current_state)}
+                    />
+                    <Field label="Company" value={person.company_name} />
+                    <Field label="Title" value={person.job_title} />
+                    <Field label="Industry" value={person.industry} />
+                    <Field label="Work" value={jobLabel(person.company_name, person.job_title)} />
+                    {person.linkedin_url ? (
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">LinkedIn</p>
+                        <a
+                          href={person.linkedin_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-0.5 block truncate text-sm text-navy hover:underline"
+                        >
+                          {person.linkedin_url.replace(/^https?:\/\/(www\.)?/, "")}
+                        </a>
+                      </div>
+                    ) : (
+                      <Field label="LinkedIn" value="Not on file" />
+                    )}
+                    <Field label="Address" value={person.address_primary} />
+                  </CardContent>
+                </Card>
+              </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Now</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Field
-                  label="Current location"
-                  value={locationLabel(person.current_city, person.current_state)}
-                />
-                <Field label="Company" value={person.company_name} />
-                <Field label="Title" value={person.job_title} />
-                <Field label="Industry" value={person.industry} />
-                <Field label="Work" value={jobLabel(person.company_name, person.job_title)} />
-                {person.linkedin_url ? (
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">LinkedIn</p>
-                    <a
-                      href={person.linkedin_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-0.5 block truncate text-sm text-navy hover:underline"
-                    >
-                      {person.linkedin_url.replace(/^https?:\/\/(www\.)?/, "")}
-                    </a>
-                  </div>
-                ) : (
-                  <Field label="LinkedIn" value="Not on file" />
-                )}
-                <Field label="Address" value={person.address_primary} />
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Emails</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {emails.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No email on file.</p>
-                ) : (
-                  emails.map((item) => (
-                    <div key={item.email}>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
-                      <a href={`mailto:${item.email}`} className="text-sm text-navy hover:underline">
-                        {item.email}
-                      </a>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Phones</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {phones.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No phone on file.</p>
-                ) : (
-                  phones.map((item) => (
-                    <div key={item.phone}>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
-                      <a href={`tel:${item.phone}`} className="text-sm text-navy hover:underline">
-                        {formatPhone(item.phone)}
-                      </a>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Emails</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {emails.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No email on file.</p>
+                    ) : (
+                      emails.map((item) => (
+                        <div key={item.email}>
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                          <a href={`mailto:${item.email}`} className="text-sm text-navy hover:underline">
+                            {item.email}
+                          </a>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Phones</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {phones.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No phone on file.</p>
+                    ) : (
+                      phones.map((item) => (
+                        <div key={item.phone}>
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                          <a href={`tel:${item.phone}`} className="text-sm text-navy hover:underline">
+                            {formatPhone(item.phone)}
+                          </a>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
 
           <Card>
             <CardHeader>
