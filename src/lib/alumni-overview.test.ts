@@ -4,6 +4,7 @@ import {
   formatOverviewSport,
   overviewFormValues,
   overviewInputToAlumniPatch,
+  overviewPatchFromForm,
   parseOverviewEmails,
   parseOverviewSport,
 } from "./alumni-overview";
@@ -68,5 +69,55 @@ describe("Update Me Overview mapping", () => {
     assert.equal(values.location, "New York, NY");
     assert.equal(values.emails, "pwf8@georgetown.edu\npatrickwfinnegan@gmail.com");
     assert.match(values.linkedin_url, /linkedin\.com\/in\/patrick-finnegan-mba/);
+  });
+
+  it("maps contact + job fields from the overview form", () => {
+    const form = new Map<string, string>([
+      ["about", ""],
+      ["sport", "Football · QB"],
+      ["location", "Washington, DC"],
+      ["emails", "qb@example.com"],
+      ["linkedin_url", ""],
+      ["first_name", "Pat"],
+      ["preferred_name", "PJ"],
+      ["phone_primary", "202-555-0100"],
+      ["company_name", "Georgetown"],
+      ["job_title", "Director"],
+      ["industry", "Education"],
+      ["address_primary", "37th & O St"],
+    ]);
+    const patch = overviewPatchFromForm({ get: (name) => form.get(name) ?? null });
+    const { columns, emails } = overviewInputToAlumniPatch(patch);
+    assert.equal(columns.first_name, "Pat");
+    assert.equal(columns.preferred_name, "PJ");
+    assert.equal(columns.phone_primary, "202-555-0100");
+    assert.equal(columns.company_name, "Georgetown");
+    assert.equal(columns.job_title, "Director");
+    assert.equal(columns.industry, "Education");
+    assert.equal(columns.address_primary, "37th & O St");
+    assert.equal(columns.email_primary, "qb@example.com");
+    assert.deepEqual(emails, ["qb@example.com"]);
+    assert.equal("last_name" in columns, false);
+  });
+
+  it("maps admin roster fields only when includeAdminRoster is set", () => {
+    const patch = {
+      last_name: "Finnegan",
+      full_name: "Patrick Finnegan",
+      class_year: "'15",
+      seasons: "2011-2014",
+      hometown: "Chicago, IL",
+    };
+    const denied = overviewInputToAlumniPatch(patch);
+    assert.equal("last_name" in denied.columns, false);
+    assert.equal("class_year" in denied.columns, false);
+
+    const allowed = overviewInputToAlumniPatch(patch, { includeAdminRoster: true });
+    assert.equal(allowed.columns.last_name, "Finnegan");
+    assert.equal(allowed.columns.full_name, "Patrick Finnegan");
+    assert.equal(allowed.columns.class_year, "2015");
+    assert.equal(allowed.columns.seasons, "2011-2014");
+    assert.equal(allowed.columns.hometown_city, "Chicago");
+    assert.equal(allowed.columns.hometown_state, "IL");
   });
 });

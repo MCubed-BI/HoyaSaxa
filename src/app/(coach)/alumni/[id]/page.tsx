@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AdminCrmPanel } from "@/components/admin-crm-panel";
 import { AdminPersonKindPanel } from "@/components/admin-person-kind-panel";
+import { AthleteOverviewEditor } from "@/components/athlete-overview-editor";
 import { AthletePhotoEditor, AthletePhotoPair } from "@/components/athlete-photos";
 import { HoyaBadgeRow } from "@/lib/badge-api";
 import { PageMain, PageShell } from "@/components/page-chrome";
@@ -10,6 +11,11 @@ import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAccountByAlumniId } from "@/lib/alumni-claim";
+import {
+  adminRosterFormValues,
+  overviewFormValues,
+  profileContactFormValues,
+} from "@/lib/alumni-overview";
 import { getAthleteActor } from "@/lib/athlete-access";
 import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
 import { listPublicBadgesFromFeed } from "@/lib/badges-attendance";
@@ -182,6 +188,52 @@ export default async function AlumniDetailPage({
               ) : null}
             </CardContent>
           </Card>
+
+          {actor.canEdit ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  {actor.isAdmin ? "Admin edit profile" : "Edit profile"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AthleteOverviewEditor
+                  alumniId={person.id}
+                  title="Save profile"
+                  defaults={overviewFormValues({
+                    headline: person.headline,
+                    position: person.position,
+                    current_city: person.current_city,
+                    current_state: person.current_state,
+                    email_primary: person.email_primary,
+                    emails: person.emails,
+                    linkedin_url: person.linkedin_url,
+                  })}
+                  contactDefaults={profileContactFormValues({
+                    first_name: person.first_name,
+                    preferred_name: person.preferred_name,
+                    phone_primary: person.phone_primary,
+                    company_name: person.company_name,
+                    job_title: person.job_title,
+                    industry: person.industry,
+                    address_primary: person.address_primary,
+                  })}
+                  adminRosterDefaults={
+                    actor.isAdmin
+                      ? adminRosterFormValues({
+                          last_name: person.last_name,
+                          full_name: person.full_name,
+                          class_year: person.class_year,
+                          seasons: person.seasons,
+                          hometown_city: person.hometown_city,
+                          hometown_state: person.hometown_state,
+                        })
+                      : undefined
+                  }
+                />
+              </CardContent>
+            </Card>
+          ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card>

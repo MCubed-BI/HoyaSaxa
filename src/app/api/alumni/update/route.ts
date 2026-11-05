@@ -27,12 +27,13 @@ export async function POST(request: Request) {
     };
     if (!body.alumniId) return NextResponse.json({ error: "Missing alumniId" }, { status: 400 });
 
+    const isAdmin = viewer?.platformRole === "admin";
     const selfOrAdmin =
       (viewer && canEditAlumniRecord(viewer.platformRole, viewer.alumniId, body.alumniId)) ||
       Boolean(identity.alumniId && identity.alumniId === body.alumniId);
 
     if (selfOrAdmin) {
-      await updateOwnAlumniRecord(body.alumniId, body.patch ?? {});
+      await updateOwnAlumniRecord(body.alumniId, body.patch ?? {}, { includeAdminRoster: isAdmin });
     } else if (identity.accountId) {
       await updateClaimedRecord(identity.accountId, body.alumniId, body.patch ?? {});
     } else {
