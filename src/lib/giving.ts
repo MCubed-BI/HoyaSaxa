@@ -184,7 +184,7 @@ export function resolveGivingPledgeInput(input: {
     return { ok: true, amountCents, designation, details };
   }
 
-  let amountCents =
+  const amountCents =
     dollarsToCents(input.amountDollars) ??
     (typeof input.amountCents === "number" && Number.isInteger(input.amountCents)
       ? input.amountCents
