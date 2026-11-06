@@ -30,7 +30,7 @@ Viewer (`getCurrentViewer`) has `platformRole`. Locker viewer has `canPostNewsfl
 
 | Platform role | Who | Can do |
 | --- | --- | --- |
-| `admin` | Staff `ga_session`; `ADMIN_EMAILS`; `staff_roles.role=admin`; seeds below | See / post every For You section (`brothers`, `board`, `sgarlata`); edit any profile photos |
+| `admin` | Staff `ga_session`; `ADMIN_EMAILS`; `staff_roles.role=admin`; seeds below | See / post every For You section (`brothers`, `board`, `sgarlata`); edit any profile (contact, job, photos, roster identity) |
 | `board` | Cookie `role=board` or Admin toggle → `staff_roles.role=board` | Alum capabilities + Message from the Board. No Sgarlata compose |
 | `alum` | Claim / login `hoya_alum_session` `role=alum` | Full Alum Mode: For You Brothers, Directory, /me photos, Verified Hoya; can post events |
 

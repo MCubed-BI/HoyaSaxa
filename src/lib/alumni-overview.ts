@@ -2,7 +2,9 @@
  * Athlete Overview fields on Update Me /me and claimed-self / admin profile edit.
  * About → alumni.headline; Sport → alumni.position; Location → current_city/state;
  * Emails → email_primary + alumni_emails; LinkedIn → linkedin_url.
+ * Admins may also patch roster identity (last name, class year, hometown, seasons).
  */
+import { parseClassYearInput } from "@/lib/alumni-class-year";
 import { collectAthleteEmails } from "@/lib/athlete-emails";
 import { locationLabel, parseLocationInput, positionLabel } from "@/lib/format";
 import { normalizeLinkedinProfileUrl } from "@/lib/linkedin-profile";
@@ -23,8 +25,32 @@ export const OVERVIEW_COLUMN_FIELDS = [
   "position",
 ] as const;
 
+/** Staff-only roster columns — applied only when an admin saves a profile. */
+export const ADMIN_ROSTER_COLUMN_FIELDS = [
+  "last_name",
+  "full_name",
+  "class_year",
+  "seasons",
+  "hometown_city",
+  "hometown_state",
+] as const;
+
+export const PROFILE_CONTACT_FORM_FIELDS = [
+  "first_name",
+  "preferred_name",
+  "phone_primary",
+  "company_name",
+  "job_title",
+  "industry",
+  "address_primary",
+] as const;
+
 export type OverviewColumnField = (typeof OVERVIEW_COLUMN_FIELDS)[number];
+export type AdminRosterColumnField = (typeof ADMIN_ROSTER_COLUMN_FIELDS)[number];
+export type ProfileColumnField = OverviewColumnField | AdminRosterColumnField;
 export type OverviewColumnPatch = Partial<Record<OverviewColumnField, string | null>>;
+export type AdminRosterColumnPatch = Partial<Record<AdminRosterColumnField, string | null>>;
+export type ProfileColumnPatch = OverviewColumnPatch & AdminRosterColumnPatch;
 
 export type OverviewFormFields = {
   about: string;
@@ -34,12 +60,32 @@ export type OverviewFormFields = {
   linkedin_url: string;
 };
 
-export type OverviewInput = OverviewColumnPatch & {
-  about?: string | null;
-  location?: string | null;
-  sport?: string | null;
-  emails?: string | string[] | null;
+export type ProfileContactFormFields = {
+  first_name: string;
+  preferred_name: string;
+  phone_primary: string;
+  company_name: string;
+  job_title: string;
+  industry: string;
+  address_primary: string;
 };
+
+export type AdminRosterFormFields = {
+  last_name: string;
+  full_name: string;
+  class_year: string;
+  seasons: string;
+  hometown: string;
+};
+
+export type OverviewInput = OverviewColumnPatch &
+  AdminRosterColumnPatch & {
+    about?: string | null;
+    location?: string | null;
+    sport?: string | null;
+    emails?: string | string[] | null;
+    hometown?: string | null;
+  };
 
 const FOOTBALL = /^football$/i;
 
@@ -117,11 +163,14 @@ export function normalizeOverviewLinkedin(value?: string | null) {
   return normalizeLinkedinProfileUrl(trimmed) ?? trimmed;
 }
 
-export function overviewInputToAlumniPatch(input: OverviewInput): {
-  columns: OverviewColumnPatch;
+export function overviewInputToAlumniPatch(
+  input: OverviewInput,
+  options: { includeAdminRoster?: boolean } = {},
+): {
+  columns: ProfileColumnPatch;
   emails?: string[];
 } {
-  const columns: OverviewColumnPatch = {};
+  const columns: ProfileColumnPatch = {};
 
   for (const field of OVERVIEW_COLUMN_FIELDS) {
     if (field === "headline" || field === "position" || field === "current_city" || field === "current_state") {
@@ -163,17 +212,99 @@ export function overviewInputToAlumniPatch(input: OverviewInput): {
     columns.linkedin_url = normalizeOverviewLinkedin(typeof input.linkedin_url === "string" ? input.linkedin_url : null);
   }
 
+  if (options.includeAdminRoster) {
+    for (const field of ADMIN_ROSTER_COLUMN_FIELDS) {
+      if (field === "hometown_city" || field === "hometown_state" || field === "class_year") continue;
+      if (field in input) columns[field] = trimToNull(input[field]);
+    }
+
+    if ("hometown" in input) {
+      const parsed = parseLocationInput(typeof input.hometown === "string" ? input.hometown : "");
+      columns.hometown_city = parsed.city;
+      columns.hometown_state = parsed.state;
+    } else {
+      if ("hometown_city" in input) columns.hometown_city = trimToNull(input.hometown_city);
+      if ("hometown_state" in input) columns.hometown_state = trimToNull(input.hometown_state);
+    }
+
+    if ("class_year" in input) {
+      const raw = trimToNull(input.class_year);
+      columns.class_year = raw ? parseClassYearInput(raw) ?? raw : null;
+    }
+  }
+
   return { columns, emails };
+}
+
+export function profileContactFormValues(input: {
+  first_name?: string | null;
+  preferred_name?: string | null;
+  phone_primary?: string | null;
+  company_name?: string | null;
+  job_title?: string | null;
+  industry?: string | null;
+  address_primary?: string | null;
+}): ProfileContactFormFields {
+  return {
+    first_name: input.first_name?.trim() || "",
+    preferred_name: input.preferred_name?.trim() || "",
+    phone_primary: input.phone_primary?.trim() || "",
+    company_name: input.company_name?.trim() || "",
+    job_title: input.job_title?.trim() || "",
+    industry: input.industry?.trim() || "",
+    address_primary: input.address_primary?.trim() || "",
+  };
+}
+
+export function adminRosterFormValues(input: {
+  last_name?: string | null;
+  full_name?: string | null;
+  class_year?: string | null;
+  seasons?: string | null;
+  hometown_city?: string | null;
+  hometown_state?: string | null;
+}): AdminRosterFormFields {
+  return {
+    last_name: input.last_name?.trim() || "",
+    full_name: input.full_name?.trim() || "",
+    class_year: input.class_year?.trim() || "",
+    seasons: input.seasons?.trim() || "",
+    hometown: locationLabel(input.hometown_city, input.hometown_state) ?? "",
+  };
+}
+
+function readOptionalFormField(
+  form: { get(name: string): FormDataEntryValue | null },
+  name: string,
+): string | undefined {
+  const value = form.get(name);
+  if (value === null) return undefined;
+  return String(value);
 }
 
 export function overviewPatchFromForm(form: {
   get(name: string): FormDataEntryValue | null;
 }): OverviewInput {
-  return {
+  const patch: OverviewInput = {
     about: String(form.get("about") ?? ""),
     sport: String(form.get("sport") ?? ""),
     location: String(form.get("location") ?? ""),
     emails: String(form.get("emails") ?? ""),
     linkedin_url: String(form.get("linkedin_url") ?? ""),
   };
+
+  for (const field of PROFILE_CONTACT_FORM_FIELDS) {
+    const value = readOptionalFormField(form, field);
+    if (value !== undefined) patch[field] = value;
+  }
+
+  for (const field of ["last_name", "full_name", "class_year", "seasons"] as const) {
+    const value = readOptionalFormField(form, field);
+    if (value !== undefined) patch[field] = value;
+  }
+
+  const hometown = readOptionalFormField(form, "hometown");
+  if (hometown !== undefined) patch.hometown = hometown;
+
+  return patch;
 }

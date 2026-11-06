@@ -18,7 +18,11 @@ import { getAthleteActor } from "@/lib/athlete-access";
 import { athletePhotoSlots } from "@/lib/athlete-photo-slots";
 import { HoyaBadgeRow } from "@/lib/badge-api";
 import { listPublicBadgesManyFromFeed } from "@/lib/badges-attendance";
-import { overviewFormValues } from "@/lib/alumni-overview";
+import {
+  adminRosterFormValues,
+  overviewFormValues,
+  profileContactFormValues,
+} from "@/lib/alumni-overview";
 import { displayName, jobLabel, positionLabel } from "@/lib/format";
 import { kindLabel, publicCity, toNameFields } from "@/lib/locker-classify";
 import { getLockerPersonById } from "@/lib/locker-directory";
@@ -26,6 +30,7 @@ import { athleteHref, parseAthleteTab } from "@/lib/locker-paths";
 import { ATHLETE_TABS, athleteTabLabel } from "@/lib/locker-types";
 import { requireLockerViewer } from "@/lib/locker-viewer";
 import { canMessageHoyaProfile, linkedAlumniIdForViewer } from "@/lib/messages-dm";
+import { getAlumniById } from "@/lib/queries";
 import { isBoardMember } from "@/lib/staff-roles";
 
 export const dynamic = "force-dynamic";
@@ -91,6 +96,10 @@ export default async function AthleteProfilePage({
       boardGranted = false;
     }
   }
+  const editRecord =
+    actor.canEdit && !person.id.startsWith("locker-")
+      ? await getAlumniById(person.id).catch(() => null)
+      : null;
 
   return (
     <PageMain width="narrow">
@@ -199,18 +208,41 @@ export default async function AthleteProfilePage({
             {actor.canEdit ? (
               <div className="border-t pt-4">
                 <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">
-                  {actor.isAdmin && !actor.isClaimedSelf ? "Admin edit Overview" : "Edit Overview"}
+                  {actor.isAdmin && !actor.isClaimedSelf ? "Admin edit profile" : "Edit profile"}
                 </p>
                 <AthleteOverviewEditor
                   alumniId={person.id}
+                  title="Save profile"
                   defaults={overviewFormValues({
-                    headline: person.headline,
-                    position: person.position,
-                    current_city: person.city,
-                    current_state: person.state,
-                    emails: person.emails,
-                    linkedin_url: person.linkedinUrl,
+                    headline: editRecord?.headline ?? person.headline,
+                    position: editRecord?.position ?? person.position,
+                    current_city: editRecord?.current_city ?? person.city,
+                    current_state: editRecord?.current_state ?? person.state,
+                    email_primary: editRecord?.email_primary,
+                    emails: editRecord?.emails ?? person.emails,
+                    linkedin_url: editRecord?.linkedin_url ?? person.linkedinUrl,
                   })}
+                  contactDefaults={profileContactFormValues({
+                    first_name: editRecord?.first_name ?? person.firstName,
+                    preferred_name: editRecord?.preferred_name ?? person.preferredName,
+                    phone_primary: editRecord?.phone_primary,
+                    company_name: editRecord?.company_name ?? person.companyName,
+                    job_title: editRecord?.job_title ?? person.jobTitle,
+                    industry: editRecord?.industry ?? person.industry,
+                    address_primary: editRecord?.address_primary,
+                  })}
+                  adminRosterDefaults={
+                    actor.isAdmin
+                      ? adminRosterFormValues({
+                          last_name: editRecord?.last_name ?? person.lastName,
+                          full_name: editRecord?.full_name ?? person.fullName,
+                          class_year: editRecord?.class_year ?? person.classYear,
+                          seasons: editRecord?.seasons ?? person.seasons,
+                          hometown_city: editRecord?.hometown_city ?? person.hometownCity,
+                          hometown_state: editRecord?.hometown_state ?? person.hometownState,
+                        })
+                      : undefined
+                  }
                 />
               </div>
             ) : null}
