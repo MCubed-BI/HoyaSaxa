@@ -13,7 +13,6 @@ export const RECURRING_AMOUNT_DOLLARS = RECURRING_AMOUNTS.map((row) => row.amoun
 export const LETTERMAN_JACKET = {
   donateDollars: 200,
   selfDollars: 240,
-  suitSizes: ["36", "38", "40", "42", "44", "46", "48", "50", "52", "XS", "S", "M", "L", "XL", "2XL", "3XL"] as const,
 } as const;
 
 export const TAILGATE_SPONSORSHIP = {

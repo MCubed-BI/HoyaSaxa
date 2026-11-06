@@ -67,12 +67,22 @@ test("resolves letterman donate and self with suit size", () => {
   const self = resolveGivingPledgeInput({
     designation: "letterman_jacket",
     jacketVariant: "self",
-    suitSize: "42",
+    suitSize: "42R",
   });
   assert.equal(self.ok, true);
   if (self.ok) {
     assert.equal(self.amountCents, 24_000);
-    assert.equal(self.details.suitSize, "42");
+    assert.equal(self.details.suitSize, "42R");
+  }
+
+  const freeform = resolveGivingPledgeInput({
+    designation: "letterman_jacket",
+    jacketVariant: "self",
+    suitSize: "  men's XL tall  ",
+  });
+  assert.equal(freeform.ok, true);
+  if (freeform.ok) {
+    assert.equal(freeform.details.suitSize, "men's XL tall");
   }
 });
 

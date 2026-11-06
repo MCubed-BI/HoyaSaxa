@@ -14,6 +14,7 @@ export const UNPAID_INTENT_STATUS = "unpaid_intent";
 export const MIN_PLEDGE_CENTS = 100;
 export const MAX_PLEDGE_CENTS = 10_000_000;
 export const MAX_DONOR_LABEL_LENGTH = 80;
+export const MAX_SUIT_SIZE_LENGTH = 40;
 export const MAX_TAILGATE_THEME_LENGTH = 120;
 export const MAX_TAILGATE_GAME_LENGTH = 120;
 
@@ -92,9 +93,7 @@ function normalizeJacketVariant(value: unknown): LettermanJacketVariant | null {
 }
 
 function normalizeSuitSize(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const size = value.trim().toUpperCase();
-  return (LETTERMAN_JACKET.suitSizes as readonly string[]).includes(size) ? size : null;
+  return normalizeShortText(value, MAX_SUIT_SIZE_LENGTH);
 }
 
 function normalizeShortText(value: unknown, max: number): string | null {

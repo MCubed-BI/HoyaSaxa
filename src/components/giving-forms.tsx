@@ -295,7 +295,7 @@ export function LettermanGivingForm({
   defaultDonorLabel?: string;
 }) {
   const [lettermanOption, setLettermanOption] = useState<LettermanOption>("donate");
-  const [suitSize, setSuitSize] = useState<string>(LETTERMAN_JACKET.suitSizes[4]);
+  const [suitSize, setSuitSize] = useState("");
   const amountDollars =
     lettermanOption === "self" ? LETTERMAN_JACKET.selfDollars : LETTERMAN_JACKET.donateDollars;
   const form = usePledgeForm({
@@ -345,20 +345,15 @@ export function LettermanGivingForm({
             {lettermanOption === "self" ? (
               <div className="space-y-1.5">
                 <Label htmlFor="suit-size">Suit size</Label>
-                <select
+                <Input
                   id="suit-size"
                   name="suitSize"
                   required
-                  className={SELECT_CLASS}
+                  maxLength={40}
                   value={suitSize}
                   onChange={(event) => setSuitSize(event.target.value)}
-                >
-                  {LETTERMAN_JACKET.suitSizes.map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="e.g. 42R, XL, 44L"
+                />
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
