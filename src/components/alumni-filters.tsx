@@ -33,6 +33,7 @@ export function AlumniFiltersForm({
   view = "admin",
   groups,
   selectedGroupId = "",
+  openProfileOnSelect,
 }: {
   filters: AlumniFilters;
   facets: AlumniFacets;
@@ -43,6 +44,8 @@ export function AlumniFiltersForm({
   /** When set (Blast), show a Saved group control in this card. */
   groups?: AlumniGroupSummary[];
   selectedGroupId?: string;
+  /** Override typeahead click: open the athlete profile instead of filling the filter. */
+  openProfileOnSelect?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -98,7 +101,7 @@ export function AlumniFiltersForm({
           value={local.q}
           onChange={(q) => setLocal((current) => ({ ...current, q }))}
           view={view}
-          openProfileOnSelect={mode === "directory"}
+          openProfileOnSelect={openProfileOnSelect ?? mode === "directory"}
         />
         <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" disabled={pending} className="h-11 px-4">

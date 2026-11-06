@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { AlumniFiltersForm } from "@/components/alumni-filters";
 import { CopyContacts } from "@/components/copy-contacts";
@@ -46,6 +47,7 @@ export default async function ReportsPage({
             facets={facets}
             action="/reports"
             submitLabel="Build group"
+            openProfileOnSelect
           />
 
           <Card>
@@ -89,27 +91,37 @@ export default async function ReportsPage({
                 <CardTitle className="text-base">Preview</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {previewRows.map((row) => (
-                  <div key={row.id} className="flex items-baseline justify-between gap-3 border-b py-2 last:border-0">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-navy">{row.name || displayName({
-                        preferred_name: null,
-                        first_name: null,
-                        last_name: row.name,
-                        full_name: row.name,
-                      })}</p>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {[positionLabel(row.position), classYearLabel(row.class_year), row.company_name]
-                          .filter(Boolean)
-                          .join(" · ") || "—"}
+                {previewRows.map((row) => {
+                  const name =
+                    row.name ||
+                    displayName({
+                      preferred_name: null,
+                      first_name: null,
+                      last_name: row.name,
+                      full_name: row.name,
+                    });
+                  return (
+                    <div key={row.id} className="flex items-baseline justify-between gap-3 border-b py-2 last:border-0">
+                      <div className="min-w-0">
+                        <Link
+                          href={`/alumni/${row.id}`}
+                          className="block truncate font-medium text-navy hover:underline"
+                        >
+                          {name}
+                        </Link>
+                        <p className="truncate text-sm text-muted-foreground">
+                          {[positionLabel(row.position), classYearLabel(row.class_year), row.company_name]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-xs text-muted-foreground">
+                        {row.emails.length} email{row.emails.length === 1 ? "" : "s"} · {row.phones.length} phone
+                        {row.phones.length === 1 ? "" : "s"}
                       </p>
                     </div>
-                    <p className="shrink-0 text-xs text-muted-foreground">
-                      {row.emails.length} email{row.emails.length === 1 ? "" : "s"} · {row.phones.length} phone
-                      {row.phones.length === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
                 {count > previewRows.length ? (
                   <p className="pt-1 text-sm text-muted-foreground">
                     Showing {previewRows.length} of {formatNumber(count)}. Download the CSV for the full list.
