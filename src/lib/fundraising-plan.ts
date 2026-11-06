@@ -1,31 +1,92 @@
 /**
- * Giving options for /giving — three separate donation pages.
+ * Giving options for /giving — separate donation pages + leaderboard breakdowns.
  */
 
-export const RECURRING_AMOUNTS = [
-  { id: "bronze", label: "Bronze", amountDollars: 250 },
-  { id: "silver", label: "Silver", amountDollars: 500 },
-  { id: "gold", label: "Gold", amountDollars: 750 },
+/** One-time gift presets (not a monthly bill). */
+export const ONE_TIME_AMOUNTS = [
+  { id: "250", amountDollars: 250 },
+  { id: "500", amountDollars: 500 },
+  { id: "750", amountDollars: 750 },
 ] as const;
 
-export const RECURRING_AMOUNT_DOLLARS = RECURRING_AMOUNTS.map((row) => row.amountDollars);
+export const ONE_TIME_AMOUNT_DOLLARS = ONE_TIME_AMOUNTS.map((row) => row.amountDollars);
+
+/**
+ * Leaderboard gift bands — informational breakdowns (from the fundraising plan).
+ * Shown on /giving/leaderboard, not as a monthly subscription ask.
+ */
+export const GIFT_BANDS = [
+  {
+    id: "bronze",
+    label: "Bronze",
+    amountDollars: 250,
+    summary: "Entry gift band.",
+  },
+  {
+    id: "silver",
+    label: "Silver",
+    amountDollars: 500,
+    summary: "Mid gift band.",
+  },
+  {
+    id: "gold",
+    label: "Gold",
+    amountDollars: 750,
+    summary: "Top gift band below the benefit ladder.",
+  },
+] as const;
+
+/** Annual benefit ladder ranks & rewards (from the fundraising plan). */
+export const BENEFIT_LADDER = [
+  {
+    id: "founders",
+    label: "Founders",
+    amountDollars: 25_000,
+    rewards: [
+      "Season tickets",
+      "Sideline field pass for one game",
+      "Name on the wall",
+      "Annual dinner with the head coach",
+    ],
+  },
+  {
+    id: "leadership",
+    label: "Leadership",
+    amountDollars: 10_000,
+    rewards: [
+      "Season tickets",
+      "One field pass",
+      "Team-travel invitation",
+      "Recognition at the spring game",
+    ],
+  },
+  {
+    id: "captain",
+    label: "Captain",
+    amountDollars: 5_000,
+    rewards: ["Two season tickets", "Locker-room tour", "Private pre-game reception"],
+  },
+  {
+    id: "varsity",
+    label: "Varsity",
+    amountDollars: 2_500,
+    rewards: ["Two season tickets", "Invitation to the annual donor reception"],
+  },
+  {
+    id: "letterwinner",
+    label: "Letterwinner",
+    amountDollars: 1_000,
+    rewards: ["Programme gift", "Listing in the game programme", "Priority ticket access"],
+  },
+] as const;
 
 export const LETTERMAN_JACKET = {
   donateDollars: 200,
   selfDollars: 240,
-  suitSizes: ["36", "38", "40", "42", "44", "46", "48", "50", "52", "XS", "S", "M", "L", "XL", "2XL", "3XL"] as const,
 } as const;
 
 export const TAILGATE_SPONSORSHIP = {
   amountDollars: [250, 500, 1000, 5000] as const,
-  themes: [
-    "Homecoming",
-    "Spring Game",
-    "Season opener",
-    "Senior Day",
-    "Rivalry game",
-    "Other / custom",
-  ] as const,
   games: [
     "vs. Holy Cross",
     "vs. Colgate",
@@ -41,10 +102,10 @@ export const TAILGATE_SPONSORSHIP = {
 
 export const GIVING_PIECES = [
   {
-    id: "recurring",
-    label: "Recurring",
-    href: "/giving/recurring",
-    summary: "Monthly/annual support — Bronze $250, Silver $500, Gold $750.",
+    id: "one_time",
+    label: "One-time",
+    href: "/giving/one-time",
+    summary: "One-time gift — $250 / $500 / $750.",
   },
   {
     id: "letterman_jacket",
@@ -56,7 +117,17 @@ export const GIVING_PIECES = [
     id: "tailgate",
     label: "Tailgate",
     href: "/giving/tailgate",
-    summary: "Sponsor a game or theme — $250 / $500 / $1,000 / $5,000.",
+    summary: "Sponsor a game — $250 / $500 / $1,000 / $5,000.",
+  },
+] as const;
+
+export const GIVING_NAV = [
+  ...GIVING_PIECES,
+  {
+    id: "leaderboard",
+    label: "Leaderboard",
+    href: "/giving/leaderboard",
+    summary: "Gift bands, benefit ladder, and live leaders.",
   },
 ] as const;
 
@@ -65,29 +136,30 @@ export type LettermanJacketVariant = "donate" | "self" | "player_sponsor";
 
 /** Legacy designation ids still readable from older pledges. */
 const LEGACY_DESIGNATION_MAP: Record<string, GivingDesignationId> = {
-  subscription: "recurring",
-  general: "recurring",
-  coaches_fund: "recurring",
-  player_scholarship: "recurring",
-  facilities: "recurring",
+  subscription: "one_time",
+  general: "one_time",
+  coaches_fund: "one_time",
+  player_scholarship: "one_time",
+  facilities: "one_time",
+  recurring: "one_time",
+  one_time: "one_time",
   letterman_jacket: "letterman_jacket",
   tailgate: "tailgate",
-  recurring: "recurring",
 };
 
 export function normalizeGivingPiece(value: unknown): GivingDesignationId {
-  if (typeof value !== "string") return "recurring";
+  if (typeof value !== "string") return "one_time";
   const key = value.trim();
-  return LEGACY_DESIGNATION_MAP[key] ?? "recurring";
+  return LEGACY_DESIGNATION_MAP[key] ?? "one_time";
 }
 
 export function designationLabel(id: string | null | undefined) {
   const piece = normalizeGivingPiece(id);
-  return GIVING_PIECES.find((row) => row.id === piece)?.label ?? "Recurring";
+  return GIVING_PIECES.find((row) => row.id === piece)?.label ?? "One-time";
 }
 
-export function recurringLabelForDollars(amountDollars: number) {
-  return RECURRING_AMOUNTS.find((row) => row.amountDollars === amountDollars)?.label ?? null;
+export function giftBandForDollars(amountDollars: number) {
+  return GIFT_BANDS.find((row) => row.amountDollars === amountDollars) ?? null;
 }
 
 export function givingPieceById(id: GivingDesignationId) {
@@ -95,12 +167,19 @@ export function givingPieceById(id: GivingDesignationId) {
 }
 
 /** Back-compat aliases. */
-export const GIVING_DESIGNATIONS = GIVING_PIECES;
-export const SUBSCRIPTION_RANKS = RECURRING_AMOUNTS.map((row) => ({
-  ...row,
-  period: "yr" as const,
-  approxMonthly: Math.round(row.amountDollars / 12),
-  summary: `${row.label} recurring`,
+export const RECURRING_AMOUNTS = ONE_TIME_AMOUNTS.map((row) => ({
+  id: row.id,
+  label: `$${row.amountDollars}`,
+  amountDollars: row.amountDollars,
 }));
-export const SUBSCRIPTION_AMOUNT_DOLLARS = RECURRING_AMOUNT_DOLLARS;
-export const subscriptionRankForDollars = recurringLabelForDollars;
+export const RECURRING_AMOUNT_DOLLARS = ONE_TIME_AMOUNT_DOLLARS;
+export const GIVING_DESIGNATIONS = GIVING_PIECES;
+export const SUBSCRIPTION_RANKS = GIFT_BANDS.map((row) => ({
+  ...row,
+  period: "gift" as const,
+  approxMonthly: 0,
+}));
+export const SUBSCRIPTION_AMOUNT_DOLLARS = ONE_TIME_AMOUNT_DOLLARS;
+export const subscriptionRankForDollars = giftBandForDollars;
+export const recurringLabelForDollars = (amountDollars: number) =>
+  giftBandForDollars(amountDollars)?.label ?? null;

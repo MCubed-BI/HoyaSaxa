@@ -14,18 +14,17 @@ export const UNPAID_INTENT_STATUS = "unpaid_intent";
 export const MIN_PLEDGE_CENTS = 100;
 export const MAX_PLEDGE_CENTS = 10_000_000;
 export const MAX_DONOR_LABEL_LENGTH = 80;
+export const MAX_SUIT_SIZE_LENGTH = 40;
 export const MAX_TAILGATE_THEME_LENGTH = 120;
 export const MAX_TAILGATE_GAME_LENGTH = 120;
 
 export type GivingPledgeDetails = {
   jacketVariant?: LettermanJacketVariant;
   suitSize?: string;
-  /** Theme label when the donor picked Theme tab (or legacy theme-only pledges). */
+  /** @deprecated Legacy theme pledges only — new tailgates are game-only. */
   tailgateTheme?: string;
-  /** Game label when the donor picked Game tab (or optional game note). */
+  /** Game the donor is sponsoring. */
   tailgateGame?: string;
-  /** Which Tailgate sub-tab was used: game | theme. */
-  tailgateMode?: "game" | "theme";
 };
 
 export type GivingPledge = {
@@ -92,9 +91,7 @@ function normalizeJacketVariant(value: unknown): LettermanJacketVariant | null {
 }
 
 function normalizeSuitSize(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const size = value.trim().toUpperCase();
-  return (LETTERMAN_JACKET.suitSizes as readonly string[]).includes(size) ? size : null;
+  return normalizeShortText(value, MAX_SUIT_SIZE_LENGTH);
 }
 
 function normalizeShortText(value: unknown, max: number): string | null {
@@ -115,9 +112,6 @@ export function parseGivingDetails(raw: unknown): GivingPledgeDetails {
   if (theme) details.tailgateTheme = theme;
   const game = normalizeShortText(row.tailgateGame, MAX_TAILGATE_GAME_LENGTH);
   if (game) details.tailgateGame = game;
-  if (row.tailgateMode === "game" || row.tailgateMode === "theme") {
-    details.tailgateMode = row.tailgateMode;
-  }
   return details;
 }
 
@@ -136,7 +130,6 @@ export function resolveGivingPledgeInput(input: {
   suitSize?: unknown;
   tailgateTheme?: unknown;
   tailgateGame?: unknown;
-  tailgateMode?: unknown;
 }): ParsedGivingPledgeInput {
   const designation = normalizeDesignation(input.designation);
   const details = parseGivingDetails({
@@ -144,7 +137,6 @@ export function resolveGivingPledgeInput(input: {
     suitSize: input.suitSize,
     tailgateTheme: input.tailgateTheme,
     tailgateGame: input.tailgateGame,
-    tailgateMode: input.tailgateMode,
   });
 
   if (designation === "letterman_jacket") {
@@ -170,33 +162,13 @@ export function resolveGivingPledgeInput(input: {
   }
 
   if (designation === "tailgate") {
-    const mode =
-      input.tailgateMode === "game" || input.tailgateMode === "theme"
-        ? input.tailgateMode
-        : details.tailgateMode === "game" || details.tailgateMode === "theme"
-          ? details.tailgateMode
-          : details.tailgateGame
-            ? "game"
-            : "theme";
-    details.tailgateMode = mode;
-
-    if (mode === "game") {
-      const game =
-        normalizeShortText(input.tailgateGame, MAX_TAILGATE_GAME_LENGTH) ?? details.tailgateGame;
-      if (!game) {
-        return { ok: false, error: "Choose a game for the tailgate sponsorship." };
-      }
-      details.tailgateGame = game;
-      delete details.tailgateTheme;
-    } else {
-      const theme =
-        normalizeShortText(input.tailgateTheme, MAX_TAILGATE_THEME_LENGTH) ?? details.tailgateTheme;
-      if (!theme) {
-        return { ok: false, error: "Choose a theme for the tailgate sponsorship." };
-      }
-      details.tailgateTheme = theme;
-      delete details.tailgateGame;
+    const game =
+      normalizeShortText(input.tailgateGame, MAX_TAILGATE_GAME_LENGTH) ?? details.tailgateGame;
+    if (!game) {
+      return { ok: false, error: "Choose a game for the tailgate sponsorship." };
     }
+    details.tailgateGame = game;
+    delete details.tailgateTheme;
 
     const amountCents =
       dollarsToCents(input.amountDollars) ??
@@ -227,10 +199,10 @@ export function resolveGivingPledgeInput(input: {
     amountCents < MIN_PLEDGE_CENTS ||
     amountCents > MAX_PLEDGE_CENTS
   ) {
-    return { ok: false, error: "Choose a valid recurring amount of at least $1." };
+    return { ok: false, error: "Choose a valid one-time amount of at least $1." };
   }
 
-  return { ok: true, amountCents, designation: "recurring", details: {} };
+  return { ok: true, amountCents, designation: "one_time", details: {} };
 }
 
 export function formatPledgePurpose(pledge: Pick<GivingPledge, "designation" | "details" | "amount_cents">) {
@@ -244,10 +216,8 @@ export function formatPledgePurpose(pledge: Pick<GivingPledge, "designation" | "
     return `${label} · ${variant}`;
   }
   if (designation === "tailgate") {
-    if (pledge.details.tailgateMode === "game" || pledge.details.tailgateGame) {
-      return `${label} · Game · ${pledge.details.tailgateGame || "TBD"}`;
-    }
-    return `${label} · Theme · ${pledge.details.tailgateTheme || "TBD"}`;
+    const game = pledge.details.tailgateGame || pledge.details.tailgateTheme || "TBD";
+    return `${label} · ${game}`;
   }
   return label;
 }

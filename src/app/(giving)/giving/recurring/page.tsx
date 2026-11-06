@@ -1,41 +1,17 @@
-import { GivingChrome } from "@/components/giving-chrome";
-import { RecurringGivingForm } from "@/components/giving-forms";
-import { PageHeader, PageMain } from "@/components/page-chrome";
-import { StatusCard } from "@/components/status-card";
-import { loadGivingPageContext } from "@/lib/giving-page";
-
-export const metadata = {
-  title: "Recurring gift",
-};
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function RecurringGivingPage({
+/** Legacy path — Recurring was replaced by one-time gifts. */
+export default async function RecurringGivingRedirect({
   searchParams,
 }: {
   searchParams: Promise<{ recorded?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const { locker, summary, errorMessage, alumDonorLabel } = await loadGivingPageContext();
-
-  return (
-    <GivingChrome locker={locker}>
-      <PageMain width="narrow">
-        <PageHeader
-          title="Recurring"
-          description="Bronze, Silver, or Gold annual support."
-        />
-        {errorMessage ? (
-          <StatusCard title="Giving unavailable" body={errorMessage} />
-        ) : (
-          <RecurringGivingForm
-            initial={summary}
-            recorded={params.recorded === "1"}
-            amountError={params.error === "amount"}
-            defaultDonorLabel={alumDonorLabel}
-          />
-        )}
-      </PageMain>
-    </GivingChrome>
-  );
+  const query = new URLSearchParams();
+  if (params.recorded) query.set("recorded", params.recorded);
+  if (params.error) query.set("error", params.error);
+  const suffix = query.toString() ? `?${query}` : "";
+  redirect(`/giving/one-time${suffix}`);
 }
