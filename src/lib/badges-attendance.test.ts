@@ -135,4 +135,58 @@ describe("live attendance feed consume", () => {
     assert.equal(JSON.stringify(eventBadgeFromAttendanceLeader(leaders[0]!)).includes("$"), false);
     assert.equal(JSON.stringify(eventBadgeFromAttendanceLeader(leaders[0]!)).includes("#1"), false);
   });
+
+  it("does not invent a Top Tailgate chip for an alum missing from the leaders list", () => {
+    const leaders = attendanceLeadersFromLiveFeed({
+      version: ATTENDANCE_BADGE_FEED_VERSION,
+      attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
+      rankBasis: ATTENDANCE_RANK_BASIS,
+      thresholdsNote: ATTENDANCE_BADGE_THRESHOLDS_NOTE,
+      rows: [
+        {
+          eventId: "e1",
+          eventSlug: "holy-cross-tailgate",
+          eventTitle: "Holy Cross Tailgate",
+          alumId: null,
+          userId: "user:siegfril",
+          checkedInAt: "2026-10-30T13:30:19.456Z",
+          attendanceCount: 3,
+          attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
+          rank: 1,
+          percentile: 100,
+          cohortSize: 1,
+          rankBasis: ATTENDANCE_RANK_BASIS,
+        },
+      ],
+      leaders: [
+        {
+          personKey: "user:siegfril",
+          alumId: null,
+          userId: "user:siegfril",
+          displayName: "siegfril",
+          attendanceCount: 3,
+          attendanceCountScope: ATTENDANCE_COUNT_SCOPE,
+          lastCheckedInAt: "2026-10-30T13:30:19.456Z",
+          rank: 1,
+          percentile: 100,
+          cohortSize: 1,
+        },
+      ],
+    });
+    const charlie = "b9bc9839-6f8a-4463-98dd-e826718b6e7f";
+    assert.equal(
+      leaders.find((row) => row.alumId === charlie),
+      undefined,
+    );
+    assert.equal(
+      eventBadgeFromAttendanceLeader({
+        alumId: charlie,
+        attendanceCount: 0,
+        rank: null,
+        percentile: null,
+        cohortSize: 1,
+      }),
+      null,
+    );
+  });
 });
