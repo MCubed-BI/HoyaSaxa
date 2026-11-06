@@ -211,7 +211,7 @@ One shared header for Admin and Alum. Primary nav is **For You · Directory · E
 - `/fundraising` — staff campaigns
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
-- `/giving` — three pieces: **Recurring** (Bronze/Silver/Gold), **Letterman** (Donate $200 or For Self $240 + suit size), **Tailgate** (Game or Theme tab + $250/$500/$1,000/$5,000). Pledges are unpaid intents in Neon (`giving_pledges` with `designation` + `details`). Stripe is later.
+- `/giving` — hub linking three donation pages: `/giving/recurring` (Bronze/Silver/Gold), `/giving/letterman` (Donate $200 or For Self $240 + suit size), `/giving/tailgate` (Game or Theme + $250/$500/$1,000/$5,000). Pledges are unpaid intents in Neon (`giving_pledges` with `designation` + `details`). Stripe is later.
 
 Alumni login is a distinct **alum** session, not coach. Portal detect:
 

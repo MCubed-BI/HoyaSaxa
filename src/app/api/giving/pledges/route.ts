@@ -75,9 +75,20 @@ export async function POST(request: Request) {
   const resolved = resolveGivingPledgeInput(fields);
   const wantsJson = contentType.includes("application/json");
 
+  function redirectForPiece(query: "recorded=1" | "error=amount") {
+    const designation = resolved.ok ? resolved.designation : String(fields.designation ?? "recurring");
+    const path =
+      designation === "letterman_jacket"
+        ? "/giving/letterman"
+        : designation === "tailgate"
+          ? "/giving/tailgate"
+          : "/giving/recurring";
+    return NextResponse.redirect(new URL(`${path}?${query}`, request.url), { status: 303 });
+  }
+
   if (!resolved.ok) {
     if (!wantsJson) {
-      return NextResponse.redirect(new URL("/giving?error=amount", request.url), { status: 303 });
+      return redirectForPiece("error=amount");
     }
     return jsonError(resolved.error, 400);
   }
@@ -104,7 +115,7 @@ export async function POST(request: Request) {
       details: resolved.details,
     });
     if (!wantsJson) {
-      return NextResponse.redirect(new URL("/giving?recorded=1", request.url), { status: 303 });
+      return redirectForPiece("recorded=1");
     }
     const summary = await listGivingSummary();
     return NextResponse.json({ pledge, ...summary }, { status: 201 });

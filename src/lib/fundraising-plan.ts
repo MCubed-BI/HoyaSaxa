@@ -1,6 +1,5 @@
 /**
- * Giving options for /giving — three pieces only:
- * Recurring, Letterman Jacket, Tailgate.
+ * Giving options for /giving — three separate donation pages.
  */
 
 export const RECURRING_AMOUNTS = [
@@ -17,9 +16,6 @@ export const LETTERMAN_JACKET = {
   suitSizes: ["36", "38", "40", "42", "44", "46", "48", "50", "52", "XS", "S", "M", "L", "XL", "2XL", "3XL"] as const,
 } as const;
 
-/** @deprecated Use donateDollars — kept for older pledge details. */
-export const LETTERMAN_PLAYER_SPONSOR_DOLLARS = LETTERMAN_JACKET.donateDollars;
-
 export const TAILGATE_SPONSORSHIP = {
   amountDollars: [250, 500, 1000, 5000] as const,
   themes: [
@@ -30,22 +26,36 @@ export const TAILGATE_SPONSORSHIP = {
     "Rivalry game",
     "Other / custom",
   ] as const,
+  games: [
+    "vs. Holy Cross",
+    "vs. Colgate",
+    "vs. Fordham",
+    "vs. Lehigh",
+    "vs. Lafayette",
+    "vs. Bucknell",
+    "Homecoming",
+    "Spring Game",
+    "Other / custom",
+  ] as const,
 } as const;
 
 export const GIVING_PIECES = [
   {
     id: "recurring",
     label: "Recurring",
+    href: "/giving/recurring",
     summary: "Monthly/annual support — Bronze $250, Silver $500, Gold $750.",
   },
   {
     id: "letterman_jacket",
     label: "Letterman",
+    href: "/giving/letterman",
     summary: `Donate $${LETTERMAN_JACKET.donateDollars} for a player, or $${LETTERMAN_JACKET.selfDollars} for yourself (suit size).`,
   },
   {
     id: "tailgate",
     label: "Tailgate",
+    href: "/giving/tailgate",
     summary: "Sponsor a game or theme — $250 / $500 / $1,000 / $5,000.",
   },
 ] as const;
@@ -80,7 +90,11 @@ export function recurringLabelForDollars(amountDollars: number) {
   return RECURRING_AMOUNTS.find((row) => row.amountDollars === amountDollars)?.label ?? null;
 }
 
-/** Back-compat aliases used by older imports/tests. */
+export function givingPieceById(id: GivingDesignationId) {
+  return GIVING_PIECES.find((row) => row.id === id)!;
+}
+
+/** Back-compat aliases. */
 export const GIVING_DESIGNATIONS = GIVING_PIECES;
 export const SUBSCRIPTION_RANKS = RECURRING_AMOUNTS.map((row) => ({
   ...row,

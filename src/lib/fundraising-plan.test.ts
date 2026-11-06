@@ -13,6 +13,10 @@ test("three giving pieces only", () => {
     GIVING_PIECES.map((row) => row.id),
     ["recurring", "letterman_jacket", "tailgate"],
   );
+  assert.deepEqual(
+    GIVING_PIECES.map((row) => row.href),
+    ["/giving/recurring", "/giving/letterman", "/giving/tailgate"],
+  );
 });
 
 test("recurring amounts are Bronze / Silver / Gold", () => {
