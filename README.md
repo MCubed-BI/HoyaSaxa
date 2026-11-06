@@ -211,7 +211,7 @@ One shared header for Admin and Alum. Primary nav is **For You · Directory · E
 - `/fundraising` — staff campaigns
 - `/reports` — build a group, download CSV, jump to text or email blast
 - `/blast` — one selected group, then compose and send a text or an email
-- `/giving` — fundraising MVP: $25 / $50 / $100 / $250 / Other, Give Now, Impact / Funds / Leaderboards tabs. Pledges are unpaid intents in Neon (`giving_pledges`). Stripe is later.
+- `/giving` — fundraising MVP: choose a designation (subscription Bronze/Silver/Gold, campaign pillars, Letterman Jacket, Tailgate sponsorship, or general impact), Give Now, Impact / Funds / Leaderboards tabs. `/giving/plan` defines ladder + subscription terms/rewards (links `public/docs/fundraising-plan.pdf`). Pledges are unpaid intents in Neon (`giving_pledges` with `designation` + `details`). Stripe is later.
 
 Alumni login is a distinct **alum** session, not coach. Portal detect:
 

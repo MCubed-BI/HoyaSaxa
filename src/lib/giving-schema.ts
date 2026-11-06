@@ -43,6 +43,18 @@ export async function ensureGivingPledgesTable() {
     ON giving_pledges (alumni_id)
     WHERE alumni_id IS NOT NULL
   `);
+  await sql.query(`
+    ALTER TABLE giving_pledges
+    ADD COLUMN IF NOT EXISTS designation text NOT NULL DEFAULT 'general'
+  `);
+  await sql.query(`
+    ALTER TABLE giving_pledges
+    ADD COLUMN IF NOT EXISTS details jsonb NOT NULL DEFAULT '{}'::jsonb
+  `);
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS giving_pledges_designation
+    ON giving_pledges (designation)
+  `);
 
   ensured = true;
 }

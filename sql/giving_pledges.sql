@@ -15,3 +15,15 @@ CREATE TABLE IF NOT EXISTS giving_pledges (
 
 CREATE INDEX IF NOT EXISTS giving_pledges_created_at
   ON giving_pledges (created_at DESC);
+
+-- Additive columns (also ensured at runtime in src/lib/giving-schema.ts)
+ALTER TABLE giving_pledges ADD COLUMN IF NOT EXISTS alumni_id uuid;
+ALTER TABLE giving_pledges ADD COLUMN IF NOT EXISTS designation text NOT NULL DEFAULT 'general';
+ALTER TABLE giving_pledges ADD COLUMN IF NOT EXISTS details jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+CREATE INDEX IF NOT EXISTS giving_pledges_alumni_id
+  ON giving_pledges (alumni_id)
+  WHERE alumni_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS giving_pledges_designation
+  ON giving_pledges (designation);
