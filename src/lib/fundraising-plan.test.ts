@@ -1,26 +1,37 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  BENEFIT_LADDER,
-  SUBSCRIPTION_AMOUNT_DOLLARS,
-  SUBSCRIPTION_RANKS,
+  GIVING_PIECES,
+  RECURRING_AMOUNT_DOLLARS,
   TAILGATE_SPONSORSHIP,
-  subscriptionRankForDollars,
+  normalizeGivingPiece,
+  recurringLabelForDollars,
 } from "./fundraising-plan";
 
-test("subscription ranks match Bronze / Silver / Gold asks", () => {
-  assert.deepEqual(SUBSCRIPTION_AMOUNT_DOLLARS, [250, 500, 750]);
-  assert.equal(subscriptionRankForDollars(250)?.id, "bronze");
-  assert.equal(subscriptionRankForDollars(500)?.id, "silver");
-  assert.equal(subscriptionRankForDollars(750)?.id, "gold");
-  assert.equal(SUBSCRIPTION_RANKS.length, 3);
+test("three giving pieces only", () => {
+  assert.deepEqual(
+    GIVING_PIECES.map((row) => row.id),
+    ["recurring", "letterman_jacket", "tailgate"],
+  );
+  assert.deepEqual(
+    GIVING_PIECES.map((row) => row.href),
+    ["/giving/recurring", "/giving/letterman", "/giving/tailgate"],
+  );
 });
 
-test("benefit ladder has five rungs with Founders at the top", () => {
-  assert.equal(BENEFIT_LADDER.length, 5);
-  assert.equal(BENEFIT_LADDER[0]?.id, "founders");
-  assert.equal(BENEFIT_LADDER[0]?.amountDollars, 25_000);
-  assert.equal(BENEFIT_LADDER.at(-1)?.id, "letterwinner");
+test("recurring amounts are Bronze / Silver / Gold", () => {
+  assert.deepEqual(RECURRING_AMOUNT_DOLLARS, [250, 500, 750]);
+  assert.equal(recurringLabelForDollars(250), "Bronze");
+  assert.equal(recurringLabelForDollars(500), "Silver");
+  assert.equal(recurringLabelForDollars(750), "Gold");
+});
+
+test("maps legacy designations onto the three pieces", () => {
+  assert.equal(normalizeGivingPiece("subscription"), "recurring");
+  assert.equal(normalizeGivingPiece("general"), "recurring");
+  assert.equal(normalizeGivingPiece("coaches_fund"), "recurring");
+  assert.equal(normalizeGivingPiece("letterman_jacket"), "letterman_jacket");
+  assert.equal(normalizeGivingPiece("tailgate"), "tailgate");
 });
 
 test("tailgate sponsorship defaults", () => {

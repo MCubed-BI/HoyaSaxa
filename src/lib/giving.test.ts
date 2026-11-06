@@ -29,21 +29,33 @@ test("trims optional donor labels", () => {
   assert.equal(normalizeDonorLabel(12), null);
 });
 
-test("normalizes known designations", () => {
+test("normalizes known designations onto three pieces", () => {
   assert.equal(normalizeDesignation("tailgate"), "tailgate");
   assert.equal(normalizeDesignation("letterman_jacket"), "letterman_jacket");
-  assert.equal(normalizeDesignation("nope"), "general");
+  assert.equal(normalizeDesignation("recurring"), "recurring");
+  assert.equal(normalizeDesignation("subscription"), "recurring");
+  assert.equal(normalizeDesignation("nope"), "recurring");
 });
 
-test("resolves letterman jacket player sponsor and self with suit size", () => {
-  const player = resolveGivingPledgeInput({
+test("resolves letterman donate and self with suit size", () => {
+  const donate = resolveGivingPledgeInput({
+    designation: "letterman_jacket",
+    jacketVariant: "donate",
+  });
+  assert.equal(donate.ok, true);
+  if (donate.ok) {
+    assert.equal(donate.amountCents, 20_000);
+    assert.equal(donate.details.jacketVariant, "donate");
+  }
+
+  const legacy = resolveGivingPledgeInput({
     designation: "letterman_jacket",
     jacketVariant: "player_sponsor",
   });
-  assert.equal(player.ok, true);
-  if (player.ok) {
-    assert.equal(player.amountCents, 20_000);
-    assert.equal(player.details.jacketVariant, "player_sponsor");
+  assert.equal(legacy.ok, true);
+  if (legacy.ok) {
+    assert.equal(legacy.amountCents, 20_000);
+    assert.equal(legacy.details.jacketVariant, "donate");
   }
 
   const missingSize = resolveGivingPledgeInput({
@@ -64,24 +76,39 @@ test("resolves letterman jacket player sponsor and self with suit size", () => {
   }
 });
 
-test("resolves tailgate sponsorship with theme and presets", () => {
+test("resolves tailgate game and theme modes", () => {
   const missing = resolveGivingPledgeInput({
     designation: "tailgate",
     amountDollars: 500,
+    tailgateMode: "theme",
   });
   assert.equal(missing.ok, false);
 
-  const ok = resolveGivingPledgeInput({
+  const theme = resolveGivingPledgeInput({
     designation: "tailgate",
     amountDollars: 1000,
+    tailgateMode: "theme",
     tailgateTheme: "Homecoming",
+  });
+  assert.equal(theme.ok, true);
+  if (theme.ok) {
+    assert.equal(theme.amountCents, 100_000);
+    assert.equal(theme.details.tailgateMode, "theme");
+    assert.equal(theme.details.tailgateTheme, "Homecoming");
+    assert.equal(theme.details.tailgateGame, undefined);
+  }
+
+  const game = resolveGivingPledgeInput({
+    designation: "tailgate",
+    amountDollars: 250,
+    tailgateMode: "game",
     tailgateGame: "vs. Holy Cross",
   });
-  assert.equal(ok.ok, true);
-  if (ok.ok) {
-    assert.equal(ok.amountCents, 100_000);
-    assert.equal(ok.details.tailgateTheme, "Homecoming");
-    assert.equal(ok.details.tailgateGame, "vs. Holy Cross");
+  assert.equal(game.ok, true);
+  if (game.ok) {
+    assert.equal(game.details.tailgateMode, "game");
+    assert.equal(game.details.tailgateGame, "vs. Holy Cross");
+    assert.equal(game.details.tailgateTheme, undefined);
   }
 });
 
@@ -92,14 +119,22 @@ test("formats pledge purpose labels", () => {
       amount_cents: 24_000,
       details: { jacketVariant: "self", suitSize: "44" },
     }),
-    "Letterman Jacket · For Self · size 44",
+    "Letterman · For Self · size 44",
   );
   assert.equal(
     formatPledgePurpose({
       designation: "tailgate",
       amount_cents: 50_000,
-      details: { tailgateTheme: "Spring Game" },
+      details: { tailgateMode: "theme", tailgateTheme: "Spring Game" },
     }),
-    "Tailgate sponsorship · Spring Game",
+    "Tailgate · Theme · Spring Game",
+  );
+  assert.equal(
+    formatPledgePurpose({
+      designation: "recurring",
+      amount_cents: 25_000,
+      details: {},
+    }),
+    "Recurring",
   );
 });

@@ -1,115 +1,17 @@
 /**
- * Fundraising plan terms and rewards (from Fundraising plan.pdf).
- * Tier dollars stay on the Giving / plan glossary surfaces — badge UI never
- * shows donor $ amounts (see docs/CODERS.md).
+ * Giving options for /giving — three separate donation pages.
  */
 
-export const FUNDRAISING_PLAN_PDF_HREF = "/docs/fundraising-plan.pdf";
-export const FUNDRAISING_PLAN_PAGE_HREF = "/giving/plan";
-
-/** Campaign pillars — “pick a cause.” */
-export const CAMPAIGN_PILLARS = [
-  {
-    id: "coaches_fund",
-    label: "Coaches Fund",
-    summary: "Retain and expand the coaching staff — the fastest-growing designation since FY2021.",
-  },
-  {
-    id: "player_scholarship",
-    label: "Player Scholarship Fund",
-    summary: "Named and pooled scholarships, including the Gridiron Scholarship.",
-  },
-  {
-    id: "facilities",
-    label: "Facilities & Locker Room",
-    summary: "A visible, finite capital goal that feels new to donors.",
-  },
+export const RECURRING_AMOUNTS = [
+  { id: "bronze", label: "Bronze", amountDollars: 250 },
+  { id: "silver", label: "Silver", amountDollars: 500 },
+  { id: "gold", label: "Gold", amountDollars: 750 },
 ] as const;
 
-/** Annual benefit ladder — “pick a rung.” Independent of campaign pillar. */
-export const BENEFIT_LADDER = [
-  {
-    id: "founders",
-    label: "Founders",
-    amountDollars: 25_000,
-    period: "yr",
-    rewards: [
-      "Season tickets",
-      "Sideline field pass for one game",
-      "Name on the wall",
-      "Annual dinner with the head coach",
-    ],
-  },
-  {
-    id: "leadership",
-    label: "Leadership",
-    amountDollars: 10_000,
-    period: "yr",
-    rewards: [
-      "Season tickets",
-      "One field pass",
-      "Team-travel invitation",
-      "Recognition at the spring game",
-    ],
-  },
-  {
-    id: "captain",
-    label: "Captain",
-    amountDollars: 5_000,
-    period: "yr",
-    rewards: ["Two season tickets", "Locker-room tour", "Private pre-game reception"],
-  },
-  {
-    id: "varsity",
-    label: "Varsity",
-    amountDollars: 2_500,
-    period: "yr",
-    rewards: ["Two season tickets", "Invitation to the annual donor reception"],
-  },
-  {
-    id: "letterwinner",
-    label: "Letterwinner",
-    amountDollars: 1_000,
-    period: "yr",
-    rewards: ["Programme gift", "Listing in the game programme", "Priority ticket access"],
-  },
-] as const;
-
-/**
- * Subscription ranking for the broader base (“Everyone else goes on a subscription”).
- * Matches Bronze / Silver / Gold ask bands in the plan.
- */
-export const SUBSCRIPTION_RANKS = [
-  {
-    id: "bronze",
-    label: "Bronze",
-    amountDollars: 250,
-    period: "yr",
-    approxMonthly: 21,
-    summary: "Entry subscription band — recurring annual support.",
-  },
-  {
-    id: "silver",
-    label: "Silver",
-    amountDollars: 500,
-    period: "yr",
-    approxMonthly: 42,
-    summary: "Mid subscription band — blended plan average.",
-  },
-  {
-    id: "gold",
-    label: "Gold",
-    amountDollars: 750,
-    period: "yr",
-    approxMonthly: 63,
-    summary: "Top subscription band below the benefit ladder.",
-  },
-] as const;
-
-export const SUBSCRIPTION_AMOUNT_DOLLARS = SUBSCRIPTION_RANKS.map((rank) => rank.amountDollars);
+export const RECURRING_AMOUNT_DOLLARS = RECURRING_AMOUNTS.map((row) => row.amountDollars);
 
 export const LETTERMAN_JACKET = {
-  playerSponsorDollars: 200,
+  donateDollars: 200,
   selfDollars: 240,
   suitSizes: ["36", "38", "40", "42", "44", "46", "48", "50", "52", "XS", "S", "M", "L", "XL", "2XL", "3XL"] as const,
 } as const;
@@ -124,53 +26,81 @@ export const TAILGATE_SPONSORSHIP = {
     "Rivalry game",
     "Other / custom",
   ] as const,
+  games: [
+    "vs. Holy Cross",
+    "vs. Colgate",
+    "vs. Fordham",
+    "vs. Lehigh",
+    "vs. Lafayette",
+    "vs. Bucknell",
+    "Homecoming",
+    "Spring Game",
+    "Other / custom",
+  ] as const,
 } as const;
 
-export const GIVING_DESIGNATIONS = [
+export const GIVING_PIECES = [
   {
-    id: "subscription",
-    label: "Annual subscription",
-    summary: "Bronze / Silver / Gold recurring ranks from the fundraising plan.",
-  },
-  {
-    id: "coaches_fund",
-    label: "Coaches Fund",
-    summary: CAMPAIGN_PILLARS[0].summary,
-  },
-  {
-    id: "player_scholarship",
-    label: "Player Scholarship Fund",
-    summary: CAMPAIGN_PILLARS[1].summary,
-  },
-  {
-    id: "facilities",
-    label: "Facilities & Locker Room",
-    summary: CAMPAIGN_PILLARS[2].summary,
+    id: "recurring",
+    label: "Recurring",
+    href: "/giving/recurring",
+    summary: "Monthly/annual support — Bronze $250, Silver $500, Gold $750.",
   },
   {
     id: "letterman_jacket",
-    label: "Letterman Jacket",
-    summary: `Player sponsor $${LETTERMAN_JACKET.playerSponsorDollars}, or $${LETTERMAN_JACKET.selfDollars} for yourself (suit size required).`,
+    label: "Letterman",
+    href: "/giving/letterman",
+    summary: `Donate $${LETTERMAN_JACKET.donateDollars} for a player, or $${LETTERMAN_JACKET.selfDollars} for yourself (suit size).`,
   },
   {
     id: "tailgate",
-    label: "Tailgate sponsorship",
-    summary: "Sponsor a game or theme at $250 / $500 / $1,000 / $5,000.",
-  },
-  {
-    id: "general",
-    label: "General impact",
-    summary: "Flexible gift to Hoya Football.",
+    label: "Tailgate",
+    href: "/giving/tailgate",
+    summary: "Sponsor a game or theme — $250 / $500 / $1,000 / $5,000.",
   },
 ] as const;
 
-export type GivingDesignationId = (typeof GIVING_DESIGNATIONS)[number]["id"];
-export type LettermanJacketVariant = "player_sponsor" | "self";
+export type GivingDesignationId = (typeof GIVING_PIECES)[number]["id"];
+export type LettermanJacketVariant = "donate" | "self" | "player_sponsor";
+
+/** Legacy designation ids still readable from older pledges. */
+const LEGACY_DESIGNATION_MAP: Record<string, GivingDesignationId> = {
+  subscription: "recurring",
+  general: "recurring",
+  coaches_fund: "recurring",
+  player_scholarship: "recurring",
+  facilities: "recurring",
+  letterman_jacket: "letterman_jacket",
+  tailgate: "tailgate",
+  recurring: "recurring",
+};
+
+export function normalizeGivingPiece(value: unknown): GivingDesignationId {
+  if (typeof value !== "string") return "recurring";
+  const key = value.trim();
+  return LEGACY_DESIGNATION_MAP[key] ?? "recurring";
+}
 
 export function designationLabel(id: string | null | undefined) {
-  return GIVING_DESIGNATIONS.find((row) => row.id === id)?.label ?? "General impact";
+  const piece = normalizeGivingPiece(id);
+  return GIVING_PIECES.find((row) => row.id === piece)?.label ?? "Recurring";
 }
 
-export function subscriptionRankForDollars(amountDollars: number) {
-  return SUBSCRIPTION_RANKS.find((rank) => rank.amountDollars === amountDollars) ?? null;
+export function recurringLabelForDollars(amountDollars: number) {
+  return RECURRING_AMOUNTS.find((row) => row.amountDollars === amountDollars)?.label ?? null;
 }
+
+export function givingPieceById(id: GivingDesignationId) {
+  return GIVING_PIECES.find((row) => row.id === id)!;
+}
+
+/** Back-compat aliases. */
+export const GIVING_DESIGNATIONS = GIVING_PIECES;
+export const SUBSCRIPTION_RANKS = RECURRING_AMOUNTS.map((row) => ({
+  ...row,
+  period: "yr" as const,
+  approxMonthly: Math.round(row.amountDollars / 12),
+  summary: `${row.label} recurring`,
+}));
+export const SUBSCRIPTION_AMOUNT_DOLLARS = RECURRING_AMOUNT_DOLLARS;
+export const subscriptionRankForDollars = recurringLabelForDollars;

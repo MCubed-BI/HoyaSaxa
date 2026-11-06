@@ -1,13 +1,8 @@
-import { redirect } from "next/navigation";
 import { GivingChrome } from "@/components/giving-chrome";
-import { GivingScreen } from "@/components/giving-screen";
+import { GivingHub } from "@/components/giving-forms";
 import { PageHeader, PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
-import { isMissingDatabaseConfig } from "@/lib/db";
-import { emptyGivingSummary, listGivingSummary } from "@/lib/giving";
-import { getLockerViewer } from "@/lib/locker-viewer";
-import { canOpenGiving } from "@/lib/roles";
-import { getCurrentViewer } from "@/lib/viewer";
+import { loadGivingPageContext } from "@/lib/giving-page";
 
 export const metadata = {
   title: "Give",
@@ -15,51 +10,20 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function GivingPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ recorded?: string; error?: string }>;
-}) {
-  const params = await searchParams;
-  const [viewer, locker] = await Promise.all([getCurrentViewer(), getLockerViewer()]);
-
-  if (!viewer || !canOpenGiving(viewer.role)) {
-    redirect("/home/login");
-  }
-
-  let summary = emptyGivingSummary;
-  let errorMessage: string | null = null;
-
-  try {
-    summary = await listGivingSummary();
-  } catch (error) {
-    errorMessage = isMissingDatabaseConfig(error)
-      ? "DATABASE_URL is not set. Add it to .env.local and reload."
-      : error instanceof Error
-        ? error.message
-        : "Could not load pledges.";
-  }
-
-  const alumDonorLabel =
-    locker && locker.source !== "ga_session" && locker.label ? locker.label : undefined;
+export default async function GivingPage() {
+  const { locker, summary, errorMessage } = await loadGivingPageContext();
 
   return (
     <GivingChrome locker={locker}>
       <PageMain width="narrow">
         <PageHeader
-          eyebrow="Fundraising"
           title="Give"
-          description="Choose what to support — subscription ranks, campaign funds, letterman jacket, or a tailgate — and record an unpaid pledge intent. Stripe is not required for this MVP."
+          description="Pick a donation page: Recurring, Letterman, or Tailgate."
         />
         {errorMessage ? (
           <StatusCard title="Giving unavailable" body={errorMessage} />
         ) : (
-          <GivingScreen
-            initial={summary}
-            recorded={params.recorded === "1"}
-            amountError={params.error === "amount"}
-            defaultDonorLabel={alumDonorLabel}
-          />
+          <GivingHub initial={summary} />
         )}
       </PageMain>
     </GivingChrome>
