@@ -27,6 +27,7 @@ function readBodyFields(body: Record<string, unknown>) {
     suitSize: body.suitSize ?? body.suit_size,
     tailgateTheme: body.tailgateTheme ?? body.tailgate_theme,
     tailgateGame: body.tailgateGame ?? body.tailgate_game,
+    tailgateMode: body.tailgateMode ?? body.tailgate_mode,
     donorLabel: body.donorLabel ?? body.donor_label,
     alumniId: body.alumniId ?? body.alumni_id,
   };
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
         suitSize: form.get("suitSize") ?? form.get("suit_size"),
         tailgateTheme: form.get("tailgateTheme") ?? form.get("tailgate_theme"),
         tailgateGame: form.get("tailgateGame") ?? form.get("tailgate_game"),
+        tailgateMode: form.get("tailgateMode") ?? form.get("tailgate_mode"),
       };
     }
   } catch {
