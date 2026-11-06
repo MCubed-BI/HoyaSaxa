@@ -32,9 +32,10 @@ test("trims optional donor labels", () => {
 test("normalizes known designations onto three pieces", () => {
   assert.equal(normalizeDesignation("tailgate"), "tailgate");
   assert.equal(normalizeDesignation("letterman_jacket"), "letterman_jacket");
-  assert.equal(normalizeDesignation("recurring"), "recurring");
-  assert.equal(normalizeDesignation("subscription"), "recurring");
-  assert.equal(normalizeDesignation("nope"), "recurring");
+  assert.equal(normalizeDesignation("one_time"), "one_time");
+  assert.equal(normalizeDesignation("recurring"), "one_time");
+  assert.equal(normalizeDesignation("subscription"), "one_time");
+  assert.equal(normalizeDesignation("nope"), "one_time");
 });
 
 test("resolves letterman donate and self with suit size", () => {
@@ -125,10 +126,10 @@ test("formats pledge purpose labels", () => {
   );
   assert.equal(
     formatPledgePurpose({
-      designation: "recurring",
+      designation: "one_time",
       amount_cents: 25_000,
       details: {},
     }),
-    "Recurring",
+    "One-time",
   );
 });

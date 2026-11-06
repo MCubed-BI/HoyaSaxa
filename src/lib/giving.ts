@@ -199,10 +199,10 @@ export function resolveGivingPledgeInput(input: {
     amountCents < MIN_PLEDGE_CENTS ||
     amountCents > MAX_PLEDGE_CENTS
   ) {
-    return { ok: false, error: "Choose a valid recurring amount of at least $1." };
+    return { ok: false, error: "Choose a valid one-time amount of at least $1." };
   }
 
-  return { ok: true, amountCents, designation: "recurring", details: {} };
+  return { ok: true, amountCents, designation: "one_time", details: {} };
 }
 
 export function formatPledgePurpose(pledge: Pick<GivingPledge, "designation" | "details" | "amount_cents">) {

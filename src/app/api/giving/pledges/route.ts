@@ -76,13 +76,13 @@ export async function POST(request: Request) {
   const wantsJson = contentType.includes("application/json");
 
   function redirectForPiece(query: "recorded=1" | "error=amount") {
-    const designation = resolved.ok ? resolved.designation : String(fields.designation ?? "recurring");
+    const designation = resolved.ok ? resolved.designation : String(fields.designation ?? "one_time");
     const path =
       designation === "letterman_jacket"
         ? "/giving/letterman"
         : designation === "tailgate"
           ? "/giving/tailgate"
-          : "/giving/recurring";
+          : "/giving/one-time";
     return NextResponse.redirect(new URL(`${path}?${query}`, request.url), { status: 303 });
   }
 

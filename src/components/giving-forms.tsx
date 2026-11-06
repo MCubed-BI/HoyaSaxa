@@ -8,11 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Timestamp } from "@/components/timestamp";
 import { HoyaBadgeRow } from "@/components/hoya-badges";
-import { formatNumber } from "@/lib/format";
 import {
-  GIVING_PIECES,
+  BENEFIT_LADDER,
+  GIFT_BANDS,
+  GIVING_NAV,
   LETTERMAN_JACKET,
-  RECURRING_AMOUNTS,
+  ONE_TIME_AMOUNTS,
   TAILGATE_SPONSORSHIP,
   givingPieceById,
   type GivingDesignationId,
@@ -23,19 +24,21 @@ import {
   type GivingPledge,
   type GivingSummary,
 } from "@/lib/giving";
+import { formatCurrency, formatNumber } from "@/lib/format";
 
 type LettermanOption = "donate" | "self";
+type GivingNavId = GivingDesignationId | "leaderboard";
 
 const SELECT_CLASS =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm";
 
-function GivingNav({ current }: { current: GivingDesignationId }) {
+function GivingNav({ current }: { current: GivingNavId }) {
   return (
     <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm" aria-label="Donation pages">
       <Link href="/giving" className="text-muted-foreground underline-offset-4 hover:underline">
         All options
       </Link>
-      {GIVING_PIECES.map((piece) => (
+      {GIVING_NAV.map((piece) => (
         <Link
           key={piece.id}
           href={piece.href}
@@ -182,8 +185,8 @@ function usePledgeForm({
 export function GivingHub({ initial }: { initial: GivingSummary }) {
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {GIVING_PIECES.map((piece) => (
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {GIVING_NAV.map((piece) => (
           <Link
             key={piece.id}
             href={piece.href}
@@ -195,12 +198,11 @@ export function GivingHub({ initial }: { initial: GivingSummary }) {
         ))}
       </div>
       <RecentIntents summary={initial} />
-      <Leaders summary={initial} />
     </div>
   );
 }
 
-export function RecurringGivingForm({
+export function OneTimeGivingForm({
   initial,
   recorded,
   amountError,
@@ -211,20 +213,20 @@ export function RecurringGivingForm({
   amountError?: boolean;
   defaultDonorLabel?: string;
 }) {
-  const [amountDollars, setAmountDollars] = useState(String(RECURRING_AMOUNTS[0].amountDollars));
+  const [amountDollars, setAmountDollars] = useState(String(ONE_TIME_AMOUNTS[0].amountDollars));
   const form = usePledgeForm({
-    designation: "recurring",
+    designation: "one_time",
     defaultDonorLabel,
     recorded,
     amountError,
     initial,
     buildBody: () => ({ amountDollars }),
   });
-  const piece = givingPieceById("recurring");
+  const piece = givingPieceById("one_time");
 
   return (
     <div className="space-y-5">
-      <GivingNav current="recurring" />
+      <GivingNav current="one_time" />
       <Card>
         <CardHeader>
           <CardTitle>{piece.label}</CardTitle>
@@ -233,7 +235,7 @@ export function RecurringGivingForm({
           <form onSubmit={form.onSubmit} className="space-y-4">
             <p className="text-sm text-muted-foreground">{piece.summary}</p>
             <div className="flex flex-wrap gap-2">
-              {RECURRING_AMOUNTS.map((row) => (
+              {ONE_TIME_AMOUNTS.map((row) => (
                 <Button
                   key={row.id}
                   type="button"
@@ -241,18 +243,18 @@ export function RecurringGivingForm({
                   aria-pressed={amountDollars === String(row.amountDollars)}
                   onClick={() => setAmountDollars(String(row.amountDollars))}
                 >
-                  {row.label} · ${row.amountDollars}
+                  ${row.amountDollars}
                 </Button>
               ))}
               <Button
                 type="button"
                 variant={
-                  !RECURRING_AMOUNTS.some((row) => String(row.amountDollars) === amountDollars)
+                  !ONE_TIME_AMOUNTS.some((row) => String(row.amountDollars) === amountDollars)
                     ? "default"
                     : "outline"
                 }
                 aria-pressed={
-                  !RECURRING_AMOUNTS.some((row) => String(row.amountDollars) === amountDollars)
+                  !ONE_TIME_AMOUNTS.some((row) => String(row.amountDollars) === amountDollars)
                 }
                 onClick={() => setAmountDollars("")}
               >
@@ -260,7 +262,7 @@ export function RecurringGivingForm({
               </Button>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="amount-dollars">Amount (USD / year)</Label>
+              <Label htmlFor="amount-dollars">Amount (USD)</Label>
               <Input
                 id="amount-dollars"
                 name="amountDollars"
@@ -277,7 +279,71 @@ export function RecurringGivingForm({
         </CardContent>
       </Card>
       <RecentIntents summary={form.summary} />
-      <Leaders summary={form.summary} />
+    </div>
+  );
+}
+
+/** @deprecated Use OneTimeGivingForm */
+export const RecurringGivingForm = OneTimeGivingForm;
+
+export function GivingLeaderboard({ initial }: { initial: GivingSummary }) {
+  return (
+    <div className="space-y-5">
+      <GivingNav current="leaderboard" />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Gift bands</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <p className="text-muted-foreground">
+            One-time gift bands used for recognition. These are not a monthly bill.
+          </p>
+          <ul className="space-y-3">
+            {GIFT_BANDS.map((band) => (
+              <li
+                key={band.id}
+                className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-3 last:border-0 last:pb-0"
+              >
+                <div>
+                  <p className="font-medium text-foreground">{band.label}</p>
+                  <p className="text-muted-foreground">{band.summary}</p>
+                </div>
+                <p className="text-muted-foreground">{formatCurrency(band.amountDollars * 100)}</p>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Benefit ladder</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <p className="text-muted-foreground">
+            Annual ranks and rewards. Benefits are illustrative and need compliance review.
+          </p>
+          <ul className="space-y-4">
+            {BENEFIT_LADDER.map((rung) => (
+              <li key={rung.id} className="border-b pb-3 last:border-0 last:pb-0">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="font-medium text-foreground">{rung.label}</p>
+                  <p className="text-muted-foreground">{formatCurrency(rung.amountDollars * 100)}/yr</p>
+                </div>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
+                  {rung.rewards.map((reward) => (
+                    <li key={reward}>{reward}</li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Leaders summary={initial} />
+      <RecentIntents summary={initial} />
     </div>
   );
 }
@@ -364,7 +430,6 @@ export function LettermanGivingForm({
         </CardContent>
       </Card>
       <RecentIntents summary={form.summary} />
-      <Leaders summary={form.summary} />
     </div>
   );
 }
@@ -471,7 +536,6 @@ export function TailgateGivingForm({
         </CardContent>
       </Card>
       <RecentIntents summary={form.summary} />
-      <Leaders summary={form.summary} />
     </div>
   );
 }
