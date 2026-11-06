@@ -17,14 +17,6 @@ export const LETTERMAN_JACKET = {
 
 export const TAILGATE_SPONSORSHIP = {
   amountDollars: [250, 500, 1000, 5000] as const,
-  themes: [
-    "Homecoming",
-    "Spring Game",
-    "Season opener",
-    "Senior Day",
-    "Rivalry game",
-    "Other / custom",
-  ] as const,
   games: [
     "vs. Holy Cross",
     "vs. Colgate",
@@ -55,7 +47,7 @@ export const GIVING_PIECES = [
     id: "tailgate",
     label: "Tailgate",
     href: "/giving/tailgate",
-    summary: "Sponsor a game or theme — $250 / $500 / $1,000 / $5,000.",
+    summary: "Sponsor a game — $250 / $500 / $1,000 / $5,000.",
   },
 ] as const;
 

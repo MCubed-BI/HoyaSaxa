@@ -86,37 +86,21 @@ test("resolves letterman donate and self with suit size", () => {
   }
 });
 
-test("resolves tailgate game and theme modes", () => {
+test("resolves tailgate game sponsorship", () => {
   const missing = resolveGivingPledgeInput({
     designation: "tailgate",
     amountDollars: 500,
-    tailgateMode: "theme",
   });
   assert.equal(missing.ok, false);
-
-  const theme = resolveGivingPledgeInput({
-    designation: "tailgate",
-    amountDollars: 1000,
-    tailgateMode: "theme",
-    tailgateTheme: "Homecoming",
-  });
-  assert.equal(theme.ok, true);
-  if (theme.ok) {
-    assert.equal(theme.amountCents, 100_000);
-    assert.equal(theme.details.tailgateMode, "theme");
-    assert.equal(theme.details.tailgateTheme, "Homecoming");
-    assert.equal(theme.details.tailgateGame, undefined);
-  }
 
   const game = resolveGivingPledgeInput({
     designation: "tailgate",
     amountDollars: 250,
-    tailgateMode: "game",
     tailgateGame: "vs. Holy Cross",
   });
   assert.equal(game.ok, true);
   if (game.ok) {
-    assert.equal(game.details.tailgateMode, "game");
+    assert.equal(game.amountCents, 25_000);
     assert.equal(game.details.tailgateGame, "vs. Holy Cross");
     assert.equal(game.details.tailgateTheme, undefined);
   }
@@ -135,9 +119,9 @@ test("formats pledge purpose labels", () => {
     formatPledgePurpose({
       designation: "tailgate",
       amount_cents: 50_000,
-      details: { tailgateMode: "theme", tailgateTheme: "Spring Game" },
+      details: { tailgateGame: "vs. Holy Cross" },
     }),
-    "Tailgate · Theme · Spring Game",
+    "Tailgate · vs. Holy Cross",
   );
   assert.equal(
     formatPledgePurpose({

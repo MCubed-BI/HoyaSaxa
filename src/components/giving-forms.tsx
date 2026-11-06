@@ -25,7 +25,6 @@ import {
 } from "@/lib/giving";
 
 type LettermanOption = "donate" | "self";
-type TailgateMode = "game" | "theme";
 
 const SELECT_CLASS =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm";
@@ -381,16 +380,11 @@ export function TailgateGivingForm({
   amountError?: boolean;
   defaultDonorLabel?: string;
 }) {
-  const [tailgateMode, setTailgateMode] = useState<TailgateMode>("game");
   const [tailgateGame, setTailgateGame] = useState<string>(TAILGATE_SPONSORSHIP.games[0]);
   const [customGame, setCustomGame] = useState("");
-  const [tailgateTheme, setTailgateTheme] = useState<string>(TAILGATE_SPONSORSHIP.themes[0]);
-  const [customTheme, setCustomTheme] = useState("");
   const [amountDollars, setAmountDollars] = useState(String(TAILGATE_SPONSORSHIP.amountDollars[0]));
   const isCustomGame = tailgateGame === "Other / custom";
-  const isCustomTheme = tailgateTheme === "Other / custom";
   const resolvedGame = isCustomGame ? customGame : tailgateGame;
-  const resolvedTheme = isCustomTheme ? customTheme : tailgateTheme;
 
   const form = usePledgeForm({
     designation: "tailgate",
@@ -400,9 +394,7 @@ export function TailgateGivingForm({
     initial,
     buildBody: () => ({
       amountDollars,
-      tailgateMode,
-      tailgateGame: tailgateMode === "game" ? resolvedGame : undefined,
-      tailgateTheme: tailgateMode === "theme" ? resolvedTheme : undefined,
+      tailgateGame: resolvedGame,
     }),
   });
   const piece = givingPieceById("tailgate");
@@ -417,90 +409,36 @@ export function TailgateGivingForm({
         <CardContent>
           <form onSubmit={form.onSubmit} className="space-y-4">
             <p className="text-sm text-muted-foreground">{piece.summary}</p>
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Tailgate type">
-              <Button
-                type="button"
-                role="tab"
-                aria-selected={tailgateMode === "game"}
-                variant={tailgateMode === "game" ? "default" : "outline"}
-                onClick={() => setTailgateMode("game")}
-              >
-                Game
-              </Button>
-              <Button
-                type="button"
-                role="tab"
-                aria-selected={tailgateMode === "theme"}
-                variant={tailgateMode === "theme" ? "default" : "outline"}
-                onClick={() => setTailgateMode("theme")}
-              >
-                Theme
-              </Button>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="tailgate-game">Game</Label>
+                <select
+                  id="tailgate-game"
+                  className={SELECT_CLASS}
+                  value={tailgateGame}
+                  onChange={(event) => setTailgateGame(event.target.value)}
+                >
+                  {TAILGATE_SPONSORSHIP.games.map((game) => (
+                    <option key={game} value={game}>
+                      {game}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {isCustomGame ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="custom-game">Custom game</Label>
+                  <Input
+                    id="custom-game"
+                    maxLength={120}
+                    required
+                    value={customGame}
+                    onChange={(event) => setCustomGame(event.target.value)}
+                    placeholder="e.g. vs. Georgetown Day"
+                  />
+                </div>
+              ) : null}
             </div>
-
-            {tailgateMode === "game" ? (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="tailgate-game">Game</Label>
-                  <select
-                    id="tailgate-game"
-                    className={SELECT_CLASS}
-                    value={tailgateGame}
-                    onChange={(event) => setTailgateGame(event.target.value)}
-                  >
-                    {TAILGATE_SPONSORSHIP.games.map((game) => (
-                      <option key={game} value={game}>
-                        {game}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {isCustomGame ? (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="custom-game">Custom game</Label>
-                    <Input
-                      id="custom-game"
-                      maxLength={120}
-                      required
-                      value={customGame}
-                      onChange={(event) => setCustomGame(event.target.value)}
-                      placeholder="e.g. vs. Georgetown Day"
-                    />
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="tailgate-theme">Theme</Label>
-                  <select
-                    id="tailgate-theme"
-                    className={SELECT_CLASS}
-                    value={tailgateTheme}
-                    onChange={(event) => setTailgateTheme(event.target.value)}
-                  >
-                    {TAILGATE_SPONSORSHIP.themes.map((theme) => (
-                      <option key={theme} value={theme}>
-                        {theme}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {isCustomTheme ? (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="custom-theme">Custom theme</Label>
-                    <Input
-                      id="custom-theme"
-                      maxLength={120}
-                      required
-                      value={customTheme}
-                      onChange={(event) => setCustomTheme(event.target.value)}
-                      placeholder="e.g. Family Weekend"
-                    />
-                  </div>
-                ) : null}
-              </div>
-            )}
 
             <div className="flex flex-wrap gap-2">
               {TAILGATE_SPONSORSHIP.amountDollars.map((amount) => (
