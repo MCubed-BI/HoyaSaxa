@@ -29,7 +29,9 @@ test("trims optional donor labels", () => {
   assert.equal(normalizeDonorLabel(12), null);
 });
 
-test("normalizes known designations onto three pieces", () => {
+test("normalizes known designations onto giving pieces", () => {
+  assert.equal(normalizeDesignation("five_year"), "five_year");
+  assert.equal(normalizeDesignation("five_year_commitment"), "five_year");
   assert.equal(normalizeDesignation("tailgate"), "tailgate");
   assert.equal(normalizeDesignation("letterman_jacket"), "letterman_jacket");
   assert.equal(normalizeDesignation("one_time"), "one_time");
@@ -38,7 +40,25 @@ test("normalizes known designations onto three pieces", () => {
   assert.equal(normalizeDesignation("nope"), "one_time");
 });
 
-test("resolves letterman donate and self with suit size", () => {
+test("resolves five-year annual commitment amounts", () => {
+  const ok = resolveGivingPledgeInput({
+    designation: "five_year",
+    amountDollars: 25_000,
+  });
+  assert.equal(ok.ok, true);
+  if (ok.ok) {
+    assert.equal(ok.amountCents, 2_500_000);
+    assert.equal(ok.details.annualDollars, 25_000);
+  }
+
+  const bad = resolveGivingPledgeInput({
+    designation: "five_year",
+    amountDollars: 2_500,
+  });
+  assert.equal(bad.ok, false);
+});
+
+test("resolves letterman sponsor and purchase with suit size", () => {
   const donate = resolveGivingPledgeInput({
     designation: "letterman_jacket",
     jacketVariant: "donate",
@@ -87,42 +107,81 @@ test("resolves letterman donate and self with suit size", () => {
   }
 });
 
-test("resolves tailgate game sponsorship", () => {
-  const missing = resolveGivingPledgeInput({
-    designation: "tailgate",
-    amountDollars: 500,
-  });
-  assert.equal(missing.ok, false);
-
-  const game = resolveGivingPledgeInput({
+test("resolves tailgate per-game and entire-event sponsorship", () => {
+  const missingGame = resolveGivingPledgeInput({
     designation: "tailgate",
     amountDollars: 250,
+    tailgateMode: "per_game",
+  });
+  assert.equal(missingGame.ok, false);
+
+  const perGame = resolveGivingPledgeInput({
+    designation: "tailgate",
+    amountDollars: 250,
+    tailgateMode: "per_game",
     tailgateGame: "vs. Holy Cross",
   });
-  assert.equal(game.ok, true);
-  if (game.ok) {
-    assert.equal(game.amountCents, 25_000);
-    assert.equal(game.details.tailgateGame, "vs. Holy Cross");
-    assert.equal(game.details.tailgateTheme, undefined);
+  assert.equal(perGame.ok, true);
+  if (perGame.ok) {
+    assert.equal(perGame.amountCents, 25_000);
+    assert.equal(perGame.details.tailgateGame, "vs. Holy Cross");
+    assert.equal(perGame.details.tailgateMode, "per_game");
+    assert.equal(perGame.details.tailgateTheme, undefined);
+  }
+
+  const entire = resolveGivingPledgeInput({
+    designation: "tailgate",
+    amountDollars: 4_000,
+    tailgateMode: "entire_event",
+  });
+  assert.equal(entire.ok, true);
+  if (entire.ok) {
+    assert.equal(entire.amountCents, 400_000);
+    assert.equal(entire.details.tailgateMode, "entire_event");
+    assert.equal(entire.details.tailgateGame, undefined);
   }
 });
 
 test("formats pledge purpose labels", () => {
   assert.equal(
     formatPledgePurpose({
+      designation: "five_year",
+      amount_cents: 2_500_000,
+      details: { annualDollars: 25_000 },
+    }),
+    "5-Year · $25,000/yr",
+  );
+  assert.equal(
+    formatPledgePurpose({
       designation: "letterman_jacket",
       amount_cents: 24_000,
       details: { jacketVariant: "self", suitSize: "44" },
     }),
-    "Letterman · For Self · size 44",
+    "Letterman · Purchase · size 44",
+  );
+  assert.equal(
+    formatPledgePurpose({
+      designation: "letterman_jacket",
+      amount_cents: 20_000,
+      details: { jacketVariant: "donate" },
+    }),
+    "Letterman · Sponsor",
   );
   assert.equal(
     formatPledgePurpose({
       designation: "tailgate",
-      amount_cents: 50_000,
-      details: { tailgateGame: "vs. Holy Cross" },
+      amount_cents: 25_000,
+      details: { tailgateGame: "vs. Holy Cross", tailgateMode: "per_game" },
     }),
     "Tailgate · vs. Holy Cross",
+  );
+  assert.equal(
+    formatPledgePurpose({
+      designation: "tailgate",
+      amount_cents: 400_000,
+      details: { tailgateMode: "entire_event" },
+    }),
+    "Tailgate · Entire event",
   );
   assert.equal(
     formatPledgePurpose({

@@ -18,7 +18,7 @@ export default async function GivingLeaderboardPage() {
       <PageMain width="narrow">
         <PageHeader
           title="Leaderboard"
-          description="Gift bands, benefit ladder rewards, and live leaders."
+          description="Gift bands, benefit ladder, live leaders, and recent gifts."
         />
         {errorMessage ? (
           <StatusCard title="Giving unavailable" body={errorMessage} />

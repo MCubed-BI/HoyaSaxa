@@ -12,6 +12,18 @@ export const ONE_TIME_AMOUNTS = [
 export const ONE_TIME_AMOUNT_DOLLARS = ONE_TIME_AMOUNTS.map((row) => row.amountDollars);
 
 /**
+ * 5-year commitment annual amounts (pledge records the annual gift, not the 5-year total).
+ */
+export const FIVE_YEAR_AMOUNTS = [
+  { id: "25000", amountDollars: 25_000, label: "Founders" },
+  { id: "10000", amountDollars: 10_000, label: "Leadership" },
+  { id: "5000", amountDollars: 5_000, label: "Captain" },
+  { id: "1000", amountDollars: 1_000, label: "Letterwinner" },
+] as const;
+
+export const FIVE_YEAR_AMOUNT_DOLLARS = FIVE_YEAR_AMOUNTS.map((row) => row.amountDollars);
+
+/**
  * Leaderboard gift bands — informational breakdowns (from the fundraising plan).
  * Shown on /giving/leaderboard, not as a monthly subscription ask.
  */
@@ -81,12 +93,19 @@ export const BENEFIT_LADDER = [
 ] as const;
 
 export const LETTERMAN_JACKET = {
+  /** Sponsor a player's letter jacket. */
   donateDollars: 200,
+  /** Purchase a letter jacket for yourself. */
   selfDollars: 240,
 } as const;
 
+export type TailgateMode = "per_game" | "entire_event";
+
 export const TAILGATE_SPONSORSHIP = {
-  amountDollars: [250, 500, 1000, 5000] as const,
+  perGameDollars: 250,
+  entireEventDollars: 4_000,
+  /** @deprecated Prefer perGameDollars / entireEventDollars. */
+  amountDollars: [250, 4_000] as const,
   games: [
     "vs. Holy Cross",
     "vs. Colgate",
@@ -102,6 +121,12 @@ export const TAILGATE_SPONSORSHIP = {
 
 export const GIVING_PIECES = [
   {
+    id: "five_year",
+    label: "5-Year",
+    href: "/giving/five-year",
+    summary: "5-year commitment — annual $25k / $10k / $5k / $1k.",
+  },
+  {
     id: "one_time",
     label: "One-time",
     href: "/giving/one-time",
@@ -111,13 +136,13 @@ export const GIVING_PIECES = [
     id: "letterman_jacket",
     label: "Letterman",
     href: "/giving/letterman",
-    summary: `Donate $${LETTERMAN_JACKET.donateDollars} for a player, or $${LETTERMAN_JACKET.selfDollars} for yourself (suit size).`,
+    summary: "Letter Jacket Sponsor or Purchase.",
   },
   {
     id: "tailgate",
     label: "Tailgate",
     href: "/giving/tailgate",
-    summary: "Sponsor a game — $250 / $500 / $1,000 / $5,000.",
+    summary: "$250 ea or $4,000 Sponsor entire event.",
   },
 ] as const;
 
@@ -127,7 +152,7 @@ export const GIVING_NAV = [
     id: "leaderboard",
     label: "Leaderboard",
     href: "/giving/leaderboard",
-    summary: "Gift bands, benefit ladder, and live leaders.",
+    summary: "Gift bands, benefit ladder, live leaders, and recent gifts.",
   },
 ] as const;
 
@@ -143,6 +168,9 @@ const LEGACY_DESIGNATION_MAP: Record<string, GivingDesignationId> = {
   facilities: "one_time",
   recurring: "one_time",
   one_time: "one_time",
+  five_year: "five_year",
+  five_year_commitment: "five_year",
+  commitment: "five_year",
   letterman_jacket: "letterman_jacket",
   tailgate: "tailgate",
 };

@@ -18,7 +18,7 @@ export default async function GivingPage() {
       <PageMain width="narrow">
         <PageHeader
           title="Give"
-          description="Pick a donation page: One-time, Letterman, Tailgate, or Leaderboard."
+          description="Pick a donation page: 5-Year, One-time, Letterman, Tailgate, or Leaderboard."
         />
         {errorMessage ? (
           <StatusCard title="Giving unavailable" body={errorMessage} />

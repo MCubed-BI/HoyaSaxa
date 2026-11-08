@@ -24,7 +24,7 @@ export default async function LettermanGivingPage({
       <PageMain width="narrow">
         <PageHeader
           title="Letterman"
-          description={`Donate $${LETTERMAN_JACKET.donateDollars} for a player, or $${LETTERMAN_JACKET.selfDollars} for yourself with suit size.`}
+          description={`Letter Jacket Sponsor ($${LETTERMAN_JACKET.donateDollars}) or Purchase ($${LETTERMAN_JACKET.selfDollars}).`}
         />
         {errorMessage ? (
           <StatusCard title="Giving unavailable" body={errorMessage} />
