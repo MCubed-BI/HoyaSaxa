@@ -238,7 +238,8 @@ describe("portal paths", () => {
     assert.equal(isPublicPath("/api/locker/logout"), true);
     assert.equal(loginPathFor("/portal"), "/alumni-login");
     assert.equal(loginPathFor("/home"), "/home/login");
-    assert.equal(loginPathFor("/messages"), "/locker");
+    assert.equal(loginPathFor("/messages"), "/home/login");
+    assert.equal(loginPathFor("/messages/sgarlata"), "/home/login");
     assert.equal(loginPathFor("/alum"), "/alumni-login");
     assert.equal(loginPathFor("/reports"), "/login");
   });

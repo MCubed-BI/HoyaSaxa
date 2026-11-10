@@ -20,6 +20,7 @@ export type FeedPost = {
   source: "newsflash" | "feed";
   section?: FeedSection;
   media_url?: string | null;
+  author_alumni_id?: string | null;
 };
 
 export type UpcomingEvent = {

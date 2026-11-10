@@ -15,6 +15,7 @@ import {
   type ForYouIdentity,
 } from "@/lib/for-you";
 import type { LockerViewer } from "@/lib/locker-viewer";
+import type { MessageCtaActor } from "@/lib/messages-dm";
 
 function sectionClass(section: FeedSection) {
   if (section === "brothers") return "for-you__brothers";
@@ -26,10 +27,12 @@ function Section({
   section,
   posts,
   viewer,
+  messageActor,
 }: {
   section: FeedSection;
   posts: ForYouCardPost[];
   viewer: LockerViewer;
+  messageActor?: MessageCtaActor | null;
 }) {
   return (
     <section id={section} className={sectionClass(section)}>
@@ -42,7 +45,7 @@ function Section({
       ) : (
         <div className="for-you__cards">
           {posts.map((post) => (
-            <ForYouCard key={post.id} post={post} />
+            <ForYouCard key={post.id} post={post} messageActor={messageActor} />
           ))}
         </div>
       )}
@@ -56,12 +59,14 @@ export function ForYouFeed({
   posts,
   fallbackReason,
   filter = "all",
+  messageActor = null,
 }: {
   viewer: LockerViewer;
   identity: ForYouIdentity;
   posts: Record<FeedSection, ForYouCardPost[]>;
   fallbackReason?: string | null;
   filter?: ForYouFilter;
+  messageActor?: MessageCtaActor | null;
 }) {
   const sections = forYouSectionsForFilter(filter);
 
@@ -96,7 +101,13 @@ export function ForYouFeed({
         <ForYouFilters active={filter} />
         {fallbackReason ? <Notice>{fallbackReason}</Notice> : null}
         {sections.map((section) => (
-          <Section key={section} section={section} posts={posts[section]} viewer={viewer} />
+          <Section
+            key={section}
+            section={section}
+            posts={posts[section]}
+            viewer={viewer}
+            messageActor={messageActor}
+          />
         ))}
       </div>
     </div>

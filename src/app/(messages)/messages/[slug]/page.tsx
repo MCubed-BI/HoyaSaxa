@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Timestamp } from "@/components/timestamp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { getMessageChannel, listMessagePosts, markChannelRead } from "@/lib/messages";
+import { getViewerMessageChannel, listMessagePosts, markChannelReadForViewer } from "@/lib/messages";
 import { canPostToMessageChannel, dmDisplayName, dmParticipantId, isDmChannel } from "@/lib/messages-dm";
 import { requireMessageViewer } from "@/lib/messages-viewer";
 
@@ -23,15 +23,15 @@ export default async function MessageChannelPage({
   let canPost = false;
 
   let errorMessage: string | null = null;
-  let channel: Awaited<ReturnType<typeof getMessageChannel>> = null;
+  let channel: Awaited<ReturnType<typeof getViewerMessageChannel>> = null;
   let posts: Awaited<ReturnType<typeof listMessagePosts>> = [];
 
   try {
-    channel = await getMessageChannel(slug, viewer.viewerKey, dmParticipantId(viewer));
+    channel = await getViewerMessageChannel(slug, viewer);
     if (!channel) notFound();
     canPost = canPostToMessageChannel(channel, viewer);
     posts = await listMessagePosts(channel.id);
-    await markChannelRead(channel.id, viewer.viewerKey);
+    await markChannelReadForViewer(channel.id, viewer);
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) throw error;
     errorMessage = isMissingDatabaseConfig(error)
