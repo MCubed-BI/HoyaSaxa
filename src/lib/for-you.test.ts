@@ -94,8 +94,22 @@ describe("for you myspace stack", () => {
     assert.equal(brothers.every((post) => post.section === "brothers"), true);
     assert.equal(board.every((post) => post.section === "board"), true);
     assert.ok(brothers.some((post) => post.authorLabel.includes("Pat")));
+    assert.equal(brothers[0]?.officialHref ?? null, null);
     assert.ok(board.length >= 1);
     assert.equal(sgarlata.length, 0);
+    const sgarlataCard = feedPostToCard({
+      id: "sgarlata-note",
+      author_label: "Coach Sgarlata",
+      author_role: "official",
+      audience: "for-you",
+      title: "Welcome",
+      body: "Official note",
+      created_at: "2026-11-10T12:00:00.000Z",
+      source: "feed",
+      section: "sgarlata",
+    });
+    assert.equal(sgarlataCard.officialHref, "/messages/sgarlata");
+    assert.equal(sgarlataCard.alumniId ?? null, null);
   });
 
   it("builds an identity strip from a viewer label", () => {

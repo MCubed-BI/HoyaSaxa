@@ -4,6 +4,8 @@ import { PageMain, PageShell } from "@/components/page-chrome";
 import { loadForYouIdentity, loadForYouPosts } from "@/lib/for-you-data";
 import { parseForYouFilter } from "@/lib/for-you";
 import { requireLockerViewer } from "@/lib/locker-viewer";
+import { getMessageViewer } from "@/lib/messages-auth";
+import { messageCtaActorFromViewer } from "@/lib/messages-dm";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +23,11 @@ export default async function ForYouFeedPage({
   const viewer = await requireLockerViewer();
   const params = await searchParams;
   const filter = parseForYouFilter(params.section);
-  const [identity, data] = await Promise.all([loadForYouIdentity(viewer), loadForYouPosts()]);
+  const [identity, data, messageViewer] = await Promise.all([
+    loadForYouIdentity(viewer),
+    loadForYouPosts(),
+    getMessageViewer(),
+  ]);
 
   return (
     <PageShell>
@@ -33,6 +39,7 @@ export default async function ForYouFeedPage({
           posts={data.posts}
           fallbackReason={data.fallbackReason}
           filter={filter}
+          messageActor={messageCtaActorFromViewer(messageViewer)}
         />
       </PageMain>
     </PageShell>

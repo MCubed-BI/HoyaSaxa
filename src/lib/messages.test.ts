@@ -95,7 +95,8 @@ describe("messages path gate", () => {
     assert.equal(isAlumAllowedPath("/api/data-sync"), false);
     assert.equal(isDataSyncPath("/sync"), true);
     assert.equal(isDataSyncPath("/api/data-sync/abc/apply"), true);
-    assert.equal(loginPathFor("/messages"), "/locker");
+    assert.equal(loginPathFor("/messages"), "/home/login");
+    assert.equal(loginPathFor("/messages/sgarlata"), "/home/login");
     assert.equal(loginPathFor("/sync"), "/login");
   });
 
@@ -136,15 +137,15 @@ describe("message filters", () => {
   it("filters inbox rows", () => {
     assert.deepEqual(
       filterMessageChannels(channels, "all").map((row) => row.slug),
-      ["sgarlata", "d-line", "class-2015", dmChannelSlug(patrick, tim)],
+      ["sgarlata", dmChannelSlug(patrick, tim)],
     );
     assert.deepEqual(
       filterMessageChannels(channels, "unread").map((row) => row.slug),
-      ["sgarlata", "class-2015", dmChannelSlug(patrick, tim)],
+      ["sgarlata", dmChannelSlug(patrick, tim)],
     );
     assert.deepEqual(
       filterMessageChannels(channels, "groups").map((row) => row.slug),
-      ["d-line", "class-2015"],
+      [],
     );
   });
 });
@@ -260,5 +261,18 @@ describe("alum to Hoya profile DM", () => {
     assert.match(alumni, /redirect\(athleteHref\(id\)\)/);
     const proxy = readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8");
     assert.match(proxy, /athletePathForAlumniProfile/);
+    const hoyaDirectory = readFileSync(join(process.cwd(), "src/components/hoya-directory.tsx"), "utf8");
+    const alumniDirectory = readFileSync(join(process.cwd(), "src/components/alumni-directory.tsx"), "utf8");
+    const alumDirectory = readFileSync(join(process.cwd(), "src/components/alum-directory.tsx"), "utf8");
+    const forYou = readFileSync(join(process.cwd(), "src/components/for-you-card.tsx"), "utf8");
+    assert.match(hoyaDirectory, /ProfileMessageCta/);
+    assert.match(alumniDirectory, /ProfileMessageCta/);
+    assert.match(alumDirectory, /ProfileMessageCta/);
+    assert.match(forYou, /ProfileMessageCta|officialHref/);
+    const inbox = readFileSync(join(process.cwd(), "src/components/messages-inbox.tsx"), "utf8");
+    assert.match(inbox, /New message/);
+    assert.doesNotMatch(inbox, /key: "groups"/);
+    const threadPage = readFileSync(join(process.cwd(), "src/app/(messages)/messages/[slug]/page.tsx"), "utf8");
+    assert.match(threadPage, /MessagesThread/);
   });
 });

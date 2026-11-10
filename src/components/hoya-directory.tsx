@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AlumEmailBar, DirectoryPickToggle } from "@/components/directory-picks";
 import { DirectoryNameSearch } from "@/components/directory-name-search";
+import { ProfileMessageCta } from "@/components/profile-message-cta";
 import { DirectoryFocus } from "@/components/directory-focus";
 import { FilterToolbar } from "@/components/filter-toolbar";
 import { HoyaAvatar } from "@/components/hoya-avatar";
@@ -17,6 +18,7 @@ import { athleteHref, directoryHref } from "@/lib/locker-paths";
 import type { PublicBadge } from "@/lib/badges";
 import { isLockerStubId } from "@/lib/locker-stubs";
 import { DIRECTORY_PILLS, type DirectoryPill, type LockerPerson } from "@/lib/locker-types";
+import { canMessageActorTarget, type MessageCtaActor } from "@/lib/messages-dm";
 
 export function HoyaDirectory({
   q,
@@ -28,6 +30,7 @@ export function HoyaDirectory({
   usingSample,
   badgesById = {},
   focusId,
+  messageActor = null,
 }: {
   q: string;
   role: DirectoryPill;
@@ -38,6 +41,7 @@ export function HoyaDirectory({
   usingSample: boolean;
   badgesById?: Record<string, PublicBadge[]>;
   focusId?: string | null;
+  messageActor?: MessageCtaActor | null;
 }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const range = resultRange(page, pageSize, total);
@@ -112,26 +116,26 @@ export function HoyaDirectory({
             const city = publicCity(person);
             const position = positionLabel(person.position);
             const highlighted = person.id === highlightId;
+            const name = displayName(toNameFields(person));
+            const showMessage = canMessageActorTarget(messageActor, person.id);
             return (
               <li key={person.id} id={`person-${person.id}`}>
                 <div className="flex gap-2">
                   <DirectoryPickToggle
                     id={person.id}
-                    name={displayName(toNameFields(person))}
+                    name={name}
                     disabled={isLockerStubId(person.id)}
                   />
-                  <Link href={athleteHref(person.id)} className="min-w-0 flex-1">
-                    <Card
-                      className={`h-full transition-shadow hover:shadow-[var(--shadow-elevated)] ${
-                        highlighted ? "border-navy/60 ring-2 ring-navy/20" : ""
-                      }`}
-                    >
-                      <CardContent className="flex gap-3 py-4">
+                  <Card
+                    className={`min-w-0 flex-1 transition-shadow hover:shadow-[var(--shadow-elevated)] ${
+                      highlighted ? "border-navy/60 ring-2 ring-navy/20" : ""
+                    }`}
+                  >
+                    <CardContent className="flex gap-3 py-4">
+                      <Link href={athleteHref(person.id)} className="flex min-w-0 flex-1 gap-3">
                         <HoyaAvatar person={person} />
                         <div className="min-w-0 space-y-1">
-                          <p className="truncate font-medium text-navy hover:underline">
-                            {displayName(toNameFields(person))}
-                          </p>
+                          <p className="truncate font-medium text-navy hover:underline">{name}</p>
                           <p className="text-sm text-muted-foreground">
                             {[person.classLabel, person.sport, city].filter(Boolean).join(" · ") || person.sport}
                           </p>
@@ -141,9 +145,10 @@ export function HoyaDirectory({
                           </div>
                           <HoyaBadgeRow badges={badgesById[person.id] ?? []} />
                         </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
+                      </Link>
+                      {showMessage ? <ProfileMessageCta alumniId={person.id} name={name} compact /> : null}
+                    </CardContent>
+                  </Card>
                 </div>
               </li>
             );

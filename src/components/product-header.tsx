@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { NavIcon } from "@/components/icons";
+import { MessagesUnreadBadge } from "@/components/messages-unread-badge";
 import { Button } from "@/components/ui/button";
 import { VerifiedHoyaBadge } from "@/components/verified-hoya-badge";
 import { DESKTOP_PRIMARY_NAV_CLASS, HEADER_BRAND_SLOT_CLASS } from "@/lib/header-chrome";
@@ -141,7 +142,10 @@ export function ProductHeader({
                       active ? "text-navy" : "text-muted-foreground",
                     )}
                   >
-                    <NavIcon navKey={item.key} className="size-4" />
+                    <span className="relative">
+                      <NavIcon navKey={item.key} className="size-4" />
+                      {item.key === "messages" ? <MessagesUnreadBadge compact /> : null}
+                    </span>
                     {shortLabel(item)}
                   </Link>
                 );
@@ -177,6 +181,7 @@ function NavLink({
     >
       <NavIcon navKey={item.key} className="size-3.5" />
       <span>{compact ? shortLabel(item) : item.label}</span>
+      {item.key === "messages" ? <MessagesUnreadBadge /> : null}
     </Link>
   );
 }

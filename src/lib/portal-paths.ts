@@ -138,8 +138,16 @@ export function loginPathFor(pathname: string) {
   ) {
     return "/home/login";
   }
-  if (pathname === "/messages" || pathname.startsWith("/messages/") || pathname === "/locker") {
+  if (pathname === "/locker" || pathname.startsWith("/locker/")) {
     return "/locker";
+  }
+  if (
+    pathname === "/messages" ||
+    pathname.startsWith("/messages/") ||
+    pathname === "/message" ||
+    pathname.startsWith("/message/")
+  ) {
+    return "/home/login";
   }
   return isAlumAllowedPath(pathname) ? "/alumni-login" : "/login";
 }

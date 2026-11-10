@@ -22,6 +22,8 @@ export type ForYouCardPost = {
   title?: string | null;
   mediaUrl?: string | null;
   section: FeedSection;
+  alumniId?: string | null;
+  officialHref?: string | null;
 };
 
 export type ForYouIdentity = {
@@ -100,6 +102,8 @@ export function feedPostToCard(post: FeedPost): ForYouCardPost {
     title: post.title,
     mediaUrl: post.media_url ?? null,
     section,
+    alumniId: post.author_alumni_id ?? null,
+    officialHref: section === "sgarlata" ? "/messages/sgarlata" : null,
   };
 }
 

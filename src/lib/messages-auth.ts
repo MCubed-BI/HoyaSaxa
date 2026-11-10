@@ -62,7 +62,13 @@ export function isDataSyncPath(pathname: string) {
 }
 
 export function loginPathFor(pathname: string) {
-  return isAlumAllowedPath(pathname) ? "/locker" : "/login";
+  if (pathname === "/messages" || pathname.startsWith("/messages/") || pathname === "/message" || pathname.startsWith("/message/")) {
+    return "/home/login";
+  }
+  if (pathname === "/locker" || pathname.startsWith("/locker/")) {
+    return "/locker";
+  }
+  return isAlumAllowedPath(pathname) ? "/home/login" : "/login";
 }
 
 export function canPostSgarlata(viewer: MessageViewer | null | undefined) {

@@ -14,7 +14,9 @@ import Link from "next/link";
 import { AdminAlumniMergeCard } from "@/components/admin-alumni-merge";
 import { Button } from "@/components/ui/button";
 import { displayName } from "@/lib/format";
-import { canUseBlast } from "@/lib/roles";
+import { canMessageActorTarget, messageCtaActorFromViewer } from "@/lib/messages-dm";
+import { getMessageViewer } from "@/lib/messages-auth";
+import { canUseBlast, isAdminRole } from "@/lib/roles";
 import { requireRole } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +27,13 @@ export default async function DirectoryPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const viewer = await requireRole(["owner", "coach", "board"]);
+  const messageActor =
+    messageCtaActorFromViewer(await getMessageViewer()) ?? {
+      alumniId: viewer.alumniId,
+      isAdmin: isAdminRole(viewer.role) || viewer.platformRole === "admin",
+      username: viewer.username,
+      label: viewer.label,
+    };
   const params = await searchParams;
   const filters = parseAlumniFilters(params);
   const page = parsePage(params);
@@ -92,6 +101,9 @@ export default async function DirectoryPage({
                   filters={filters}
                   badgesById={badgesById}
                   focusId={parseHighlightId(params) || (result.total === 1 ? result.rows[0]?.id : null)}
+                  messageableIds={result.rows
+                    .filter((person) => canMessageActorTarget(messageActor, person.id))
+                    .map((person) => person.id)}
                 />
                 {canUseBlast(viewer.role) ? (
                   <BlastBar
