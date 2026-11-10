@@ -272,5 +272,7 @@ describe("alum to Hoya profile DM", () => {
     const inbox = readFileSync(join(process.cwd(), "src/components/messages-inbox.tsx"), "utf8");
     assert.match(inbox, /New message/);
     assert.doesNotMatch(inbox, /key: "groups"/);
+    const threadPage = readFileSync(join(process.cwd(), "src/app/(messages)/messages/[slug]/page.tsx"), "utf8");
+    assert.match(threadPage, /MessagesThread/);
   });
 });
