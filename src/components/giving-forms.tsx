@@ -10,6 +10,7 @@ import { Timestamp } from "@/components/timestamp";
 import { HoyaBadgeRow } from "@/components/hoya-badges";
 import {
   BENEFIT_LADDER,
+  FIVE_YEAR_AMOUNTS,
   GIFT_BANDS,
   GIVING_NAV,
   LETTERMAN_JACKET,
@@ -17,6 +18,7 @@ import {
   TAILGATE_SPONSORSHIP,
   givingPieceById,
   type GivingDesignationId,
+  type TailgateMode,
 } from "@/lib/fundraising-plan";
 import {
   formatPledgeDollars,
@@ -56,12 +58,12 @@ function GivingNav({ current }: { current: GivingNavId }) {
   );
 }
 
-function RecentIntents({ summary }: { summary: GivingSummary }) {
+function RecentGifts({ summary }: { summary: GivingSummary }) {
   if (summary.pledges.length === 0) return null;
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent intents</CardTitle>
+        <CardTitle>Recent gifts</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
         {summary.pledges.map((pledge) => (
@@ -71,7 +73,7 @@ function RecentIntents({ summary }: { summary: GivingSummary }) {
               <span className="block text-xs text-muted-foreground">{formatPledgePurpose(pledge)}</span>
             </div>
             <span className="shrink-0 text-right">
-              {formatPledgeDollars(pledge.amount_cents)} · {pledge.status}
+              {formatPledgeDollars(pledge.amount_cents)}
               {pledge.created_at ? (
                 <>
                   {" · "}
@@ -91,11 +93,11 @@ function Leaders({ summary }: { summary: GivingSummary }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Leaderboards</CardTitle>
+        <CardTitle>Leaderboard</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <p className="text-muted-foreground">
-          {formatNumber(summary.totals.count)} intent{summary.totals.count === 1 ? "" : "s"} ·{" "}
+          {formatNumber(summary.totals.count)} gift{summary.totals.count === 1 ? "" : "s"} ·{" "}
           {formatPledgeDollars(summary.totals.amount_cents)} recorded
         </p>
         <ul className="space-y-2">
@@ -185,7 +187,7 @@ function usePledgeForm({
 export function GivingHub({ initial }: { initial: GivingSummary }) {
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {GIVING_NAV.map((piece) => (
           <Link
             key={piece.id}
@@ -197,7 +199,67 @@ export function GivingHub({ initial }: { initial: GivingSummary }) {
           </Link>
         ))}
       </div>
-      <RecentIntents summary={initial} />
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Leaders summary={initial} />
+        <RecentGifts summary={initial} />
+      </div>
+    </div>
+  );
+}
+
+export function FiveYearGivingForm({
+  initial,
+  recorded,
+  amountError,
+  defaultDonorLabel,
+}: {
+  initial: GivingSummary;
+  recorded?: boolean;
+  amountError?: boolean;
+  defaultDonorLabel?: string;
+}) {
+  const [amountDollars, setAmountDollars] = useState(String(FIVE_YEAR_AMOUNTS[0].amountDollars));
+  const form = usePledgeForm({
+    designation: "five_year",
+    defaultDonorLabel,
+    recorded,
+    amountError,
+    initial,
+    buildBody: () => ({ amountDollars }),
+  });
+  const piece = givingPieceById("five_year");
+
+  return (
+    <div className="space-y-5">
+      <GivingNav current="five_year" />
+      <Card>
+        <CardHeader>
+          <CardTitle>{piece.label}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={form.onSubmit} className="space-y-4">
+            <p className="text-sm text-muted-foreground">{piece.summary}</p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Annual commitment amounts">
+              {FIVE_YEAR_AMOUNTS.map((row) => (
+                <Button
+                  key={row.id}
+                  type="button"
+                  variant={amountDollars === String(row.amountDollars) ? "default" : "outline"}
+                  aria-pressed={amountDollars === String(row.amountDollars)}
+                  onClick={() => setAmountDollars(String(row.amountDollars))}
+                >
+                  ${row.amountDollars.toLocaleString("en-US")}/yr
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Records the annual gift amount for a five-year commitment. Stripe checkout is later.
+            </p>
+            <DonorFields form={form} />
+          </form>
+        </CardContent>
+      </Card>
+      <RecentGifts summary={form.summary} />
     </div>
   );
 }
@@ -278,7 +340,7 @@ export function OneTimeGivingForm({
           </form>
         </CardContent>
       </Card>
-      <RecentIntents summary={form.summary} />
+      <RecentGifts summary={form.summary} />
     </div>
   );
 }
@@ -342,8 +404,10 @@ export function GivingLeaderboard({ initial }: { initial: GivingSummary }) {
         </CardContent>
       </Card>
 
-      <Leaders summary={initial} />
-      <RecentIntents summary={initial} />
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Leaders summary={initial} />
+        <RecentGifts summary={initial} />
+      </div>
     </div>
   );
 }
@@ -387,7 +451,7 @@ export function LettermanGivingForm({
         <CardContent>
           <form onSubmit={form.onSubmit} className="space-y-4">
             <p className="text-sm text-muted-foreground">{piece.summary}</p>
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Letterman options">
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Letter jacket options">
               <Button
                 type="button"
                 role="tab"
@@ -395,7 +459,7 @@ export function LettermanGivingForm({
                 variant={lettermanOption === "donate" ? "default" : "outline"}
                 onClick={() => setLettermanOption("donate")}
               >
-                Donate · ${LETTERMAN_JACKET.donateDollars}
+                Sponsor · ${LETTERMAN_JACKET.donateDollars}
               </Button>
               <Button
                 type="button"
@@ -404,7 +468,7 @@ export function LettermanGivingForm({
                 variant={lettermanOption === "self" ? "default" : "outline"}
                 onClick={() => setLettermanOption("self")}
               >
-                For Self · ${LETTERMAN_JACKET.selfDollars}
+                Purchase · ${LETTERMAN_JACKET.selfDollars}
               </Button>
             </div>
             {lettermanOption === "self" ? (
@@ -422,14 +486,14 @@ export function LettermanGivingForm({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Sponsors a player letterman jacket — no suit size needed.
+                Sponsors a player letter jacket — no suit size needed.
               </p>
             )}
             <DonorFields form={form} />
           </form>
         </CardContent>
       </Card>
-      <RecentIntents summary={form.summary} />
+      <RecentGifts summary={form.summary} />
     </div>
   );
 }
@@ -445,11 +509,15 @@ export function TailgateGivingForm({
   amountError?: boolean;
   defaultDonorLabel?: string;
 }) {
+  const [tailgateMode, setTailgateMode] = useState<TailgateMode>("per_game");
   const [tailgateGame, setTailgateGame] = useState<string>(TAILGATE_SPONSORSHIP.games[0]);
   const [customGame, setCustomGame] = useState("");
-  const [amountDollars, setAmountDollars] = useState(String(TAILGATE_SPONSORSHIP.amountDollars[0]));
   const isCustomGame = tailgateGame === "Other / custom";
   const resolvedGame = isCustomGame ? customGame : tailgateGame;
+  const amountDollars =
+    tailgateMode === "entire_event"
+      ? TAILGATE_SPONSORSHIP.entireEventDollars
+      : TAILGATE_SPONSORSHIP.perGameDollars;
 
   const form = usePledgeForm({
     designation: "tailgate",
@@ -459,7 +527,8 @@ export function TailgateGivingForm({
     initial,
     buildBody: () => ({
       amountDollars,
-      tailgateGame: resolvedGame,
+      tailgateMode,
+      tailgateGame: tailgateMode === "per_game" ? resolvedGame : undefined,
     }),
   });
   const piece = givingPieceById("tailgate");
@@ -474,68 +543,68 @@ export function TailgateGivingForm({
         <CardContent>
           <form onSubmit={form.onSubmit} className="space-y-4">
             <p className="text-sm text-muted-foreground">{piece.summary}</p>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="tailgate-game">Game</Label>
-                <select
-                  id="tailgate-game"
-                  className={SELECT_CLASS}
-                  value={tailgateGame}
-                  onChange={(event) => setTailgateGame(event.target.value)}
-                >
-                  {TAILGATE_SPONSORSHIP.games.map((game) => (
-                    <option key={game} value={game}>
-                      {game}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {isCustomGame ? (
-                <div className="space-y-1.5">
-                  <Label htmlFor="custom-game">Custom game</Label>
-                  <Input
-                    id="custom-game"
-                    maxLength={120}
-                    required
-                    value={customGame}
-                    onChange={(event) => setCustomGame(event.target.value)}
-                    placeholder="e.g. vs. Georgetown Day"
-                  />
-                </div>
-              ) : null}
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Tailgate options">
+              <Button
+                type="button"
+                role="tab"
+                aria-selected={tailgateMode === "per_game"}
+                variant={tailgateMode === "per_game" ? "default" : "outline"}
+                onClick={() => setTailgateMode("per_game")}
+              >
+                ${TAILGATE_SPONSORSHIP.perGameDollars} ea
+              </Button>
+              <Button
+                type="button"
+                role="tab"
+                aria-selected={tailgateMode === "entire_event"}
+                variant={tailgateMode === "entire_event" ? "default" : "outline"}
+                onClick={() => setTailgateMode("entire_event")}
+              >
+                ${TAILGATE_SPONSORSHIP.entireEventDollars.toLocaleString("en-US")} Sponsor entire event
+              </Button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {TAILGATE_SPONSORSHIP.amountDollars.map((amount) => (
-                <Button
-                  key={amount}
-                  type="button"
-                  variant={amountDollars === String(amount) ? "default" : "outline"}
-                  aria-pressed={amountDollars === String(amount)}
-                  onClick={() => setAmountDollars(String(amount))}
-                >
-                  ${amount}
-                </Button>
-              ))}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tailgate-amount">Amount (USD)</Label>
-              <Input
-                id="tailgate-amount"
-                name="amountDollars"
-                type="number"
-                min="1"
-                step="1"
-                required
-                value={amountDollars}
-                onChange={(event) => setAmountDollars(event.target.value)}
-              />
-            </div>
+            {tailgateMode === "per_game" ? (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="tailgate-game">Game</Label>
+                  <select
+                    id="tailgate-game"
+                    className={SELECT_CLASS}
+                    value={tailgateGame}
+                    onChange={(event) => setTailgateGame(event.target.value)}
+                  >
+                    {TAILGATE_SPONSORSHIP.games.map((game) => (
+                      <option key={game} value={game}>
+                        {game}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {isCustomGame ? (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="custom-game">Custom game</Label>
+                    <Input
+                      id="custom-game"
+                      maxLength={120}
+                      required
+                      value={customGame}
+                      onChange={(event) => setCustomGame(event.target.value)}
+                      placeholder="e.g. vs. Georgetown Day"
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Sponsors the entire tailgate event for ${TAILGATE_SPONSORSHIP.entireEventDollars.toLocaleString("en-US")}.
+              </p>
+            )}
             <DonorFields form={form} />
           </form>
         </CardContent>
       </Card>
-      <RecentIntents summary={form.summary} />
+      <RecentGifts summary={form.summary} />
     </div>
   );
 }

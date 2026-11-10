@@ -1,11 +1,14 @@
 import { attachDonorLeaderBadges, type PublicBadge } from "@/lib/badges";
 import { getSql } from "@/lib/db";
 import {
+  FIVE_YEAR_AMOUNT_DOLLARS,
   LETTERMAN_JACKET,
+  TAILGATE_SPONSORSHIP,
   designationLabel,
   normalizeGivingPiece,
   type GivingDesignationId,
   type LettermanJacketVariant,
+  type TailgateMode,
 } from "@/lib/fundraising-plan";
 import { ensureGivingPledgesTable } from "@/lib/giving-schema";
 
@@ -23,8 +26,12 @@ export type GivingPledgeDetails = {
   suitSize?: string;
   /** @deprecated Legacy theme pledges only — new tailgates are game-only. */
   tailgateTheme?: string;
-  /** Game the donor is sponsoring. */
+  /** Game the donor is sponsoring ($250 ea). */
   tailgateGame?: string;
+  /** per_game ($250) or entire_event ($4000). */
+  tailgateMode?: TailgateMode;
+  /** Annual amount for a 5-year commitment (dollars). */
+  annualDollars?: number;
 };
 
 export type GivingPledge = {
@@ -100,6 +107,28 @@ function normalizeShortText(value: unknown, max: number): string | null {
   return text || null;
 }
 
+function normalizeTailgateMode(value: unknown): TailgateMode | null {
+  if (value === "per_game" || value === "entire_event") return value;
+  return null;
+}
+
+function isFiveYearAnnualDollars(value: number): value is (typeof FIVE_YEAR_AMOUNT_DOLLARS)[number] {
+  return (FIVE_YEAR_AMOUNT_DOLLARS as readonly number[]).includes(value);
+}
+
+function normalizeFiveYearAnnualDollars(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && isFiveYearAnnualDollars(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const cleaned = value.trim().replace(/[$,\s]/g, "");
+    if (!cleaned) return null;
+    const parsed = Number.parseFloat(cleaned);
+    if (Number.isFinite(parsed) && isFiveYearAnnualDollars(parsed)) return parsed;
+  }
+  return null;
+}
+
 export function parseGivingDetails(raw: unknown): GivingPledgeDetails {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   const row = raw as Record<string, unknown>;
@@ -112,6 +141,10 @@ export function parseGivingDetails(raw: unknown): GivingPledgeDetails {
   if (theme) details.tailgateTheme = theme;
   const game = normalizeShortText(row.tailgateGame, MAX_TAILGATE_GAME_LENGTH);
   if (game) details.tailgateGame = game;
+  const mode = normalizeTailgateMode(row.tailgateMode);
+  if (mode) details.tailgateMode = mode;
+  const annual = normalizeFiveYearAnnualDollars(row.annualDollars);
+  if (annual) details.annualDollars = annual;
   return details;
 }
 
@@ -120,7 +153,7 @@ export type ParsedGivingPledgeInput =
   | { ok: false; error: string };
 
 /**
- * Resolve amount + designation rules for Recurring / Letterman / Tailgate.
+ * Resolve amount + designation rules for 5-Year / One-time / Letterman / Tailgate.
  */
 export function resolveGivingPledgeInput(input: {
   amountDollars?: unknown;
@@ -130,6 +163,7 @@ export function resolveGivingPledgeInput(input: {
   suitSize?: unknown;
   tailgateTheme?: unknown;
   tailgateGame?: unknown;
+  tailgateMode?: unknown;
 }): ParsedGivingPledgeInput {
   const designation = normalizeDesignation(input.designation);
   const details = parseGivingDetails({
@@ -137,14 +171,30 @@ export function resolveGivingPledgeInput(input: {
     suitSize: input.suitSize,
     tailgateTheme: input.tailgateTheme,
     tailgateGame: input.tailgateGame,
+    tailgateMode: input.tailgateMode,
   });
+
+  if (designation === "five_year") {
+    const annualDollars =
+      normalizeFiveYearAnnualDollars(input.amountDollars) ??
+      (typeof input.amountCents === "number" && Number.isInteger(input.amountCents)
+        ? normalizeFiveYearAnnualDollars(input.amountCents / 100)
+        : null) ??
+      details.annualDollars ??
+      null;
+    if (annualDollars === null) {
+      return { ok: false, error: "Choose a 5-year annual amount of $25k, $10k, $5k, or $1k." };
+    }
+    details.annualDollars = annualDollars;
+    return { ok: true, amountCents: annualDollars * 100, designation, details };
+  }
 
   if (designation === "letterman_jacket") {
     const variant =
       normalizeJacketVariant(input.jacketVariant) ??
       normalizeJacketVariant(details.jacketVariant);
     if (!variant) {
-      return { ok: false, error: "Choose Donate or For Self for the letterman jacket." };
+      return { ok: false, error: "Choose Sponsor or Purchase for the letter jacket." };
     }
     details.jacketVariant = variant;
     const dollars =
@@ -152,7 +202,7 @@ export function resolveGivingPledgeInput(input: {
     if (variant === "self") {
       const suitSize = normalizeSuitSize(input.suitSize) ?? details.suitSize;
       if (!suitSize) {
-        return { ok: false, error: "Add a suit size for a self letterman jacket." };
+        return { ok: false, error: "Add a suit size to purchase a letter jacket." };
       }
       details.suitSize = suitSize;
     } else {
@@ -162,27 +212,48 @@ export function resolveGivingPledgeInput(input: {
   }
 
   if (designation === "tailgate") {
+    const modeFromAmount = (() => {
+      const amountCents =
+        dollarsToCents(input.amountDollars) ??
+        (typeof input.amountCents === "number" && Number.isInteger(input.amountCents)
+          ? input.amountCents
+          : null);
+      if (amountCents === TAILGATE_SPONSORSHIP.entireEventDollars * 100) return "entire_event" as const;
+      if (amountCents === TAILGATE_SPONSORSHIP.perGameDollars * 100) return "per_game" as const;
+      return null;
+    })();
+    const mode =
+      normalizeTailgateMode(input.tailgateMode) ??
+      normalizeTailgateMode(details.tailgateMode) ??
+      modeFromAmount;
+    if (!mode) {
+      return { ok: false, error: "Choose $250 ea or $4,000 to sponsor the entire event." };
+    }
+    details.tailgateMode = mode;
+    delete details.tailgateTheme;
+
+    if (mode === "entire_event") {
+      delete details.tailgateGame;
+      return {
+        ok: true,
+        amountCents: TAILGATE_SPONSORSHIP.entireEventDollars * 100,
+        designation,
+        details,
+      };
+    }
+
     const game =
       normalizeShortText(input.tailgateGame, MAX_TAILGATE_GAME_LENGTH) ?? details.tailgateGame;
     if (!game) {
-      return { ok: false, error: "Choose a game for the tailgate sponsorship." };
+      return { ok: false, error: "Choose a game for the $250 tailgate sponsorship." };
     }
     details.tailgateGame = game;
-    delete details.tailgateTheme;
-
-    const amountCents =
-      dollarsToCents(input.amountDollars) ??
-      (typeof input.amountCents === "number" && Number.isInteger(input.amountCents)
-        ? input.amountCents
-        : null);
-    if (
-      amountCents === null ||
-      amountCents < MIN_PLEDGE_CENTS ||
-      amountCents > MAX_PLEDGE_CENTS
-    ) {
-      return { ok: false, error: "Choose a valid tailgate sponsorship amount." };
-    }
-    return { ok: true, amountCents, designation, details };
+    return {
+      ok: true,
+      amountCents: TAILGATE_SPONSORSHIP.perGameDollars * 100,
+      designation,
+      details,
+    };
   }
 
   const amountCents =
@@ -208,14 +279,23 @@ export function resolveGivingPledgeInput(input: {
 export function formatPledgePurpose(pledge: Pick<GivingPledge, "designation" | "details" | "amount_cents">) {
   const designation = normalizeDesignation(pledge.designation);
   const label = designationLabel(designation);
+  if (designation === "five_year") {
+    const annual =
+      pledge.details.annualDollars ??
+      (pledge.amount_cents > 0 ? Math.round(pledge.amount_cents / 100) : null);
+    return annual ? `${label} · $${annual.toLocaleString("en-US")}/yr` : label;
+  }
   if (designation === "letterman_jacket") {
     const variant =
       pledge.details.jacketVariant === "self"
-        ? `For Self${pledge.details.suitSize ? ` · size ${pledge.details.suitSize}` : ""}`
-        : "Donate";
+        ? `Purchase${pledge.details.suitSize ? ` · size ${pledge.details.suitSize}` : ""}`
+        : "Sponsor";
     return `${label} · ${variant}`;
   }
   if (designation === "tailgate") {
+    if (pledge.details.tailgateMode === "entire_event" || pledge.amount_cents === TAILGATE_SPONSORSHIP.entireEventDollars * 100) {
+      return `${label} · Entire event`;
+    }
     const game = pledge.details.tailgateGame || pledge.details.tailgateTheme || "TBD";
     return `${label} · ${game}`;
   }

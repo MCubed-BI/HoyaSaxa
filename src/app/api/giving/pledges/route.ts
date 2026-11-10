@@ -78,11 +78,13 @@ export async function POST(request: Request) {
   function redirectForPiece(query: "recorded=1" | "error=amount") {
     const designation = resolved.ok ? resolved.designation : String(fields.designation ?? "one_time");
     const path =
-      designation === "letterman_jacket"
-        ? "/giving/letterman"
-        : designation === "tailgate"
-          ? "/giving/tailgate"
-          : "/giving/one-time";
+      designation === "five_year"
+        ? "/giving/five-year"
+        : designation === "letterman_jacket"
+          ? "/giving/letterman"
+          : designation === "tailgate"
+            ? "/giving/tailgate"
+            : "/giving/one-time";
     return NextResponse.redirect(new URL(`${path}?${query}`, request.url), { status: 303 });
   }
 

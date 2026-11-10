@@ -23,7 +23,7 @@ export default async function TailgateGivingPage({
       <PageMain width="narrow">
         <PageHeader
           title="Tailgate"
-          description="Sponsor a game at $250 / $500 / $1,000 / $5,000."
+          description="$250 ea or $4,000 to sponsor the entire event."
         />
         {errorMessage ? (
           <StatusCard title="Giving unavailable" body={errorMessage} />
