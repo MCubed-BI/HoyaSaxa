@@ -1,5 +1,16 @@
 import { getSql } from "@/lib/db";
-import { DM_CHANNEL_KIND, dmPair } from "@/lib/messages-dm";
+import type { MessageViewer } from "@/lib/messages-auth";
+import {
+  clampMessagePostsLimit,
+  isInboxVisibleChannel,
+  listMessageChannelsOptions,
+  MESSAGE_POSTS_MAX_LIMIT,
+  MESSAGE_POSTS_PAGE_SIZE,
+  messageReadKeys,
+  type MessagePostsPage,
+  type MessagePostsQuery,
+} from "@/lib/messages-api";
+import { DM_CHANNEL_KIND, dmPair, dmParticipantId } from "@/lib/messages-dm";
 import { ensureMessagesTables } from "@/lib/messages-schema";
 
 export const MESSAGE_FILTERS = ["all", "unread", "groups"] as const;
@@ -31,6 +42,12 @@ export type MessagePostRow = {
   created_at: string;
 };
 
+export type ListMessageChannelsOptions = {
+  readKeys?: string[];
+  excludeAuthorLabel?: string | null;
+  excludeAuthorId?: string | null;
+};
+
 async function query<T>(text: string, params: unknown[] = []) {
   const sql = getSql();
   return (await sql.query(text, params)) as unknown as T;
@@ -51,13 +68,19 @@ export function isGroupChannel(channel: Pick<MessageChannelRow, "kind">) {
 }
 
 export function filterMessageChannels(channels: MessageChannelRow[], filter: MessageFilter) {
-  if (filter === "unread") return channels.filter(isUnreadChannel);
-  if (filter === "groups") return channels.filter(isGroupChannel);
-  return channels;
+  const visible = channels.filter(isInboxVisibleChannel);
+  if (filter === "unread") return visible.filter(isUnreadChannel);
+  if (filter === "groups") return [];
+  return visible;
 }
 
-export async function listMessageChannels(viewerKey: string, viewerAlumniId?: string | null) {
+export async function listMessageChannels(
+  viewerKey: string,
+  viewerAlumniId?: string | null,
+  options?: ListMessageChannelsOptions,
+) {
   await ensureMessagesTables();
+  const readKeys = (options?.readKeys?.length ? options.readKeys : [viewerKey]).filter(Boolean);
   return query<MessageChannelRow[]>(
     `
     SELECT
@@ -82,17 +105,26 @@ export async function listMessageChannels(viewerKey: string, viewerAlumniId?: st
       ORDER BY created_at DESC
       LIMIT 1
     ) latest ON true
-    LEFT JOIN message_reads r
-      ON r.channel_id = c.id AND r.viewer_key = $1
+    LEFT JOIN LATERAL (
+      SELECT MAX(last_read_at) AS last_read_at
+      FROM message_reads
+      WHERE channel_id = c.id
+        AND viewer_key = ANY($1::text[])
+    ) r ON true
     LEFT JOIN LATERAL (
       SELECT COUNT(*)::int AS unread_count
       FROM message_posts p
       WHERE p.channel_id = c.id
         AND (r.last_read_at IS NULL OR p.created_at > r.last_read_at)
+        AND ($3::text IS NULL OR p.author_label IS DISTINCT FROM $3)
     ) unread ON true
-    WHERE c.kind IS DISTINCT FROM 'dm'
+    WHERE (
+         c.kind IS DISTINCT FROM 'dm'
+         AND c.kind IS DISTINCT FROM 'group'
+       )
        OR (
          $2::text IS NOT NULL
+         AND c.kind = 'dm'
          AND (
            lower(c.participant_a) = lower($2)
            OR lower(c.participant_b) = lower($2)
@@ -100,12 +132,17 @@ export async function listMessageChannels(viewerKey: string, viewerAlumniId?: st
        )
     ORDER BY c.is_pinned DESC, COALESCE(latest.created_at, c.created_at) DESC, c.name
     `,
-    [viewerKey, viewerAlumniId?.trim() || null],
+    [readKeys, viewerAlumniId?.trim() || null, options?.excludeAuthorLabel?.trim() || null],
   );
 }
 
-export async function getMessageChannel(slug: string, viewerKey: string, viewerAlumniId?: string | null) {
-  const channels = await listMessageChannels(viewerKey, viewerAlumniId);
+export async function getMessageChannel(
+  slug: string,
+  viewerKey: string,
+  viewerAlumniId?: string | null,
+  options?: ListMessageChannelsOptions,
+) {
+  const channels = await listMessageChannels(viewerKey, viewerAlumniId, options);
   return channels.find((channel) => channel.slug === slug) ?? null;
 }
 
@@ -115,6 +152,7 @@ export async function findOrCreateDmChannel(input: {
   fromLabel: string;
   toLabel: string;
   viewerKey: string;
+  listOptions?: ListMessageChannelsOptions;
 }) {
   await ensureMessagesTables();
   const pair = dmPair(input.fromAlumniId, input.fromLabel, input.toAlumniId, input.toLabel);
@@ -138,25 +176,119 @@ export async function findOrCreateDmChannel(input: {
       pair.participantB,
     ],
   );
-  const channel = await getMessageChannel(pair.slug, input.viewerKey, input.fromAlumniId);
+  const channel = await getMessageChannel(pair.slug, input.viewerKey, input.fromAlumniId, input.listOptions);
   if (!channel) {
     throw new Error("Could not open the direct message thread.");
   }
   return channel;
 }
 
-export async function listMessagePosts(channelId: string, limit = 80) {
+type ListPostsInput = number | Partial<MessagePostsQuery>;
+
+function normalizePostsQuery(limitOrOptions: ListPostsInput = MESSAGE_POSTS_PAGE_SIZE): MessagePostsQuery {
+  if (typeof limitOrOptions === "number") {
+    return { limit: clampMessagePostsLimit(limitOrOptions, MESSAGE_POSTS_MAX_LIMIT) };
+  }
+  return {
+    after: limitOrOptions.after?.trim() || undefined,
+    before: limitOrOptions.after ? undefined : limitOrOptions.before?.trim() || undefined,
+    limit: clampMessagePostsLimit(limitOrOptions.limit, MESSAGE_POSTS_PAGE_SIZE),
+  };
+}
+
+const POST_COLUMNS = "id, channel_id, title, body, author_role, author_label, created_at";
+
+export async function listMessagePostsPage(
+  channelId: string,
+  limitOrOptions: ListPostsInput = MESSAGE_POSTS_PAGE_SIZE,
+): Promise<MessagePostsPage> {
   await ensureMessagesTables();
-  return query<MessagePostRow[]>(
+  const queryOpts = normalizePostsQuery(limitOrOptions);
+  const fetchLimit = queryOpts.limit + 1;
+
+  if (queryOpts.after) {
+    const rows = await query<MessagePostRow[]>(
+      `
+      SELECT ${POST_COLUMNS}
+      FROM message_posts
+      WHERE channel_id = $1
+        AND EXISTS (
+          SELECT 1 FROM message_posts cursor_post
+          WHERE cursor_post.id = $2 AND cursor_post.channel_id = $1
+        )
+        AND (created_at, id) > (
+          SELECT created_at, id FROM message_posts WHERE id = $2 AND channel_id = $1
+        )
+      ORDER BY created_at ASC, id ASC
+      LIMIT $3
+      `,
+      [channelId, queryOpts.after, fetchLimit],
+    );
+    const hasMoreAfter = rows.length > queryOpts.limit;
+    return {
+      posts: hasMoreAfter ? rows.slice(0, queryOpts.limit) : rows,
+      hasMoreBefore: true,
+      hasMoreAfter,
+    };
+  }
+
+  if (queryOpts.before) {
+    const rows = await query<MessagePostRow[]>(
+      `
+      SELECT ${POST_COLUMNS}
+      FROM (
+        SELECT ${POST_COLUMNS}
+        FROM message_posts
+        WHERE channel_id = $1
+          AND EXISTS (
+            SELECT 1 FROM message_posts cursor_post
+            WHERE cursor_post.id = $2 AND cursor_post.channel_id = $1
+          )
+          AND (created_at, id) < (
+            SELECT created_at, id FROM message_posts WHERE id = $2 AND channel_id = $1
+          )
+        ORDER BY created_at DESC, id DESC
+        LIMIT $3
+      ) older
+      ORDER BY created_at ASC, id ASC
+      `,
+      [channelId, queryOpts.before, fetchLimit],
+    );
+    const hasMoreBefore = rows.length > queryOpts.limit;
+    const posts = hasMoreBefore ? rows.slice(rows.length - queryOpts.limit) : rows;
+    return {
+      posts,
+      hasMoreBefore,
+      hasMoreAfter: true,
+    };
+  }
+
+  const rows = await query<MessagePostRow[]>(
     `
-    SELECT id, channel_id, title, body, author_role, author_label, created_at
-    FROM message_posts
-    WHERE channel_id = $1
-    ORDER BY created_at ASC
-    LIMIT $2
+    SELECT ${POST_COLUMNS}
+    FROM (
+      SELECT ${POST_COLUMNS}
+      FROM message_posts
+      WHERE channel_id = $1
+      ORDER BY created_at DESC, id DESC
+      LIMIT $2
+    ) latest
+    ORDER BY created_at ASC, id ASC
     `,
-    [channelId, limit],
+    [channelId, fetchLimit],
   );
+  const hasMoreBefore = rows.length > queryOpts.limit;
+  const posts = hasMoreBefore ? rows.slice(rows.length - queryOpts.limit) : rows;
+  return {
+    posts,
+    hasMoreBefore,
+    hasMoreAfter: false,
+  };
+}
+
+export async function listMessagePosts(channelId: string, limitOrOptions: ListPostsInput = MESSAGE_POSTS_MAX_LIMIT) {
+  const page = await listMessagePostsPage(channelId, limitOrOptions);
+  return page.posts;
 }
 
 export async function createMessagePost(input: {
@@ -189,4 +321,24 @@ export async function markChannelRead(channelId: string, viewerKey: string) {
     `,
     [viewerKey, channelId],
   );
+}
+
+/** Dual-write session key + stable participant id. See MESSAGE_READ_KEY_NOTE. */
+export async function markChannelReadKeys(channelId: string, keys: string[]) {
+  const unique = [...new Set(keys.map((key) => key.trim()).filter(Boolean))];
+  for (const key of unique) {
+    await markChannelRead(channelId, key);
+  }
+}
+
+export async function listViewerMessageChannels(viewer: MessageViewer) {
+  return listMessageChannels(viewer.viewerKey, dmParticipantId(viewer), listMessageChannelsOptions(viewer));
+}
+
+export async function getViewerMessageChannel(slug: string, viewer: MessageViewer) {
+  return getMessageChannel(slug, viewer.viewerKey, dmParticipantId(viewer), listMessageChannelsOptions(viewer));
+}
+
+export async function markChannelReadForViewer(channelId: string, viewer: MessageViewer) {
+  await markChannelReadKeys(channelId, messageReadKeys(viewer));
 }

@@ -1,4 +1,5 @@
 import { isPreviewAlumniId } from "@/lib/alum-preview";
+import { isLockerStubId } from "@/lib/locker-stubs";
 import { seedAlumniIdForLabel } from "@/lib/badge-identity";
 import { SGARLATA_CHANNEL_SLUG, canPostSgarlata, type MessageViewer } from "@/lib/messages-auth";
 
@@ -94,13 +95,20 @@ export function dmAuthorLabel(viewer: MessageViewer | null | undefined) {
   return viewer.label.trim() || "Alumnus";
 }
 
+export type MessageCtaActor = {
+  alumniId?: string | null;
+  isAdmin?: boolean;
+  username?: string | null;
+  label?: string | null;
+};
+
 export function canMessageHoyaProfile(input: {
   viewerAlumniId?: string | null;
   targetAlumniId?: string | null;
   isAdmin?: boolean;
 }) {
   const target = input.targetAlumniId?.trim() ?? "";
-  if (!target || isPreviewAlumniId(target)) return false;
+  if (!target || isPreviewAlumniId(target) || isLockerStubId(target)) return false;
   const viewer = input.viewerAlumniId?.trim() ?? "";
   if (viewer && !isPreviewAlumniId(viewer) && normalizeAlumniId(viewer) === normalizeAlumniId(target)) {
     return false;
@@ -108,6 +116,29 @@ export function canMessageHoyaProfile(input: {
   if (input.isAdmin) return true;
   if (!viewer || isPreviewAlumniId(viewer)) return false;
   return true;
+}
+
+export function canMessageActorTarget(actor: MessageCtaActor | null | undefined, targetAlumniId: string) {
+  if (!actor) return false;
+  return canMessageHoyaProfile({
+    viewerAlumniId: linkedAlumniIdForViewer({
+      alumniId: actor.alumniId,
+      username: actor.username ?? actor.label,
+      label: actor.label,
+    }),
+    targetAlumniId,
+    isAdmin: Boolean(actor.isAdmin),
+  });
+}
+
+export function messageCtaActorFromViewer(viewer: MessageViewer | null | undefined): MessageCtaActor | null {
+  if (!viewer) return null;
+  return {
+    alumniId: viewer.alumniId,
+    isAdmin: Boolean(viewer.isAdmin),
+    username: viewer.label,
+    label: viewer.label,
+  };
 }
 
 function participantIdFrom(viewerOrAlumniId?: MessageViewer | string | null) {

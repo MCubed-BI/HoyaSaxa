@@ -32,7 +32,7 @@ describe("logout destinations", () => {
       }),
       "/home/login",
     );
-    assert.equal(logoutRedirectPath({ refererPath: "/messages/sgarlata" }), "/locker");
+    assert.equal(logoutRedirectPath({ refererPath: "/messages/sgarlata" }), "/home/login");
     assert.equal(logoutRedirectPath({ from: "/me" }), "/alumni-login");
     assert.equal(logoutRedirectPath({ from: "/", hadStaffCookie: true }), "/login");
   });

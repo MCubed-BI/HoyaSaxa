@@ -6,6 +6,8 @@ import { isMissingDatabaseConfig } from "@/lib/db";
 import { parseDirectoryPill, parseLockerPage } from "@/lib/locker-paths";
 import { searchLockerDirectory } from "@/lib/locker-directory";
 import { requireLockerViewer } from "@/lib/locker-viewer";
+import { getMessageViewer } from "@/lib/messages-auth";
+import { messageCtaActorFromViewer } from "@/lib/messages-dm";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,7 @@ export default async function DirectoryPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await requireLockerViewer("/home/login");
+  const messageActor = messageCtaActorFromViewer(await getMessageViewer());
   const params = await searchParams;
   const q = firstParam(params.q);
   const role = parseDirectoryPill(firstParam(params.role));
@@ -51,6 +54,7 @@ export default async function DirectoryPage({
           usingSample={result.usingSample}
           badgesById={badgesById}
           focusId={firstParam(params.highlight) || (result.total === 1 ? result.rows[0]?.id : null)}
+          messageActor={messageActor}
         />
       </PageMain>
     );

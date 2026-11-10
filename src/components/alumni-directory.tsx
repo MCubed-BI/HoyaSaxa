@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { HoyaAvatar } from "@/components/hoya-avatar";
 import { HoyaBadgeRow } from "@/components/hoya-badges";
+import { ProfileMessageCta } from "@/components/profile-message-cta";
 import type { PublicBadge } from "@/lib/badges";
 import { filtersToSearchParams, type AlumniFilters } from "@/lib/filters";
 import {
@@ -53,6 +54,7 @@ export function AlumniDirectory({
   filters,
   badgesById = {},
   focusId,
+  messageableIds = [],
 }: {
   rows: AlumniListItem[];
   total: number;
@@ -61,6 +63,7 @@ export function AlumniDirectory({
   filters: AlumniFilters;
   badgesById?: Record<string, PublicBadge[]>;
   focusId?: string | null;
+  messageableIds?: string[];
 }) {
   const { isSelected, toggle } = useSelection();
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -70,6 +73,7 @@ export function AlumniDirectory({
   };
   const range = resultRange(page, pageSize, total);
   const highlightId = focusId || (total === 1 ? rows[0]?.id : null);
+  const messageable = new Set(messageableIds);
 
   useEffect(() => {
     if (!highlightId) return;
@@ -149,6 +153,9 @@ export function AlumniDirectory({
                       <ContactPills person={person} />
                     </div>
                   </Link>
+                  {messageable.has(person.id) ? (
+                    <ProfileMessageCta alumniId={person.id} name={displayName(person)} compact />
+                  ) : null}
                 </CardContent>
               </Card>
             </li>

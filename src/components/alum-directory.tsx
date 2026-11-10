@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { HoyaAvatar } from "@/components/hoya-avatar";
 import { HoyaBadgeRow } from "@/components/hoya-badges";
+import { ProfileMessageCta } from "@/components/profile-message-cta";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { PublicBadge } from "@/lib/badges";
@@ -15,6 +16,7 @@ import {
   residenceLabel,
 } from "@/lib/format";
 import type { AlumniListItem } from "@/lib/types";
+import { canMessageActorTarget, type MessageCtaActor } from "@/lib/messages-dm";
 
 export function AlumDirectory({
   rows,
@@ -25,6 +27,7 @@ export function AlumDirectory({
   basePath = "/alum",
   profileHref,
   badgesById = {},
+  messageActor = null,
 }: {
   rows: AlumniListItem[];
   total: number;
@@ -34,6 +37,7 @@ export function AlumDirectory({
   basePath?: string;
   profileHref?: string;
   badgesById?: Record<string, PublicBadge[]>;
+  messageActor?: MessageCtaActor | null;
 }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const prev = page > 1 ? `${basePath}?${filtersToSearchParams(filters, page - 1).toString()}` : null;
@@ -65,7 +69,7 @@ export function AlumDirectory({
               <Link href={profileHref ?? athleteHref(person.id)} className="shrink-0">
                 <HoyaAvatar person={person} />
               </Link>
-              <div className="min-w-0 space-y-1">
+              <div className="min-w-0 flex-1 space-y-1">
                 <Link
                   href={profileHref ?? athleteHref(person.id)}
                   className="flex flex-wrap items-center gap-2 truncate font-medium text-navy hover:underline"
@@ -106,6 +110,9 @@ export function AlumDirectory({
                   ) : null}
                 </div>
                 <HoyaBadgeRow badges={badgesById[person.id] ?? []} />
+                {canMessageActorTarget(messageActor, person.id) ? (
+                  <ProfileMessageCta alumniId={person.id} name={displayName(person)} compact />
+                ) : null}
               </div>
             </CardContent>
           </Card>

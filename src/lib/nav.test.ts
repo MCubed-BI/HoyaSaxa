@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
   alumPrimaryNavItems,
@@ -65,6 +67,12 @@ describe("unified application chrome", () => {
       portalMoreItems("owner").some((item) => item.label === "Admin portal"),
       false,
     );
+  });
+
+  it("shows a DM unread badge on desktop Messages and the mobile tab bar", () => {
+    const header = readFileSync(join(process.cwd(), "src/components/product-header.tsx"), "utf8");
+    assert.match(header, /MessagesUnreadBadge/);
+    assert.match(header, /item\.key === "messages"/);
   });
 
   it("treats legacy directory keys as the same Directory tab", () => {

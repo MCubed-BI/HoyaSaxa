@@ -5,7 +5,8 @@ import { isAlumAllowedPath } from "@/lib/portal-paths";
 import { expiredAuthCookieOptions } from "@/lib/session";
 
 const CLAIM_PREFIXES = ["/me", "/alumni-login", "/register"];
-const MESSAGES_PREFIXES = ["/messages", "/message", "/locker"];
+const MESSAGES_PREFIXES = ["/messages", "/message"];
+const LOCKER_GATE_PREFIXES = ["/locker"];
 const STAFF_PREFIXES = ["/", "/blast", "/reports", "/sync", "/alumni", "/fundraising", "/find-my-alum"];
 
 export type LogoutContext = {
@@ -82,6 +83,10 @@ export function isMessagesSignOutPath(pathname: string) {
   return MESSAGES_PREFIXES.some((prefix) => startsWithPath(pathname, prefix));
 }
 
+export function isLockerGateSignOutPath(pathname: string) {
+  return LOCKER_GATE_PREFIXES.some((prefix) => startsWithPath(pathname, prefix));
+}
+
 export function isClaimSignOutPath(pathname: string) {
   return CLAIM_PREFIXES.some((prefix) => startsWithPath(pathname, prefix));
 }
@@ -96,7 +101,8 @@ function isStaffSignOutPath(pathname: string) {
 export function logoutRedirectPath(input: LogoutContext) {
   const origin = safeLogoutFromPath(input.from) ?? safeLogoutFromPath(input.refererPath);
   if (origin) {
-    if (isMessagesSignOutPath(origin)) return "/locker";
+    if (isLockerGateSignOutPath(origin)) return "/locker";
+    if (isMessagesSignOutPath(origin)) return "/home/login";
     if (isClaimSignOutPath(origin)) return "/alumni-login";
     if (isLockerSignOutPath(origin) || isAlumAllowedPath(origin)) return "/home/login";
     if (isStaffSignOutPath(origin)) return "/login";
