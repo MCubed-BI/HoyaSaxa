@@ -1,14 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MessagesCompose } from "@/components/messages-compose";
+import { MessagesThread } from "@/components/messages-thread";
 import { PageHeader, PageMain } from "@/components/page-chrome";
 import { StatusCard } from "@/components/status-card";
 import { Badge } from "@/components/ui/badge";
-import { Timestamp } from "@/components/timestamp";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMissingDatabaseConfig } from "@/lib/db";
-import { getViewerMessageChannel, listMessagePosts, markChannelReadForViewer } from "@/lib/messages";
-import { canPostToMessageChannel, dmDisplayName, dmParticipantId, isDmChannel } from "@/lib/messages-dm";
+import { getViewerMessageChannel, listMessagePostsPage, markChannelReadForViewer } from "@/lib/messages";
+import {
+  canPostToMessageChannel,
+  dmAuthorLabel,
+  dmDisplayName,
+  dmParticipantId,
+  isDmChannel,
+} from "@/lib/messages-dm";
 import { requireMessageViewer } from "@/lib/messages-viewer";
 
 export const dynamic = "force-dynamic";
@@ -24,13 +29,16 @@ export default async function MessageChannelPage({
 
   let errorMessage: string | null = null;
   let channel: Awaited<ReturnType<typeof getViewerMessageChannel>> = null;
-  let posts: Awaited<ReturnType<typeof listMessagePosts>> = [];
+  let posts: Awaited<ReturnType<typeof listMessagePostsPage>>["posts"] = [];
+  let hasMoreBefore = false;
 
   try {
     channel = await getViewerMessageChannel(slug, viewer);
     if (!channel) notFound();
     canPost = canPostToMessageChannel(channel, viewer);
-    posts = await listMessagePosts(channel.id);
+    const page = await listMessagePostsPage(channel.id);
+    posts = page.posts;
+    hasMoreBefore = page.hasMoreBefore;
     await markChannelReadForViewer(channel.id, viewer);
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) throw error;
@@ -43,7 +51,7 @@ export default async function MessageChannelPage({
 
   if (errorMessage) {
     return (
-      <PageMain width="narrow" className="pb-24 md:pb-8">
+      <PageMain width="narrow" className="flex min-h-0 flex-1 flex-col pb-24 md:pb-8">
         <StatusCard title="Channel unavailable" body={errorMessage} />
       </PageMain>
     );
@@ -51,16 +59,18 @@ export default async function MessageChannelPage({
 
   if (!channel) notFound();
 
+  const dm = isDmChannel(channel);
+
   return (
-    <PageMain width="narrow" className="pb-24 md:pb-8">
-      <div className="space-y-3">
+    <PageMain width="narrow" className="flex min-h-[calc(100dvh-8rem)] flex-1 flex-col gap-3 pb-24 md:min-h-[calc(100dvh-7rem)] md:pb-8">
+      <div className="shrink-0 space-y-2">
         <Link href="/messages" className="text-sm font-medium text-navy hover:underline">
           ← Messages
         </Link>
         <PageHeader
-          title={isDmChannel(channel) ? dmDisplayName(channel, dmParticipantId(viewer)) : channel.name}
+          title={dm ? dmDisplayName(channel, dmParticipantId(viewer)) : channel.name}
           description={
-            isDmChannel(channel)
+            dm
               ? "Private direct message. Only the two of you can read or send."
               : channel.description ||
                 (canPost
@@ -70,7 +80,7 @@ export default async function MessageChannelPage({
           actions={
             channel.kind === "official" ? (
               <Badge variant="secondary">Official</Badge>
-            ) : isDmChannel(channel) ? (
+            ) : dm ? (
               <Badge variant="outline">Direct</Badge>
             ) : (
               <Badge variant="outline">Group</Badge>
@@ -79,47 +89,17 @@ export default async function MessageChannelPage({
         />
       </div>
 
-      {canPost ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{isDmChannel(channel) ? "Send a message" : "New message"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MessagesCompose slug={channel.slug} mode={isDmChannel(channel) ? "dm" : "official"} />
-          </CardContent>
-        </Card>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Board and alumni can read this channel. Only Admin can compose From Sgarlata.
-        </p>
-      )}
-
-      {posts.length === 0 ? (
-        <StatusCard
-          title={isDmChannel(channel) ? "No messages yet" : "No posts yet"}
-          body={
-            isDmChannel(channel)
-              ? "Send the first note to start this thread."
-              : "When staff publish, the note will show here."
-          }
-        />
-      ) : (
-        <div className="space-y-3">
-          {posts.map((post) => (
-            <Card key={post.id}>
-              <CardHeader>
-                <CardTitle>{post.title || "Message"}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p className="whitespace-pre-wrap text-sm">{post.body}</p>
-                <p className="text-xs text-muted-foreground">
-                  {post.author_label || "Staff"} · <Timestamp value={post.created_at} />
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <noscript>
+        {canPost ? <MessagesCompose slug={channel.slug} mode={dm ? "dm" : "official"} /> : null}
+      </noscript>
+      <MessagesThread
+        slug={channel.slug}
+        mode={dm ? "dm" : "official"}
+        canPost={canPost}
+        viewerLabel={dm ? dmAuthorLabel(viewer) : viewer.label}
+        initialPosts={posts}
+        hasMoreBefore={hasMoreBefore}
+      />
     </PageMain>
   );
 }
