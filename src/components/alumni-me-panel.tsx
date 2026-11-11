@@ -5,17 +5,18 @@ import { useRouter } from "next/navigation";
 import { ClaimPhotoFields } from "@/components/claim-photo-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { AthleteOverviewFields } from "@/components/athlete-overview-editor";
+import { AthleteContactFields, AthleteOverviewFields } from "@/components/athlete-overview-editor";
 import { HoyaBadgeRow } from "@/components/hoya-badges";
 import { Kpi, KpiGrid } from "@/components/kpi";
 import { NetIdForm } from "@/components/net-id-form";
 import { Notice } from "@/components/page-chrome";
 import { useOptionalSelection } from "@/components/selection-provider";
 import { Timestamp } from "@/components/timestamp";
-import { overviewFormValues, overviewPatchFromForm } from "@/lib/alumni-overview";
+import {
+  overviewFormValues,
+  overviewPatchFromForm,
+  profileContactFormValues,
+} from "@/lib/alumni-overview";
 import type { PublicBadge } from "@/lib/badges";
 import { photosFromClaimMatch, type ClaimPhotoValues } from "@/lib/claim-photos";
 import { displayName, formatCount } from "@/lib/format";
@@ -71,18 +72,7 @@ export function AlumniMePanel({
       event?.currentTarget ?? (typeof document !== "undefined" ? document.getElementById("me-overview-form") : null);
     const form = formEl instanceof HTMLFormElement ? new FormData(formEl) : null;
     const patch = {
-      ...(form
-        ? {
-            ...overviewPatchFromForm(form),
-            first_name: String(form.get("first_name") ?? ""),
-            preferred_name: String(form.get("preferred_name") ?? ""),
-            phone_primary: String(form.get("phone_primary") ?? ""),
-            company_name: String(form.get("company_name") ?? ""),
-            job_title: String(form.get("job_title") ?? ""),
-            industry: String(form.get("industry") ?? ""),
-            address_primary: String(form.get("address_primary") ?? ""),
-          }
-        : {}),
+      ...(form ? overviewPatchFromForm(form) : {}),
       linkedin_url: form ? String(form.get("linkedin_url") ?? photos.linkedin_url) : photos.linkedin_url,
       football_photo_url: photos.football_photo_url,
       linkedin_photo_url: photos.linkedin_photo_url,
@@ -281,12 +271,19 @@ export function AlumniMePanel({
                 })}
               />
             </div>
-            <Field label="First name" name="first_name" defaultValue={active.first_name} />
-            <Field label="Preferred name" name="preferred_name" defaultValue={active.preferred_name} />
-            <Field label="Phone" name="phone_primary" defaultValue={active.phone_primary} />
-            <Field label="Company" name="company_name" defaultValue={active.company_name} />
-            <Field label="Title" name="job_title" defaultValue={active.job_title} />
-            <Field label="Industry" name="industry" defaultValue={active.industry} />
+            <div className="sm:col-span-2">
+              <AthleteContactFields
+                defaults={profileContactFormValues({
+                  first_name: active.first_name,
+                  preferred_name: active.preferred_name,
+                  phone_primary: active.phone_primary,
+                  company_name: active.company_name,
+                  job_title: active.job_title,
+                  industry: active.industry,
+                  address_primary: active.address_primary,
+                })}
+              />
+            </div>
             <div className="sm:col-span-2">
               <ClaimPhotoFields
                 values={photos}
@@ -298,10 +295,6 @@ export function AlumniMePanel({
                 onRefreshFromLinkedin={() => void saveRecord(undefined, true)}
                 refreshPending={pending}
               />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="address_primary">Address</Label>
-              <Textarea id="address_primary" name="address_primary" defaultValue={active.address_primary ?? ""} />
             </div>
             <p className="sm:col-span-2 text-xs text-muted-foreground">
               Roster last name and graduating class stay on the player card ({active.last_name}
@@ -367,19 +360,3 @@ export function AlumniMePanel({
   );
 }
 
-function Field({
-  label,
-  name,
-  defaultValue,
-}: {
-  label: string;
-  name: string;
-  defaultValue?: string | null;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={name}>{label}</Label>
-      <Input id={name} name={name} defaultValue={defaultValue ?? ""} />
-    </div>
-  );
-}

@@ -16,9 +16,11 @@ import {
 } from "@/lib/alumni-duplicate-dismissals";
 import { isLikelyDuplicate } from "@/lib/alumni-duplicates";
 import {
+  ADMIN_ROSTER_COLUMN_FIELDS,
   OVERVIEW_COLUMN_FIELDS,
   overviewInputToAlumniPatch,
   type OverviewInput,
+  type ProfileColumnField,
 } from "@/lib/alumni-overview";
 import { ensureAlumniPhotoColumns, updateAlumniPhotos, type AlumniPhotoPatch } from "@/lib/alumni-photos";
 import { grantVerifiedHoyaForAlumSession } from "@/lib/badges";
@@ -645,7 +647,11 @@ export async function claimAdditionalRecord(accountId: string, alumniId: string)
   await grantVerifiedHoyaForAlumSession(alumniId);
 }
 
-const EDITABLE_FIELDS = OVERVIEW_COLUMN_FIELDS;
+const SELF_EDITABLE_FIELDS: readonly ProfileColumnField[] = OVERVIEW_COLUMN_FIELDS;
+const ADMIN_EDITABLE_FIELDS: readonly ProfileColumnField[] = [
+  ...OVERVIEW_COLUMN_FIELDS,
+  ...ADMIN_ROSTER_COLUMN_FIELDS,
+];
 
 export type AlumniEditInput = OverviewInput;
 
@@ -678,11 +684,17 @@ async function replaceAlumniOverviewEmails(alumniId: string, emails: string[]) {
   }
 }
 
-async function applyAlumniEdit(alumniId: string, patch: AlumniEditInput) {
-  const { columns, emails } = overviewInputToAlumniPatch(patch);
+async function applyAlumniEdit(
+  alumniId: string,
+  patch: AlumniEditInput,
+  options: { includeAdminRoster?: boolean } = {},
+) {
+  const includeAdminRoster = Boolean(options.includeAdminRoster);
+  const { columns, emails } = overviewInputToAlumniPatch(patch, { includeAdminRoster });
+  const editable = includeAdminRoster ? ADMIN_EDITABLE_FIELDS : SELF_EDITABLE_FIELDS;
   const sets: string[] = [];
   const params: unknown[] = [];
-  for (const field of EDITABLE_FIELDS) {
+  for (const field of editable) {
     if (!(field in columns)) continue;
     params.push(columns[field] ?? null);
     sets.push(`${field} = $${params.length}`);
@@ -701,9 +713,13 @@ async function applyAlumniEdit(alumniId: string, patch: AlumniEditInput) {
   }
 }
 
-export async function updateOwnAlumniRecord(alumniId: string, patch: AlumniEditInput) {
+export async function updateOwnAlumniRecord(
+  alumniId: string,
+  patch: AlumniEditInput,
+  options: { includeAdminRoster?: boolean } = {},
+) {
   await ensureAlumniAuthTables();
-  await applyAlumniEdit(alumniId, patch);
+  await applyAlumniEdit(alumniId, patch, options);
 }
 
 export async function updateClaimedRecord(accountId: string, alumniId: string, patch: AlumniEditInput) {
