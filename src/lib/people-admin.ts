@@ -7,6 +7,7 @@ import {
   normalizePersonKind,
   type PersonKind,
 } from "@/lib/person-kind";
+import { attachPersonLogins, setPersonLoginCredentials } from "@/lib/person-login";
 import { normalizeState } from "@/lib/us-centroids";
 
 export type AdminPersonRow = {
@@ -31,6 +32,9 @@ export type AdminPersonRow = {
   updated_at: string;
   /** Present when person_kind is development and a staff login exists. */
   staff_username?: string | null;
+  /** Portal login (alumni_accounts.net_id) for Alum / Support. */
+  login_username?: string | null;
+  has_login?: boolean;
 };
 
 export type CreatePersonInput = {
@@ -46,9 +50,12 @@ export type CreatePersonInput = {
   classYear?: string;
   position?: string;
   personKind: PersonKind;
-  /** Required when personKind is development. */
+  /**
+   * Required for Development (staff username), Support (portal username),
+   * or Alum (GTown NetID).
+   */
   username?: string;
-  /** Required when personKind is development. */
+  /** Required with username for Development, Support, or Alum. */
   password?: string;
   /** When true (default), mark verified immediately. */
   verified?: boolean;
@@ -99,6 +106,11 @@ async function attachStaffUsernames(rows: AdminPersonRow[]): Promise<AdminPerson
   }
 }
 
+async function enrichAdminPeople(rows: AdminPersonRow[]): Promise<AdminPersonRow[]> {
+  const withStaff = await attachStaffUsernames(rows);
+  return attachPersonLogins(withStaff);
+}
+
 export async function createPerson(input: CreatePersonInput): Promise<AdminPersonRow> {
   await ensurePersonColumns();
   const sql = getSql();
@@ -115,9 +127,25 @@ export async function createPerson(input: CreatePersonInput): Promise<AdminPerso
 
   let developmentUsername: string | null = null;
   let developmentPassword: string | null = null;
+  let portalUsername: string | null = null;
+  let portalPassword: string | null = null;
+
   if (personKind === "development") {
     developmentUsername = normalizeDevelopmentUsername(input.username);
     developmentPassword = assertDevelopmentPassword(input.password);
+  } else if (personKind === "alum" || personKind === "supporter") {
+    portalUsername = input.username?.trim() || "";
+    portalPassword = typeof input.password === "string" ? input.password : "";
+    if (!portalUsername) {
+      throw new Error(
+        personKind === "alum"
+          ? "GTown NetID is required for Players (Alum)."
+          : "Username is required for Supporters.",
+      );
+    }
+    if (!portalPassword) {
+      throw new Error("Password is required (min 8 characters).");
+    }
   }
 
   const rows = await sql.query(
@@ -171,7 +199,19 @@ export async function createPerson(input: CreatePersonInput): Promise<AdminPerso
     person.staff_username = developmentUsername;
   }
 
-  return person;
+  if ((personKind === "alum" || personKind === "supporter") && portalUsername && portalPassword) {
+    const login = await setPersonLoginCredentials({
+      alumniId: person.id,
+      kind: personKind,
+      username: portalUsername,
+      password: portalPassword,
+      email: person.email_primary,
+    });
+    person.login_username = login.username;
+    person.has_login = login.hasLogin;
+  }
+
+  return (await enrichAdminPeople([person]))[0]!;
 }
 
 export async function listPeopleForAdmin(options?: {
@@ -195,7 +235,7 @@ export async function listPeopleForAdmin(options?: {
     LIMIT ${limit}
     `,
   );
-  return attachStaffUsernames(rows as AdminPersonRow[]);
+  return enrichAdminPeople(rows as AdminPersonRow[]);
 }
 
 export async function setPersonVerified(
@@ -220,7 +260,7 @@ export async function setPersonVerified(
   );
   const person = (rows[0] as AdminPersonRow) ?? null;
   if (!person) return null;
-  return (await attachStaffUsernames([person]))[0]!;
+  return (await enrichAdminPeople([person]))[0]!;
 }
 
 export async function setPersonKind(
@@ -254,7 +294,43 @@ export async function setPersonKind(
       name: fullNameFrom(person.preferred_name || person.first_name, person.last_name),
     });
     person.staff_username = username;
-    return person;
+    return (await enrichAdminPeople([person]))[0]!;
+  }
+
+  if (personKind === "alum" || personKind === "supporter") {
+    const username = credentials?.username?.trim() || "";
+    const password = typeof credentials?.password === "string" ? credentials.password : "";
+    if (!username) {
+      throw new Error(
+        personKind === "alum"
+          ? "GTown NetID is required for Players (Alum)."
+          : "Username is required for Supporters.",
+      );
+    }
+    if (!password) {
+      throw new Error("Password is required (min 8 characters).");
+    }
+    const rows = await sql.query(
+      `
+      UPDATE alumni
+      SET person_kind = $2, updated_at = now()
+      WHERE id = $1::uuid
+      RETURNING ${PERSON_SELECT}
+      `,
+      [id, personKind],
+    );
+    const person = (rows[0] as AdminPersonRow) ?? null;
+    if (!person) return null;
+    const login = await setPersonLoginCredentials({
+      alumniId: person.id,
+      kind: personKind,
+      username,
+      password,
+      email: person.email_primary,
+    });
+    person.login_username = login.username;
+    person.has_login = login.hasLogin;
+    return (await enrichAdminPeople([person]))[0]!;
   }
 
   const rows = await sql.query(
@@ -268,7 +344,7 @@ export async function setPersonKind(
   );
   const person = (rows[0] as AdminPersonRow) ?? null;
   if (!person) return null;
-  return (await attachStaffUsernames([person]))[0]!;
+  return (await enrichAdminPeople([person]))[0]!;
 }
 
 export async function countUnverifiedPeople() {

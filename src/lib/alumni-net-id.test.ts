@@ -4,6 +4,7 @@ import {
   isValidNetId,
   netIdFromEmail,
   normalizeNetId,
+  normalizeSupporterUsername,
   parseAlumniLoginIdentifier,
   prefillNetId,
   readAlumniLoginIdentifier,
@@ -56,5 +57,16 @@ describe("GTown NetID helpers", () => {
     assert.equal(readAlumniLoginIdentifier({ identifier: "mak264", email: "a@b.com" }), "mak264");
     assert.equal(readAlumniLoginIdentifier({ username: "Hoyas" }), "Hoyas");
     assert.equal(readAlumniLoginIdentifier({}), "");
+  });
+
+  it("normalizeSupporterUsername accepts letters and digits", () => {
+    assert.equal(normalizeSupporterUsername("MikeGold"), "mikegold");
+    assert.equal(normalizeSupporterUsername("supporter1"), "supporter1");
+  });
+
+  it("normalizeSupporterUsername rejects invalid usernames", () => {
+    assert.throws(() => normalizeSupporterUsername("a"), /letters and numbers/);
+    assert.throws(() => normalizeSupporterUsername("bad name"), /letters and numbers/);
+    assert.throws(() => normalizeSupporterUsername("has@sign"), /letters and numbers/);
   });
 });
