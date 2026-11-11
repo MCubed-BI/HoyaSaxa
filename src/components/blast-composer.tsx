@@ -16,16 +16,26 @@ export type BlastComposerMode = "staff" | "alum";
 
 export type BlastChannel = "sms" | "email";
 
-type Recipient = { id: string; name: string; phone: string | null; email: string | null };
+type Recipient = {
+  id: string;
+  name: string;
+  phone: string | null;
+  phoneLabel?: string | null;
+  phoneKind?: string | null;
+  email: string | null;
+};
 type Preview = {
   count: number;
   withPhone: number;
+  withLandline?: number;
   withEmail: number;
   missingPhone: number;
   missingEmail: number;
   twilio: boolean;
+  twilioA2pReady?: boolean;
   emailProvider: "gmail" | "resend" | "sendgrid" | null;
   phoneRecipients: Recipient[];
+  landlineRecipients?: Recipient[];
   emailRecipients: Recipient[];
 };
 
@@ -154,7 +164,11 @@ export function BlastComposer({
 
   const readyCount = channel === "sms" ? (preview?.withPhone ?? 0) : (preview?.withEmail ?? 0);
   const list = channel === "sms" ? (preview?.phoneRecipients ?? []) : (preview?.emailRecipients ?? []);
-  const providerReady = channel === "sms" ? Boolean(preview?.twilio) : Boolean(preview?.emailProvider);
+  const providerReady =
+    channel === "sms"
+      ? Boolean(preview?.twilio && preview?.twilioA2pReady !== false)
+      : Boolean(preview?.emailProvider);
+  const a2pBlocked = channel === "sms" && Boolean(preview?.twilio) && preview?.twilioA2pReady === false;
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? null;
 
   async function copy(kind: "phones" | "emails" | "message") {
@@ -199,11 +213,39 @@ export function BlastComposer({
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Send failed");
       if (channel === "sms") {
+        const skipped =
+          typeof data.skippedLandlines === "number" && data.skippedLandlines > 0
+            ? `, skipped ${data.skippedLandlines} office/landline`
+            : "";
         if (data.mode === "twilio") {
-          setStatus(`Sent ${data.sent} of ${data.count} texts${data.failed ? `, ${data.failed} failed` : ""}.`);
+          const failedDetail =
+            Array.isArray(data.results) && data.failed
+              ? data.results
+                  .filter((row: { status?: string; error?: string }) => row.status === "failed")
+                  .slice(0, 3)
+                  .map((row: { name?: string; error?: string }) =>
+                    row.error ? `${row.name}: ${row.error}` : row.name,
+                  )
+                  .filter(Boolean)
+                  .join(" · ")
+              : "";
+          setStatus(
+            [
+              `Delivered/accepted ${data.sent} of ${data.count}`,
+              data.failed ? `${data.failed} failed` : null,
+              data.queued ? `${data.queued} still sending` : null,
+              skipped.replace(/^, /, "") || null,
+            ]
+              .filter(Boolean)
+              .join(", ") +
+              "." +
+              (failedDetail ? ` ${failedDetail}` : ""),
+          );
         } else {
           setSmsFallback({ sms: data.sms });
-          setStatus(`Twilio is not configured. ${data.count} numbers are ready — open Messages or copy the blast.`);
+          setStatus(
+            `Twilio is not configured. ${data.count} mobile numbers are ready — open Messages or copy the blast${skipped}.`,
+          );
         }
       } else if (data.mode === "gmail" || data.mode === "resend" || data.mode === "sendgrid") {
         setStatus(`Sent ${data.sent} of ${data.count} emails${data.failed ? `, ${data.failed} failed` : ""}.`);
@@ -332,10 +374,17 @@ export function BlastComposer({
               <p className="font-heading text-3xl text-navy">{(preview?.withEmail ?? 0).toLocaleString()}</p>
             </div>
             <div className="rounded-lg bg-muted px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">With phone</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">SMS-ready</p>
               <p className="font-heading text-3xl text-navy">{(preview?.withPhone ?? 0).toLocaleString()}</p>
             </div>
           </div>
+          {preview && (preview.withLandline ?? 0) > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Skipping {(preview.withLandline ?? 0).toLocaleString()} office/landline number
+              {(preview.withLandline ?? 0) === 1 ? "" : "s"} (Work labels or campus exchanges). Texts go to
+              Mobile when one is on file.
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -389,9 +438,11 @@ export function BlastComposer({
           {preview ? (
             <p className="text-sm text-muted-foreground">
               {channel === "sms"
-                ? preview.twilio
-                  ? "Twilio is configured. Send will deliver texts from the app."
-                  : "Twilio is not fully configured (need Account SID + Auth Token or API Key, plus From number). Send prepares Messages / copy instead."
+                ? a2pBlocked
+                  ? "Twilio credentials are present, but TWILIO_MESSAGING_SERVICE_SID is missing. US carriers reject From-only 10DLC texts (error 30034). Add an approved A2P Messaging Service SID on Vercel before Send will work."
+                  : preview.twilio
+                    ? "Twilio Messaging Service is configured. Send will deliver texts from the app."
+                    : "Twilio is not fully configured (need Account SID + Auth Token or API Key, plus Messaging Service or From). Send prepares Messages / copy instead."
                 : preview.emailProvider === "gmail"
                   ? "Gmail SMTP is configured (GMAIL_USER). Staff and alum send both use sendProviderEmail from that mailbox."
                   : preview.emailProvider
@@ -509,15 +560,40 @@ export function BlastComposer({
               <div key={row.id} className="flex items-baseline justify-between gap-3 border-b py-2 last:border-0">
                 <p className="truncate font-medium text-navy">{row.name}</p>
                 <p className="shrink-0 text-sm text-muted-foreground">
-                  {channel === "sms" ? displayPhone(row.phone ?? "") : row.email}
+                  {channel === "sms"
+                    ? `${displayPhone(row.phone ?? "")}${row.phoneLabel ? ` · ${row.phoneLabel}` : ""}`
+                    : row.email}
                 </p>
               </div>
             ))}
             {list.length > 25 ? (
               <p className="text-sm text-muted-foreground">
-                Showing 25 of {list.length.toLocaleString()} with {channel === "sms" ? "phone numbers" : "email"}.
+                Showing 25 of {list.length.toLocaleString()} with {channel === "sms" ? "mobile numbers" : "email"}.
               </p>
             ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {channel === "sms" && (preview?.landlineRecipients?.length ?? 0) > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Skipped — office / landline</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              These numbers usually cannot receive texts. Add a Mobile number on the person record to include
+              them next time.
+            </p>
+            {(preview?.landlineRecipients ?? []).slice(0, 25).map((row) => (
+              <div key={row.id} className="flex items-baseline justify-between gap-3 border-b py-2 last:border-0">
+                <p className="truncate font-medium text-navy">{row.name}</p>
+                <p className="shrink-0 text-sm text-muted-foreground">
+                  {displayPhone(row.phone ?? "")}
+                  {row.phoneLabel ? ` · ${row.phoneLabel}` : row.phoneKind === "work" ? " · Work" : " · office?"}
+                </p>
+              </div>
+            ))}
           </CardContent>
         </Card>
       ) : null}

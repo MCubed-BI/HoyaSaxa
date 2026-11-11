@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { twilioAuth, twilioConfigured } from "./sms";
+import {
+  formatTwilioDeliveryError,
+  twilioA2pReady,
+  twilioAuth,
+  twilioConfigured,
+  twilioStatusToRecipientStatus,
+} from "./sms";
 
 const KEYS = [
   "TWILIO_ACCOUNT_SID",
@@ -8,6 +14,7 @@ const KEYS = [
   "TWILIO_API_KEY_SID",
   "TWILIO_API_KEY_SECRET",
   "TWILIO_FROM_NUMBER",
+  "TWILIO_MESSAGING_SERVICE_SID",
 ] as const;
 
 const original = Object.fromEntries(KEYS.map((key) => [key, process.env[key]]));
@@ -57,6 +64,28 @@ describe("twilio auth", () => {
     assert.equal(auth?.from, "+12025550100");
   });
 
+  it("accepts Messaging Service SID without From (A2P path)", () => {
+    clearTwilioEnv();
+    process.env.TWILIO_ACCOUNT_SID = "ACxxxxxxxx";
+    process.env.TWILIO_API_KEY_SID = "SKyyyyyyyy";
+    process.env.TWILIO_API_KEY_SECRET = "secret";
+    process.env.TWILIO_MESSAGING_SERVICE_SID = "MGzzzzzzzz";
+    assert.equal(twilioConfigured(), true);
+    assert.equal(twilioAuth()?.messagingServiceSid, "MGzzzzzzzz");
+    assert.equal(twilioAuth()?.from, null);
+    assert.equal(twilioA2pReady(), true);
+  });
+
+  it("is not A2P-ready with From only (production 30034 shape)", () => {
+    clearTwilioEnv();
+    process.env.TWILIO_ACCOUNT_SID = "ACxxxxxxxx";
+    process.env.TWILIO_API_KEY_SID = "SKyyyyyyyy";
+    process.env.TWILIO_API_KEY_SECRET = "secret";
+    process.env.TWILIO_FROM_NUMBER = "+16624993526";
+    assert.equal(twilioConfigured(), true);
+    assert.equal(twilioA2pReady(), false);
+  });
+
   it("prefers Auth Token when both token and API key are present", () => {
     clearTwilioEnv();
     process.env.TWILIO_ACCOUNT_SID = "ACxxxxxxxx";
@@ -65,5 +94,28 @@ describe("twilio auth", () => {
     process.env.TWILIO_API_KEY_SECRET = "secret";
     process.env.TWILIO_FROM_NUMBER = "+12025550100";
     assert.equal(twilioAuth()?.mode, "auth_token");
+  });
+});
+
+describe("twilio delivery status mapping", () => {
+  it("maps carrier outcomes so queued is not treated as delivered", () => {
+    assert.equal(twilioStatusToRecipientStatus("queued"), "queued");
+    assert.equal(twilioStatusToRecipientStatus("accepted"), "queued");
+    assert.equal(twilioStatusToRecipientStatus("sent"), "sent");
+    assert.equal(twilioStatusToRecipientStatus("delivered"), "sent");
+    assert.equal(twilioStatusToRecipientStatus("undelivered"), "failed");
+    assert.equal(twilioStatusToRecipientStatus("failed"), "failed");
+  });
+
+  it("formats undelivered carrier errors for blast UI", () => {
+    assert.match(
+      formatTwilioDeliveryError({ status: "undelivered", errorCode: 30003 }) ?? "",
+      /30003/,
+    );
+    assert.match(
+      formatTwilioDeliveryError({ status: "undelivered" }) ?? "",
+      /landline|filtered|unreachable/i,
+    );
+    assert.match(formatTwilioDeliveryError({ errorCode: 30034 }) ?? "", /A2P|Messaging Service/i);
   });
 });

@@ -14,6 +14,7 @@ const PUBLIC_PATHS = [
   "/api/alum/session",
   "/api/session",
   "/api/logout",
+  "/api/blast/twilio-status",
   "/giving",
   "/api/giving",
 ];
