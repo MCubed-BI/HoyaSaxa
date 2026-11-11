@@ -135,11 +135,11 @@ export function HoyaAiChat() {
   if (hidden) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end p-3 sm:p-4">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[var(--mobile-tabbar-offset,0px)] z-50 flex justify-end p-3 sm:p-4 md:bottom-0">
       <div className="pointer-events-auto flex flex-col items-end gap-2">
         {open ? (
           <section
-            className="flex h-[min(34rem,calc(100dvh-6rem))] w-[min(24rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-navy/15 bg-card shadow-[0_18px_50px_-24px_rgba(4,30,66,0.55)]"
+            className="flex h-[min(34rem,calc(100dvh-6rem-var(--mobile-tabbar-offset,0px)))] w-[min(24rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-navy/15 bg-card shadow-[0_18px_50px_-24px_rgba(4,30,66,0.55)] md:h-[min(34rem,calc(100dvh-6rem))]"
             aria-label={HOYA_AI_NAME}
           >
             <header className="flex items-center gap-2 border-b bg-navy px-3 py-2.5 text-navy-foreground">
