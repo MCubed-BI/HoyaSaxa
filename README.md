@@ -277,12 +277,24 @@ Need Account SID + From, plus either Auth Token **or** API Key SID/Secret. Witho
 
 ### Email (Gmail SMTP)
 
+Preferred: **OAuth Connect** (no App Password / no turning on 2-Step Verification):
+
 ```
-GMAIL_USER=coach@yourdomain.com
-GMAIL_APP_PASSWORD=
+GMAIL_USER=georgetownfootball35@gmail.com
+GMAIL_CLIENT_ID=
+GMAIL_CLIENT_SECRET=
 ```
 
-Staff `/blast` and alum `/portal/blast` both call `sendProviderEmail`. When `GMAIL_USER` and `GMAIL_APP_PASSWORD` are set, nodemailer sends through Gmail SMTP and From is that mailbox. Without them, Prepare copies subject/body/recipients or opens a Gmail / `mailto:` draft.
+1. In [Google Cloud Console](https://console.cloud.google.com/) create an OAuth **Web application** client.
+2. Add authorized redirect URI `https://georgetown-alum.vercel.app/api/gmail/oauth/callback` (and localhost if testing).
+3. Put the client ID/secret on Vercel, redeploy.
+4. Staff opens `/blast` → **Connect Gmail** and signs in as `GMAIL_USER` once.
+
+The refresh token is stored in Neon (`gmail_oauth_tokens`). Optional env override: `GMAIL_REFRESH_TOKEN`.
+
+Fallback: `GMAIL_APP_PASSWORD` (Google App Password — requires 2-Step on that mailbox).
+
+Staff `/blast` and alum `/portal/blast` both call `sendProviderEmail`. Without Gmail linked, Prepare copies subject/body/recipients or opens a Gmail / `mailto:` draft.
 
 ## Deploy
 

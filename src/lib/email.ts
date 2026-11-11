@@ -1,4 +1,10 @@
 import nodemailer from "nodemailer";
+import {
+  getValidGmailAccessToken,
+  gmailClientId,
+  gmailOAuthClientConfigured,
+  resolveGmailRefreshToken,
+} from "@/lib/gmail-oauth";
 
 function parsePositiveInt(value: string | undefined, fallback: number) {
   const parsed = Number.parseInt(value ?? "", 10);
@@ -9,20 +15,27 @@ export const EMAIL_SEND_LIMIT = parsePositiveInt(process.env.EMAIL_SEND_LIMIT, 2
 export const ALUM_EMAIL_SEND_LIMIT = parsePositiveInt(process.env.ALUM_EMAIL_SEND_LIMIT, 40);
 
 export const GMAIL_ENV_VARS = ["GMAIL_USER", "GMAIL_APP_PASSWORD"] as const;
+export const GMAIL_OAUTH_ENV_VARS = ["GMAIL_USER", "GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET"] as const;
 export const RESEND_ENV_VARS = ["RESEND_API_KEY", "EMAIL_FROM"] as const;
 
 export type EmailProvider = "gmail" | "resend" | "sendgrid";
+export type GmailAuthMode = "oauth" | "app_password" | null;
 
 export function gmailUser() {
-  return process.env.GMAIL_USER?.trim() || "";
+  return process.env.GMAIL_USER?.trim().toLowerCase() || "";
 }
 
 export function gmailAppPassword() {
   return (process.env.GMAIL_APP_PASSWORD ?? "").replace(/\s+/g, "").trim();
 }
 
-export function gmailConfigured() {
+export function gmailAppPasswordConfigured() {
   return Boolean(gmailUser() && gmailAppPassword());
+}
+
+/** Sync hint: App Password set, or OAuth client present (mailbox may still need Connect Gmail). */
+export function gmailConfigured() {
+  return gmailAppPasswordConfigured() || gmailOAuthClientConfigured();
 }
 
 export function emailFromAddress() {
@@ -34,7 +47,10 @@ export function emailReplyToAddress() {
 }
 
 export function missingGmailEnv() {
-  return GMAIL_ENV_VARS.filter((name) => !(name === "GMAIL_APP_PASSWORD" ? gmailAppPassword() : gmailUser()));
+  if (gmailAppPasswordConfigured()) return [];
+  if (gmailOAuthClientConfigured() && gmailUser()) return [];
+  if (gmailOAuthClientConfigured()) return ["GMAIL_USER"];
+  return [...GMAIL_OAUTH_ENV_VARS];
 }
 
 export function missingResendEnv() {
@@ -45,9 +61,18 @@ export function emailConfigured() {
   return emailProvider() !== null;
 }
 
-/** Live blast uses Gmail SMTP. Resend/SendGrid remain optional leftovers. */
+/** Sync provider hint. Prefer `resolveEmailProvider` before sending. */
 export function emailProvider(): EmailProvider | null {
-  if (gmailConfigured()) return "gmail";
+  if (gmailAppPasswordConfigured()) return "gmail";
+  if (gmailOAuthClientConfigured()) return "gmail";
+  if (process.env.RESEND_API_KEY?.trim() && emailFromAddress()) return "resend";
+  if (process.env.SENDGRID_API_KEY?.trim() && emailFromAddress()) return "sendgrid";
+  return null;
+}
+
+/** True provider for live send: Gmail only when OAuth is linked or App Password is set. */
+export async function resolveEmailProvider(): Promise<EmailProvider | null> {
+  if (await gmailAuthMode()) return "gmail";
   if (process.env.RESEND_API_KEY?.trim() && emailFromAddress()) return "resend";
   if (process.env.SENDGRID_API_KEY?.trim() && emailFromAddress()) return "sendgrid";
   return null;
@@ -86,26 +111,225 @@ function normalizeEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
-let cachedGmailTransporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+function encodeRfc2047Subject(subject: string) {
+  if (/^[\x20-\x7e]*$/.test(subject)) return subject;
+  return `=?UTF-8?B?${Buffer.from(subject, "utf8").toString("base64")}?=`;
+}
 
-function gmailTransporter() {
-  if (!gmailConfigured()) return null;
-  if (!cachedGmailTransporter) {
+function buildRawGmailMessage(input: {
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  replyTo?: string;
+}) {
+  const lines = [
+    `From: ${input.from}`,
+    `To: ${input.to}`,
+    `Subject: ${encodeRfc2047Subject(input.subject)}`,
+    "MIME-Version: 1.0",
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: 7bit",
+  ];
+  if (input.replyTo) lines.push(`Reply-To: ${input.replyTo}`);
+  lines.push("", input.text.replace(/\r?\n/g, "\r\n"));
+  return Buffer.from(lines.join("\r\n"), "utf8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+let cachedGmailTransporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+let cachedGmailAuthKey: string | null = null;
+
+type GmailTransportAuth =
+  | { mode: "oauth"; refreshToken: string; email: string }
+  | { mode: "app_password"; password: string; email: string };
+
+async function resolveGmailTransportAuth(): Promise<GmailTransportAuth | null> {
+  const user = gmailUser();
+  // Prefer OAuth. If the OAuth client is configured but not linked yet, do not
+  // fall through to a stale App Password — that produces a confusing Send path.
+  if (gmailOAuthClientConfigured()) {
+    const token = await resolveGmailRefreshToken();
+    if (token?.refreshToken) {
+      return {
+        mode: "oauth",
+        refreshToken: token.refreshToken,
+        email: (token.email || user).toLowerCase(),
+      };
+    }
+    return null;
+  }
+  if (gmailAppPasswordConfigured() && user) {
+    return { mode: "app_password", password: gmailAppPassword(), email: user };
+  }
+  return null;
+}
+
+export async function gmailAuthMode(): Promise<GmailAuthMode> {
+  const auth = await resolveGmailTransportAuth();
+  return auth?.mode ?? null;
+}
+
+function gmailAuthKey(auth: GmailTransportAuth) {
+  if (auth.mode === "oauth") {
+    return `oauth\0${auth.email}\0${auth.refreshToken}\0${gmailClientId()}`;
+  }
+  return `app\0${auth.email}\0${auth.password}`;
+}
+
+/** App-password SMTP only. OAuth uses the Gmail HTTP API (more reliable on Vercel). */
+async function gmailAppPasswordTransporter() {
+  const auth = await resolveGmailTransportAuth();
+  if (!auth || auth.mode !== "app_password") return null;
+  const key = gmailAuthKey(auth);
+  if (!cachedGmailTransporter || cachedGmailAuthKey !== key) {
     cachedGmailTransporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
-        user: gmailUser(),
-        pass: gmailAppPassword(),
+        user: auth.email,
+        pass: auth.password,
       },
     });
+    cachedGmailAuthKey = key;
   }
   return cachedGmailTransporter;
 }
 
+/** True when Google rejected the username/app password / OAuth token. */
+export function isGmailAuthError(message: string | undefined) {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("invalid login") ||
+    lower.includes("badcredentials") ||
+    lower.includes("username and password not accepted") ||
+    lower.includes("535-5.7.8") ||
+    lower.includes("535 5.7.8") ||
+    lower.includes("application-specific password required") ||
+    lower.includes("please log in with your web browser") ||
+    lower.includes("invalid_grant") ||
+    lower.includes("unauthorized_client") ||
+    lower.includes("invalid credentials") ||
+    lower.includes("login required")
+  );
+}
+
+export function gmailAuthErrorMessage() {
+  const user = gmailUser() || "GMAIL_USER";
+  if (gmailOAuthClientConfigured()) {
+    return (
+      `Gmail is not linked for ${user}. Staff: open Connect Gmail on /blast and sign in as that mailbox ` +
+      `(OAuth — no App Password / 2-Step required).`
+    );
+  }
+  return (
+    `Gmail rejected login for ${user}. Prefer Connect Gmail (OAuth): set GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET, ` +
+    `then sign in once as that mailbox. App Passwords also work if 2-Step Verification is enabled.`
+  );
+}
+
+/**
+ * Verify Gmail credentials once before a blast.
+ * OAuth: refresh access token via HTTPS (no SMTP).
+ * App Password: nodemailer SMTP verify.
+ */
+export async function verifyGmailSmtp(): Promise<{ ok: true; mode: GmailAuthMode } | { ok: false; error: string }> {
+  const auth = await resolveGmailTransportAuth();
+  if (!auth) {
+    if (gmailOAuthClientConfigured()) {
+      return { ok: false, error: gmailAuthErrorMessage() };
+    }
+    return { ok: false, error: "Gmail is not configured (Connect Gmail OAuth or GMAIL_APP_PASSWORD)" };
+  }
+
+  if (auth.mode === "oauth") {
+    const token = await getValidGmailAccessToken();
+    if (!token.ok) {
+      return {
+        ok: false,
+        error: isGmailAuthError(token.error) ? gmailAuthErrorMessage() : token.error,
+      };
+    }
+    return { ok: true, mode: "oauth" };
+  }
+
+  const transporter = await gmailAppPasswordTransporter();
+  if (!transporter) {
+    return { ok: false, error: "Gmail SMTP is not configured" };
+  }
+  try {
+    await transporter.verify();
+    return { ok: true, mode: "app_password" };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Gmail SMTP verify failed";
+    return { ok: false, error: isGmailAuthError(message) ? gmailAuthErrorMessage() : message };
+  }
+}
+
+async function sendGmailApiEmail(
+  to: string,
+  subject: string,
+  text: string,
+  from: string,
+): Promise<EmailSendResult> {
+  const token = await getValidGmailAccessToken();
+  if (!token.ok) {
+    return {
+      email: to,
+      status: "failed",
+      error: isGmailAuthError(token.error) ? gmailAuthErrorMessage() : token.error,
+    };
+  }
+
+  const raw = buildRawGmailMessage({
+    from: token.email || from,
+    to,
+    subject,
+    text,
+    replyTo: emailReplyToAddress() || undefined,
+  });
+
+  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ raw }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    id?: string;
+    error?: { message?: string; status?: string };
+  };
+  if (!response.ok) {
+    const message = payload.error?.message || `Gmail API ${response.status}`;
+    return {
+      email: to,
+      status: "failed",
+      error: isGmailAuthError(message) ? gmailAuthErrorMessage() : message,
+    };
+  }
+  return { email: to, status: "sent", id: payload.id };
+}
+
 async function sendGmailEmail(email: string, subject: string, text: string): Promise<EmailSendResult> {
-  const transporter = gmailTransporter();
-  const from = gmailUser();
-  if (!transporter || !from) {
+  const auth = await resolveGmailTransportAuth();
+  const from = auth?.email || gmailUser();
+  if (!auth || !from) {
+    return { email, status: "failed", error: "Gmail is not configured" };
+  }
+
+  if (auth.mode === "oauth") {
+    return sendGmailApiEmail(email, subject, text, from);
+  }
+
+  const transporter = await gmailAppPasswordTransporter();
+  if (!transporter) {
     return { email, status: "failed", error: "Gmail SMTP is not configured" };
   }
   try {
@@ -118,10 +342,11 @@ async function sendGmailEmail(email: string, subject: string, text: string): Pro
     });
     return { email, status: "sent", id: typeof info.messageId === "string" ? info.messageId : undefined };
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Gmail SMTP send failed";
     return {
       email,
       status: "failed",
-      error: error instanceof Error ? error.message : "Gmail SMTP send failed",
+      error: isGmailAuthError(message) ? gmailAuthErrorMessage() : message,
     };
   }
 }
@@ -152,13 +377,17 @@ async function sendResendEmail(email: string, subject: string, text: string): Pr
   return { email, status: "sent", id: payload.id };
 }
 
-/** Staff `/blast` and alum `/portal/blast` both call this. Gmail SMTP wins when env is set. */
+/** Staff `/blast` and alum `/portal/blast` both call this. */
 export async function sendProviderEmail(to: string, subject: string, text: string): Promise<EmailSendResult> {
   const email = normalizeEmail(to);
   if (!email) return { email: to, status: "failed", error: "Invalid email" };
 
-  const provider = emailProvider();
-  if (provider === "gmail") return sendGmailEmail(email, subject, text);
-  if (provider === "resend") return sendResendEmail(email, subject, text);
-  return { email, status: "failed", error: "Gmail SMTP is not configured (GMAIL_USER + GMAIL_APP_PASSWORD)" };
+  // Use live auth mode, not the sync hint (avoids App Password when OAuth is intended).
+  if (await gmailAuthMode()) return sendGmailEmail(email, subject, text);
+  if (process.env.RESEND_API_KEY?.trim() && emailFromAddress()) return sendResendEmail(email, subject, text);
+  return {
+    email,
+    status: "failed",
+    error: "Gmail is not configured (Connect Gmail OAuth or GMAIL_APP_PASSWORD)",
+  };
 }
