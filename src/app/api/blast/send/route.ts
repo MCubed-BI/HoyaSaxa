@@ -8,7 +8,10 @@ import {
   buildGmailComposeLink,
   buildMailtoLink,
   emailProvider,
+  gmailUser,
+  isGmailAuthError,
   sendProviderEmail,
+  verifyGmailSmtp,
 } from "@/lib/email";
 import { coerceAlumniFilters } from "@/lib/filters";
 import { buildSmsDeepLink, toE164 } from "@/lib/phone";
@@ -227,6 +230,21 @@ async function sendEmailBlast({
   }
 
   const provider = emailProvider();
+  if (provider === "gmail") {
+    const verified = await verifyGmailSmtp();
+    if (!verified.ok) {
+      return NextResponse.json(
+        {
+          error: verified.error,
+          channel: "email",
+          mode: "gmail",
+          from: gmailUser() || null,
+        },
+        { status: 502 },
+      );
+    }
+  }
+
   const sql = getSql();
   const created = (await sql.query(
     `INSERT INTO email_blasts (subject, body, status, provider, recipient_count, filter_snapshot)
@@ -278,6 +296,24 @@ async function sendEmailBlast({
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [blastId, row.id, row.name, result.email, result.status, result.error ?? null],
     );
+    // Stop after the first auth rejection so we do not repeat BadCredentials N times.
+    if (result.status === "failed" && isGmailAuthError(result.error)) {
+      for (const remaining of recipients.slice(results.length)) {
+        failed += 1;
+        results.push({
+          name: remaining.name,
+          email: remaining.email,
+          status: "failed",
+          error: result.error,
+        });
+        await sql.query(
+          `INSERT INTO email_blast_recipients (blast_id, alumni_id, name, email, status, error)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [blastId, remaining.id, remaining.name, remaining.email, "failed", result.error ?? null],
+        );
+      }
+      break;
+    }
   }
 
   await sql.query(`UPDATE email_blasts SET status = $1, sent_count = $2, failed_count = $3 WHERE id = $4`, [
@@ -290,6 +326,7 @@ async function sendEmailBlast({
   return NextResponse.json({
     channel: "email",
     mode: provider,
+    from: provider === "gmail" ? gmailUser() : null,
     blastId,
     count: recipients.length,
     sent,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { alumEmailBlastRejection, getBlastActor, normalizeBlastIds } from "@/lib/blast-auth";
-import { emailProvider } from "@/lib/email";
+import { emailProvider, gmailUser } from "@/lib/email";
 import { coerceAlumniFilters } from "@/lib/filters";
 import { toE164 } from "@/lib/phone";
 import { getBlastRecipients } from "@/lib/queries";
@@ -55,6 +55,7 @@ export async function POST(request: Request) {
       missingEmail: rows.length - emailRecipients.length,
       twilio: twilioConfigured(),
       emailProvider: emailProvider(),
+      emailFrom: emailProvider() === "gmail" ? gmailUser() || null : null,
       phoneRecipients: phoneRecipients.map((row) => ({
         id: row.id,
         name: row.name,
